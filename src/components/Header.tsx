@@ -1,62 +1,84 @@
-import { useState } from 'react'
+import { familyDatabase } from '../data'
+import { useTimeline } from '../context/TimelineContext'
 
 const NAV_ITEMS = ['Journey', 'People', 'Places', 'About'] as const
 
-const ARCHIVE_STATS = [
-  { value: '325', label: 'People' },
-  { value: '80', label: 'Families' },
-  { value: '21', label: 'Generations' },
-] as const
-
-function AtlasEmblem() {
+function AtlasMark() {
   return (
-    <div className="atlas-emblem" aria-hidden="true">
-      <div className="atlas-emblem__inner" />
+    <div className="mark atlas-mark" aria-label="Atlas trail mark">
+      <svg viewBox="0 0 36 36" width="34" height="34" aria-hidden="true">
+        <circle cx="18" cy="18" r="13.5" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.45" />
+        <path
+          d="M7 24.5 Q18 19 29 24.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+        <path
+          d="M18 24.5 V11.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+        <path
+          d="M18 17.5 L11.5 12.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M18 15 L24.5 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+        <circle cx="18" cy="10" r="1.6" fill="currentColor" />
+        <circle cx="11.5" cy="12.5" r="1.1" fill="currentColor" opacity="0.7" />
+        <circle cx="24.5" cy="10" r="1.1" fill="currentColor" opacity="0.7" />
+      </svg>
     </div>
   )
 }
 
 export function Header() {
-  const [activeNav] = useState<(typeof NAV_ITEMS)[number]>('Journey')
+  const { generationCount } = useTimeline()
+  const stats = familyDatabase.stats
 
   return (
-    <header className="border-b border-atlas-border px-5 py-3 md:px-8 md:py-4">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-start gap-3 md:items-center md:gap-4">
-          <AtlasEmblem />
-          <div className="min-w-0">
-            <h1 className="font-serif text-lg leading-tight font-medium tracking-wide text-atlas-gold md:text-xl">
-              Santa Ruiz Family Atlas
-            </h1>
-            <p className="mt-0.5 text-xs tracking-wide text-atlas-text-muted md:text-sm">
-              Every life leaves a trail.
-            </p>
+    <header className="top">
+      <div className="brand">
+        <AtlasMark />
+        <div>
+          <h1 className="brand-title">Santa Ruiz Family Atlas</h1>
+          <small>Every life leaves a trail</small>
+        </div>
+      </div>
+      <div className="top-right">
+        <div className="top-stats stats">
+          <div className="stat">
+            <strong>{stats.people}</strong>
+            <span>people</span>
+          </div>
+          <div className="stat">
+            <strong>{stats.families}</strong>
+            <span>families</span>
+          </div>
+          <div className="stat">
+            <strong>{generationCount}</strong>
+            <span>generations</span>
           </div>
         </div>
-
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:justify-end lg:gap-10">
-          <dl className="flex flex-wrap gap-x-6 gap-y-2">
-            {ARCHIVE_STATS.map((stat) => (
-              <div key={stat.label} className="flex items-baseline gap-1.5">
-                <dt className="stat-label">{stat.label}</dt>
-                <dd className="stat-value">{stat.value}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <nav aria-label="Primary" className="flex flex-wrap gap-4 md:gap-6">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={`nav-link ${item === activeNav ? 'nav-link--active' : ''}`}
-                aria-current={item === activeNav ? 'page' : undefined}
-              >
-                {item}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <nav className="nav" aria-label="Primary">
+          {NAV_ITEMS.map((item, i) => (
+            <button key={item} type="button" className={i === 0 ? 'active' : ''} aria-current={i === 0 ? 'page' : undefined}>
+              {item}
+            </button>
+          ))}
+        </nav>
       </div>
     </header>
   )

@@ -1,130 +1,135 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { carouselStories } from '../data/carouselStories'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { storySeeds } from '../data'
+import { useTimeline } from '../context/TimelineContext'
+import { viewport } from '../utils/timelineMath'
 
-const AUTO_ADVANCE_MS = 8000
-
-function formatDateRange(start: Date, end: Date) {
-  const formatter = new Intl.DateTimeFormat('en-US', { year: 'numeric' })
-  return `${formatter.format(start)} – ${formatter.format(end)}`
-}
+const AUTO_ADVANCE_MS = 5200
 
 export function HighlightCarousel() {
+  const { center, span, peopleById, openPerson } = useTimeline()
   const [index, setIndex] = useState(0)
-  const [direction, setDirection] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const story = carouselStories[index]
+  const timerRef = useRef<number | null>(null)
+  const carouselKeyRef = useRef('')
 
-  const goTo = useCallback((nextIndex: number, nextDirection: number) => {
-    setDirection(nextDirection)
-    setIndex((nextIndex + carouselStories.length) % carouselStories.length)
-  }, [])
+  const candidates = useMemo(() => {
+    const { start, end } = viewport(center, span)
+    const paddedStart = start - span * 0.22
+    const paddedEnd = end + span * 0.22
+    let items = storySeeds.filter((s) => s.year >= paddedStart && s.year <= paddedEnd)
+    if (!items.length) {
+      items = [...storySeeds]
+        .sort((a, b) => Math.abs(a.year - center) - Math.abs(b.year - center))
+        .slice(0, 1)
+    }
+    return items
+      .sort((a, b) => Math.abs(a.year - center) - Math.abs(b.year - center))
+      .slice(0, 7)
+      .sort((a, b) => a.year - b.year)
+      .map((s) => ({
+        ...s,
+        personName: peopleById[s.personId]?.name ?? 'Unknown',
+      }))
+  }, [center, span, peopleById])
 
-  const goPrev = useCallback(() => {
-    goTo(index - 1, -1)
-  }, [goTo, index])
-
-  const goNext = useCallback(() => {
-    goTo(index + 1, 1)
-  }, [goTo, index])
+  const key = candidates.map((s) => `${s.personId}:${s.year}`).join('|')
 
   useEffect(() => {
-    if (isPaused) return
+    if (key === carouselKeyRef.current) return
+    carouselKeyRef.current = key
+    setIndex((prev) => Math.min(prev, Math.max(0, candidates.length - 1)))
+  }, [key, candidates.length])
 
-    const timer = window.setInterval(goNext, AUTO_ADVANCE_MS)
-    return () => window.clearInterval(timer)
-  }, [goNext, isPaused])
+  const scheduleAdvance = useCallback(() => {
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => {
+      if (candidates.length > 1) {
+        setIndex((prev) => (prev + 1) % candidates.length)
+        scheduleAdvance()
+      }
+    }, AUTO_ADVANCE_MS)
+  }, [candidates.length])
 
-  const slideVariants = {
-    enter: (slideDirection: number) => ({
-      opacity: 0,
-      x: slideDirection >= 0 ? 24 : -24,
-    }),
-    center: {
-      opacity: 1,
-      x: 0,
-    },
-    exit: (slideDirection: number) => ({
-      opacity: 0,
-      x: slideDirection >= 0 ? -24 : 24,
-    }),
+  useEffect(() => {
+    if (isPaused) {
+      if (timerRef.current) window.clearTimeout(timerRef.current)
+      return
+    }
+    scheduleAdvance()
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current)
+    }
+  }, [isPaused, scheduleAdvance, index])
+
+  const move = (delta: number) => {
+    if (candidates.length < 2) return
+    setIndex((prev) => (prev + delta + candidates.length) % candidates.length)
+    scheduleAdvance()
   }
 
+  if (!candidates.length) return null
+
   return (
-    <section
-      aria-label="Highlighted stories"
-      className="w-full max-w-sm md:max-w-md"
+    <div
+      className="story-rail"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      onFocusCapture={() => setIsPaused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsPaused(false)
-        }
-      }}
     >
-      <div className="relative overflow-hidden">
-        <AnimatePresence mode="wait" custom={direction}>
-          <motion.article
-            key={story.id}
-            custom={direction}
-            variants={slideVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
-            className="carousel-card px-5 py-4 md:px-6 md:py-5"
-          >
-            <p className="text-[0.6875rem] tracking-[0.08em] text-atlas-gold-dim uppercase">
-              {formatDateRange(story.dateRange.start, story.dateRange.end)}
-            </p>
-            <h2 className="font-serif mt-2 text-xl leading-snug font-medium text-atlas-gold md:text-2xl">
-              {story.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-atlas-text">{story.excerpt}</p>
-          </motion.article>
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <button
+        type="button"
+        className="story-nav prev"
+        aria-label="Previous highlight"
+        onClick={(e) => {
+          e.stopPropagation()
+          move(-1)
+        }}
+      >
+        ‹
+      </button>
+      <div className="story-carousel">
+        {candidates.map((story, i) => (
           <button
+            key={`${story.personId}-${story.year}`}
             type="button"
-            onClick={goPrev}
-            aria-label="Previous story"
-            className="text-atlas-gold-dim transition-colors hover:text-atlas-gold"
+            className={`story-card ${i === index ? 'active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              openPerson(story.personId)
+            }}
           >
-            <ChevronLeft className="size-5" strokeWidth={1.5} />
+            <span className="story-year">{story.year}</span>
+            <div className="story-kicker">{story.kicker}</div>
+            <strong>{story.title}</strong>
+            <span>{story.blurb}</span>
           </button>
-          <button
-            type="button"
-            onClick={goNext}
-            aria-label="Next story"
-            className="text-atlas-gold-dim transition-colors hover:text-atlas-gold"
-          >
-            <ChevronRight className="size-5" strokeWidth={1.5} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2" role="tablist" aria-label="Story pagination">
-          {carouselStories.map((item, dotIndex) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={dotIndex === index}
-              aria-label={`Story ${dotIndex + 1}: ${item.title}`}
-              onClick={() => goTo(dotIndex, dotIndex > index ? 1 : -1)}
-              className={`h-1.5 rounded-full transition-all ${
-                dotIndex === index
-                  ? 'w-4 bg-atlas-gold-soft'
-                  : 'w-1.5 bg-atlas-gold-dim/60 hover:bg-atlas-gold-dim'
-              }`}
-            />
-          ))}
-        </div>
+        ))}
       </div>
-    </section>
+      <button
+        type="button"
+        className="story-nav next"
+        aria-label="Next highlight"
+        onClick={(e) => {
+          e.stopPropagation()
+          move(1)
+        }}
+      >
+        ›
+      </button>
+      <div className="story-dots">
+        {candidates.map((_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`story-dot ${i === index ? 'active' : ''}`}
+            aria-label={`Show highlight ${i + 1}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              setIndex(i)
+              scheduleAdvance()
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }

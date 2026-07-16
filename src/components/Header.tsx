@@ -1,7 +1,14 @@
 import { familyDatabase } from '../data'
+import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
+import type { AppView } from '../types/navigation'
 
-const NAV_ITEMS = ['Journey', 'People', 'Places', 'About'] as const
+const NAV_ITEMS: { label: string; view: AppView }[] = [
+  { label: 'Journey', view: 'journey' },
+  { label: 'People', view: 'people' },
+  { label: 'Map', view: 'map' },
+  { label: 'About', view: 'about' },
+]
 
 function AtlasMark() {
   return (
@@ -46,6 +53,7 @@ function AtlasMark() {
 
 export function Header() {
   const { generationCount } = useTimeline()
+  const { activeView, navigateToView } = useAppNavigation()
   const stats = familyDatabase.stats
 
   return (
@@ -73,11 +81,20 @@ export function Header() {
           </div>
         </div>
         <nav className="nav" aria-label="Primary">
-          {NAV_ITEMS.map((item, i) => (
-            <button key={item} type="button" className={i === 0 ? 'active' : ''} aria-current={i === 0 ? 'page' : undefined}>
-              {item}
-            </button>
-          ))}
+          {NAV_ITEMS.map(({ label, view }) => {
+            const isActive = activeView === view
+            return (
+              <button
+                key={view}
+                type="button"
+                className={isActive ? 'active' : ''}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => navigateToView(view)}
+              >
+                {label}
+              </button>
+            )
+          })}
         </nav>
       </div>
     </header>

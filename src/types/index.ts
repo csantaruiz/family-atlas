@@ -1,3 +1,11 @@
+export type PersonImage = {
+  src: string
+  alt: string
+  caption?: string
+  credit?: string
+  isPlaceholder?: boolean
+}
+
 export type Person = {
   id: string
   name: string
@@ -15,6 +23,7 @@ export type Person = {
   parents?: string[]
   spouses?: string[]
   children?: string[]
+  image?: PersonImage
 }
 
 export type FamilyDatabase = {
@@ -29,6 +38,18 @@ export type FamilyDatabase = {
     places: [string, number][]
     surnames: [string, number][]
   }
+}
+
+export type StoryChapter = {
+  id: string
+  title: string
+  subtitle: string
+  yearStart: number
+  yearEnd: number
+  summary: string
+  importance: number
+  relatedEventIds: string[]
+  relatedPersonIds: string[]
 }
 
 export type FamilyEventKind = 'birth' | 'death' | 'move' | 'service'
@@ -77,6 +98,7 @@ export type DetailContent =
   | { type: 'person'; personId: string }
   | { type: 'familyEvent'; event: FamilyEvent }
   | { type: 'history'; event: HistoryEvent }
+  | { type: 'thinking'; thinking: AtlasThinking }
   | null
 
 export type BirthCluster = {
@@ -85,6 +107,8 @@ export type BirthCluster = {
   from: number
   to: number
   x: number
+  leftX: number
+  rightX: number
   displayY: number
 }
 
@@ -107,4 +131,19 @@ export type RenderedHistoryEvent = {
   x: number
   y: number
   stemHeight: number
+}
+
+export type AtlasThinkingConfidence = 'Low' | 'Medium' | 'High'
+
+/** Placeholder pattern observations — replace via pattern engine or API. */
+export type AtlasThinking = {
+  id: string
+  observation: string
+  recordCount: number
+  confidence: AtlasThinkingConfidence
+  relatedPersonIds: string[]
+  relatedEventIds: string[]
+  yearStart: number
+  yearEnd: number
+  evidenceSummary: string
 }

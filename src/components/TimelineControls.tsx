@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useTimeline } from '../context/TimelineContext'
+import { TimelineFiltersControl } from './TimelineFiltersPanel'
 
 export function TimelineControls() {
-  const { zoomValue, historyEnabled, setHistoryEnabled, setZoom, returnToCraig } = useTimeline()
+  const { zoomValue, historyEnabled, setHistoryEnabled, setZoom } = useTimeline()
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   return (
     <div className="controls">
@@ -16,9 +19,11 @@ export function TimelineControls() {
           <i aria-hidden="true" />
           Historical context
         </button>
-        <button type="button" id="homeBtn" className="pill ghost" onClick={returnToCraig}>
-          Return to Craig
-        </button>
+        <TimelineFiltersControl
+          open={filtersOpen}
+          onToggle={() => setFiltersOpen((o) => !o)}
+          onClose={() => setFiltersOpen(false)}
+        />
       </div>
       <label className="pill range controls-zoom">
         <span>Centuries</span>

@@ -1,7 +1,10 @@
 import { eventContext } from '../data'
+import { ARCHIVAL_PORTRAIT_PLACEHOLDER } from '../data/portraitPlaceholder'
 import { useTimeline } from '../context/TimelineContext'
 import { initials } from '../utils/format'
 import { movementSummary, peopleRelevantToEvent } from '../utils/placeUtils'
+import { DetailPortrait } from './DetailPortrait'
+import type { PersonImage } from '../types'
 
 export function DetailPanel() {
   const { detail, peopleById, birthPeople, closeDetail, openPerson } = useTimeline()
@@ -19,6 +22,15 @@ export function DetailPanel() {
   let isFamilyEvent = false
   let showHistoryRelated = false
   let historyRelated: ReturnType<typeof peopleRelevantToEvent> = []
+  let isThinking = false
+  let thinkingSections: {
+    documentedFacts: string
+    computedObservation: string
+    historicalContext: string
+    confidenceCaveats: string
+  } | null = null
+  let portraitImage: PersonImage | null = null
+  let useArchivalPlaceholder = false
 
   if (detail?.type === 'person') {
     const p = peopleById[detail.personId]
@@ -53,6 +65,8 @@ export function DetailPanel() {
         ...(p.spouses ?? []).map((id) => ({ kind: 'Spouse', id, name: peopleById[id]?.name ?? '' })),
         ...(p.children ?? []).map((id) => ({ kind: 'Child', id, name: peopleById[id]?.name ?? '' })),
       ].filter((r) => r.name)
+      portraitImage = p.image ?? ARCHIVAL_PORTRAIT_PLACEHOLDER
+      useArchivalPlaceholder = !p.image
     }
   } else if (detail?.type === 'familyEvent') {
     isFamilyEvent = true
@@ -105,6 +119,23 @@ export function DetailPanel() {
       id: p.id,
       name: p.name,
     }))
+  } else if (detail?.type === 'thinking') {
+    isThinking = true
+    const thinking = detail.thinking
+    initialsText = '✦'
+    name = 'Atlas Thinking'
+    gen = `${thinking.yearStart}–${thinking.yearEnd}`
+    life = `Based on ${thinking.recordCount} records · ${thinking.confidence} confidence`
+    story = ''
+    thinkingSections = {
+      documentedFacts: thinking.evidenceSummary,
+      computedObservation: thinking.observation,
+      historicalContext: `This observation draws on family records between ${thinking.yearStart} and ${thinking.yearEnd}. Related individuals may be opened from the timeline above.`,
+      confidenceCaveats: `${thinking.confidence} confidence. This is a computed observation from uploaded family data — not output from a live AI service. Treat provisional patterns as research leads until linked to primary sources.`,
+    }
+    relations = thinking.relatedPersonIds
+      .map((id) => ({ kind: 'Related', id, name: peopleById[id]?.name ?? '' }))
+      .filter((r) => r.name)
   }
 
   return (
@@ -119,11 +150,11 @@ export function DetailPanel() {
       </button>
       {isOpen && (
         <>
-          <div className="portrait">
-            <div className="initials" id="initials">
-              {initialsText}
-            </div>
-          </div>
+          <DetailPortrait
+            image={portraitImage}
+            initials={initialsText}
+            useArchivalPlaceholder={useArchivalPlaceholder}
+          />
           <div className="person-body">
             <div className="eyebrow" id="personGen">
               {gen}
@@ -132,17 +163,40 @@ export function DetailPanel() {
             <div className="life" id="personLife">
               {life}
             </div>
-            <p className="story" id="personStory">
-              {story}
-            </p>
-            <div className="facts" id="facts">
-              {facts.map(([label, value]) => (
-                <div key={label} className="fact">
-                  <label>{label}</label>
-                  <div>{value}</div>
-                </div>
-              ))}
-            </div>
+            {!isThinking && (
+              <p className="story" id="personStory">
+                {story}
+              </p>
+            )}
+            {isThinking && thinkingSections ? (
+              <div className="thinking-detail-sections">
+                <section className="thinking-detail-block">
+                  <div className="eyebrow thinking-detail-eyebrow">Documented facts</div>
+                  <p>{thinkingSections.documentedFacts}</p>
+                </section>
+                <section className="thinking-detail-block">
+                  <div className="eyebrow thinking-detail-eyebrow">Computed observation</div>
+                  <p>{thinkingSections.computedObservation}</p>
+                </section>
+                <section className="thinking-detail-block">
+                  <div className="eyebrow thinking-detail-eyebrow">Historical context</div>
+                  <p>{thinkingSections.historicalContext}</p>
+                </section>
+                <section className="thinking-detail-block">
+                  <div className="eyebrow thinking-detail-eyebrow">Confidence and caveats</div>
+                  <p>{thinkingSections.confidenceCaveats}</p>
+                </section>
+              </div>
+            ) : (
+              <div className="facts" id="facts">
+                {facts.map(([label, value]) => (
+                  <div key={label} className="fact">
+                    <label>{label}</label>
+                    <div>{value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="rel">
               <div className="eyebrow">Family connections</div>
               {isFamilyEvent ? (
@@ -174,7 +228,9 @@ export function DetailPanel() {
                     <span style={{ color: 'var(--muted)' }}>
                       {detail?.type === 'history'
                         ? 'No confidently located family record overlaps this event.'
-                        : 'No linked relatives in this record.'}
+                        : detail?.type === 'thinking'
+                          ? 'No linked individuals surfaced for this observation.'
+                          : 'No linked relatives in this record.'}
                     </span>
                   )}
                 </div>

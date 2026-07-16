@@ -1,0 +1,271 @@
+import type { FamilyEvent } from '../types'
+import { movementSummary } from './placeUtils'
+
+export type LabelAlignment = 'center' | 'left' | 'right'
+
+export type MeasuredFootprint = {
+  width: number
+  height: number
+  nameLines: number
+  compact: boolean
+  maxWidth: number
+  categoryHeight: number
+  nameHeight: number
+  metaHeight: number
+  anchorSize: number
+  stemHeight: number
+}
+
+export type LabelBox = {
+  halfWidth: number
+  height: number
+}
+
+let measureCtx: CanvasRenderingContext2D | null = null
+
+function getMeasureContext(): CanvasRenderingContext2D | null {
+  if (typeof document === 'undefined') return null
+  if (!measureCtx) {
+    const canvas = document.createElement('canvas')
+    measureCtx = canvas.getContext('2d')
+  }
+  return measureCtx
+}
+
+export function categoryLabel(event: FamilyEvent): string {
+  switch (event.kind) {
+    case 'birth':
+      return 'BIRTH OF'
+    case 'death':
+      return 'DEATH OF'
+    case 'move':
+      return 'MIGRATION'
+    case 'service':
+      return event.title.length > 28 ? 'FAMILY STORY' : event.title.toUpperCase().slice(0, 24)
+    default:
+      return 'FAMILY STORY'
+  }
+}
+
+export function displayName(event: FamilyEvent, compact = false): string {
+  const name =
+    event.kind === 'move' || event.kind === 'service'
+      ? event.person.name
+      : event.kind === 'birth' || event.kind === 'death'
+        ? event.person.name
+        : event.title
+
+  if (!compact) return name
+  if (name.length <= 22) return name
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 3) {
+    return `${parts[0]} ${parts[parts.length - 1]}`
+  }
+  return `${name.slice(0, 20)}…`
+}
+
+export function detailMaxLabelWidth(viewportWidth: number): number {
+  return Math.round(Math.min(190, Math.max(150, viewportWidth * 0.19)))
+}
+
+function wrapTextLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): { lines: string[]; width: number } {
+  const words = text.split(/\s+/)
+  const lines: string[] = []
+  let current = ''
+
+  for (const word of words) {
+    const trial = current ? `${current} ${word}` : word
+    if (ctx.measureText(trial).width <= maxWidth) {
+      current = trial
+      continue
+    }
+    if (current) lines.push(current)
+    current = word
+    if (lines.length >= maxLines) break
+  }
+
+  if (lines.length < maxLines && current) lines.push(current)
+
+  if (lines.length > maxLines) lines.length = maxLines
+
+  if (lines.length === maxLines && words.join(' ') !== lines.join(' ')) {
+    let last = lines[maxLines - 1]
+    while (last.length > 3 && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1)
+    }
+    lines[maxLines - 1] = `${last}…`
+  }
+
+  const width = Math.max(...lines.map((line) => ctx.measureText(line).width), 0)
+  return { lines, width }
+}
+
+export function measureDetailedFootprint(
+  event: FamilyEvent,
+  viewportWidth: number,
+  compact = false,
+): MeasuredFootprint {
+  const ctx = getMeasureContext()
+  const maxWidth = compact ? 128 : detailMaxLabelWidth(viewportWidth)
+  const hasMeta = !compact && (event.kind === 'move' || event.kind === 'service')
+  const name = displayName(event, compact)
+  const cat = categoryLabel(event)
+
+  const anchorSize = 13
+  const stemHeight = 18
+  const hPad = 12
+  const vPad = 8
+  const categoryHeight = 20
+  const nameLineHeight = compact ? 14 : 16.2
+  const metaHeight = hasMeta ? 16 : 0
+  const copyGap = 5
+
+  if (!ctx) {
+    const width = Math.min(maxWidth, Math.max(cat.length * 5.2, name.length * 4.8) + hPad * 2)
+    const nameLines = name.length > 24 ? 2 : 1
+    const height = categoryHeight + copyGap + nameLines * nameLineHeight + metaHeight + vPad * 2
+    return {
+      width,
+      height,
+      nameLines,
+      compact,
+      maxWidth,
+      categoryHeight,
+      nameHeight: nameLines * nameLineHeight,
+      metaHeight,
+      anchorSize,
+      stemHeight,
+    }
+  }
+
+  ctx.font = '9px Inter, system-ui, sans-serif'
+  const catWidth = ctx.measureText(cat).width + 18
+
+  ctx.font = compact
+    ? '13px Georgia, "Times New Roman", serif'
+    : '15px Georgia, "Times New Roman", serif'
+  const wrapped = wrapTextLines(ctx, name, maxWidth - hPad * 2, compact ? 1 : 2)
+  const nameWidth = wrapped.width
+  const nameLines = wrapped.lines.length
+
+  let metaWidth = 0
+  if (hasMeta) {
+    ctx.font = '10px Arial, sans-serif'
+    metaWidth = ctx.measureText(movementSummary(event) || event.detail || '').width
+  }
+
+  const contentWidth = Math.min(maxWidth, Math.max(catWidth, nameWidth, metaWidth) + hPad * 2)
+  const height =
+    categoryHeight + copyGap + nameLines * nameLineHeight + (metaHeight ? copyGap + metaHeight : 0) + vPad * 2
+
+  return {
+    width: contentWidth,
+    height,
+    nameLines,
+    compact,
+    maxWidth,
+    categoryHeight,
+    nameHeight: nameLines * nameLineHeight,
+    metaHeight,
+    anchorSize,
+    stemHeight,
+  }
+}
+
+export function footprintBounds(
+  markerX: number,
+  anchorY: number,
+  footprint: MeasuredFootprint,
+  alignment: LabelAlignment,
+  nudge: number,
+  viewportWidth: number,
+): { left: number; right: number; top: number; bottom: number; labelCenterX: number } {
+  const labelBottom = anchorY - 14
+  const labelTop = labelBottom - footprint.height
+  const stemBottom = anchorY + footprint.stemHeight + 6
+  const anchorHalf = footprint.anchorSize / 2
+
+  let left: number
+  let right: number
+  const anchor = markerX + nudge
+
+  if (alignment === 'left') {
+    left = anchor
+    right = anchor + footprint.width
+  } else if (alignment === 'right') {
+    right = anchor
+    left = anchor - footprint.width
+  } else {
+    left = anchor - footprint.width / 2
+    right = anchor + footprint.width / 2
+  }
+
+  const edgePad = 24
+  if (left < edgePad) {
+    const shift = edgePad - left
+    left += shift
+    right += shift
+  }
+  if (right > viewportWidth - edgePad) {
+    const shift = right - (viewportWidth - edgePad)
+    left -= shift
+    right -= shift
+  }
+
+  return {
+    left,
+    right,
+    top: labelTop - 8,
+    bottom: Math.max(labelBottom, stemBottom, anchorY + anchorHalf + 4) + 6,
+    labelCenterX: (left + right) / 2,
+  }
+}
+
+/** Nudge that keeps the rendered label inside the viewport after edge clamping. */
+export function effectiveLabelNudge(
+  markerX: number,
+  anchorY: number,
+  footprint: MeasuredFootprint,
+  alignment: LabelAlignment,
+  nudge: number,
+  viewportWidth: number,
+): number {
+  const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, viewportWidth)
+  if (alignment === 'left') return bounds.left - markerX
+  if (alignment === 'right') return markerX - bounds.right
+  return bounds.labelCenterX - markerX
+}
+
+
+/** Estimate full rendered label footprint using canvas measureText when available. */
+export function measureEventLabelBox(event: FamilyEvent): LabelBox {
+  const footprint = measureDetailedFootprint(event, 1200, false)
+  return {
+    halfWidth: footprint.width / 2 + 12,
+    height: footprint.height + footprint.stemHeight + 20,
+  }
+}
+
+export function measureChapterLabelHalfWidth(title: string): number {
+  const ctx = getMeasureContext()
+  if (!ctx) return Math.max(72, title.length * 3.8)
+  ctx.font = '12px Georgia, "Times New Roman", serif'
+  return Math.max(72, ctx.measureText(title).width / 2 + 10)
+}
+
+export function stemIntersectsBox(
+  markerX: number,
+  anchorY: number,
+  stemHeight: number,
+  box: { left: number; right: number; top: number; bottom: number },
+): boolean {
+  const stemTop = anchorY - 4
+  const stemBottom = anchorY + stemHeight + 8
+  if (stemBottom < box.top || stemTop > box.bottom) return false
+  return markerX >= box.left - 3 && markerX <= box.right + 3
+}

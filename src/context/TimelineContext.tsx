@@ -9,7 +9,11 @@ import {
 } from 'react'
 import { buildFamilyEvents } from '../data/buildFamilyEvents'
 import { familyDatabase } from '../data/familyDatabase'
-import type { DetailContent, FamilyEvent, HistoryEvent } from '../types'
+import type { AtlasThinking, DetailContent, FamilyEvent, HistoryEvent } from '../types'
+import type { TimelineFilterKey, TimelineFilters } from '../types/timelineFilters'
+import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
+import { applyFamilyEventFilters } from '../utils/timelineFilters'
+import { assertNoDuplicateEvents, dedupeFamilyEvents } from '../utils/canonicalEvent'
 import {
   clampView,
   easeInOutCubic,
@@ -30,17 +34,28 @@ type TimelineContextValue = {
   isDragging: boolean
   isZooming: boolean
   detail: DetailContent
+  highlightedStoryPersonId: string | null
+  thinkingFocusRange: { start: number; end: number } | null
+  mapHighlightYears: { start: number; end: number } | null
   peopleById: Record<string, (typeof familyDatabase.people)[number]>
   birthPeople: (typeof familyDatabase.people)[number][]
   familyEvents: FamilyEvent[]
+  filteredFamilyEvents: FamilyEvent[]
+  timelineFilters: TimelineFilters
   generationCount: number
   setHistoryEnabled: (enabled: boolean) => void
+  setTimelineFilter: (key: TimelineFilterKey, enabled: boolean) => void
+  setTimelineFilters: (patch: Partial<TimelineFilters>) => void
   setZoom: (value: number, anchorYear?: number) => void
   animateView: (targetCenter: number, targetSpan: number, duration?: number) => void
   returnToCraig: () => void
   openPerson: (id: string) => void
   openFamilyEvent: (event: FamilyEvent) => void
   openHistory: (event: HistoryEvent) => void
+  openThinking: (thinking: AtlasThinking) => void
+  setHighlightedStoryPersonId: (personId: string | null) => void
+  setThinkingFocusRange: (range: { start: number; end: number } | null) => void
+  setMapHighlightYears: (range: { start: number; end: number } | null) => void
   closeDetail: () => void
   handleWheel: (clientX: number, deltaY: number, stageWidth: number) => void
   handlePointerDown: (clientX: number, target: EventTarget | null) => boolean
@@ -69,7 +84,26 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     () => Object.fromEntries(familyDatabase.people.map((p) => [p.id, p])),
     [],
   )
-  const familyEvents = useMemo(() => buildFamilyEvents(familyDatabase.people), [])
+  const familyEvents = useMemo(() => {
+    const events = dedupeFamilyEvents(buildFamilyEvents(familyDatabase.people))
+    assertNoDuplicateEvents(events, 'familyEvents')
+    return events
+  }, [])
+
+  const [timelineFilters, setTimelineFiltersState] = useState<TimelineFilters>(DEFAULT_TIMELINE_FILTERS)
+
+  const filteredFamilyEvents = useMemo(
+    () => applyFamilyEventFilters(familyEvents, timelineFilters),
+    [familyEvents, timelineFilters],
+  )
+
+  const setTimelineFilter = useCallback((key: TimelineFilterKey, enabled: boolean) => {
+    setTimelineFiltersState((prev) => ({ ...prev, [key]: enabled }))
+  }, [])
+
+  const setTimelineFilters = useCallback((patch: Partial<TimelineFilters>) => {
+    setTimelineFiltersState((prev) => ({ ...prev, ...patch }))
+  }, [])
   const generationCount = useMemo(
     () => Math.max(...familyDatabase.people.map((p) => p.generation ?? 0)) + 1,
     [],
@@ -80,6 +114,9 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const [zoomValue, setZoomValue] = useState(() => zoomValueFromSpan(fullSpan, fullSpan))
   const [historyEnabled, setHistoryEnabled] = useState(true)
   const [detail, setDetail] = useState<DetailContent>(null)
+  const [highlightedStoryPersonId, setHighlightedStoryPersonId] = useState<string | null>(null)
+  const [thinkingFocusRange, setThinkingFocusRange] = useState<{ start: number; end: number } | null>(null)
+  const [mapHighlightYears, setMapHighlightYears] = useState<{ start: number; end: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isZooming, setIsZooming] = useState(false)
 
@@ -106,7 +143,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const animateView = useCallback(
-    (targetCenter: number, targetSpan: number, duration = 420) => {
+    (targetCenter: number, targetSpan: number, duration = 680) => {
       cancelViewAnimation()
       const fromCenter = center
       const fromSpan = span
@@ -137,14 +174,14 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
 
   const setZoom = useCallback(
     (value: number, anchorYear = center) => {
-      animateView(anchorYear, spanFromZoomValue(value, fullSpan), 260)
+      animateView(anchorYear, spanFromZoomValue(value, fullSpan), 480)
     },
     [animateView, center, fullSpan],
   )
 
   const returnToCraig = useCallback(() => {
     const root = peopleById[familyDatabase.root]
-    animateView(root?.birthYear ?? 1975, 54, 650)
+    animateView(root?.birthYear ?? 1975, 54, 900)
   }, [animateView, peopleById])
 
   const openPerson = useCallback((id: string) => {
@@ -153,10 +190,18 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
 
   const openFamilyEvent = useCallback((event: FamilyEvent) => {
     setDetail({ type: 'familyEvent', event })
+    if (event.kind === 'move') {
+      const pad = 12
+      setMapHighlightYears({ start: event.year - pad, end: event.year + pad })
+    }
   }, [])
 
   const openHistory = useCallback((event: HistoryEvent) => {
     setDetail({ type: 'history', event })
+  }, [])
+
+  const openThinking = useCallback((thinking: AtlasThinking) => {
+    setDetail({ type: 'thinking', thinking })
   }, [])
 
   const closeDetail = useCallback(() => setDetail(null), [])
@@ -170,7 +215,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       const nextValue = Math.max(0, Math.min(100, zoomValue + (deltaY > 0 ? -7 : 7)))
       const targetSpan = spanFromZoomValue(nextValue, fullSpan)
       const targetCenter = anchor + (0.5 - frac) * targetSpan
-      animateView(targetCenter, targetSpan, 360)
+      animateView(targetCenter, targetSpan, 560)
     },
     [cancelViewAnimation, center, span, zoomValue, fullSpan, animateView],
   )
@@ -213,17 +258,28 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     isDragging,
     isZooming,
     detail,
+    highlightedStoryPersonId,
+    thinkingFocusRange,
+    mapHighlightYears,
     peopleById,
     birthPeople,
     familyEvents,
+    filteredFamilyEvents,
+    timelineFilters,
     generationCount,
     setHistoryEnabled,
+    setTimelineFilter,
+    setTimelineFilters,
     setZoom,
     animateView,
     returnToCraig,
     openPerson,
     openFamilyEvent,
     openHistory,
+    openThinking,
+    setHighlightedStoryPersonId,
+    setThinkingFocusRange,
+    setMapHighlightYears,
     closeDetail,
     handleWheel,
     handlePointerDown,

@@ -14,10 +14,10 @@ type WorldHistoryLayerProps = {
 }
 
 export function WorldHistoryLayer({ start, end, width, height, enabled }: WorldHistoryLayerProps) {
-  const { span, center, birthPeople, openHistory } = useTimeline()
+  const { span, center, birthPeople, openHistory, timelineFilters } = useTimeline()
 
   const events = useMemo(() => {
-    if (!enabled) return []
+    if (!enabled || !timelineFilters.historicalEvents) return []
     const minImportance = span > 320 ? 3 : span > 150 ? 2 : 1
     let filtered = historyEvents.filter(
       (ev) => ev.year >= start && ev.year <= end && ev.importance >= minImportance,
@@ -40,7 +40,7 @@ export function WorldHistoryLayer({ start, end, width, height, enabled }: WorldH
         .sort((a, b) => a.year - b.year)
     }
     return filtered
-  }, [enabled, span, start, end, center, birthPeople])
+  }, [enabled, timelineFilters.historicalEvents, span, start, end, center, birthPeople])
 
   const placed = useMemo(() => placeHistoryEvents(events, start, span, width, height), [events, start, span, width, height])
 

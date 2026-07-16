@@ -2,11 +2,447 @@ import type {
   BirthCluster,
   FamilyEvent,
   FamilyEventGroup,
+  FamilyEventKind,
   Person,
   PlacedPerson,
+  StoryChapter,
   ZoomMode,
 } from '../types'
+import {
+  assignEventsToChapters,
+  buildStoryChaptersForViewport,
+  eventRecordId,
+} from '../data/buildStoryChapters'
+import {
+  estimateCalloutObstacle,
+  placeHybridLandmarks,
+  selectDistributedLandmarks,
+} from './landmarkSelection'
+import {
+  footprintBounds,
+  measureChapterLabelHalfWidth,
+  measureDetailedFootprint,
+  measureEventLabelBox,
+} from './labelMeasure'
+import { placeDetailEvents } from './detailPlacement'
+import type { LabelAlignment } from './labelMeasure'
+import { canonicalEventId, assertNoDuplicateEvents, dedupeFamilyEvents } from './canonicalEvent'
+import {
+  chapterDensity,
+  disclosureProgress,
+  semanticZoomMode,
+  ZOOM_THRESHOLDS,
+  type ChapterDensity,
+  type DensityGateInput,
+  type SemanticZoomMode,
+} from './semanticZoom'
+import { timelineAxisY } from './chapterCalloutLayout'
 import { yearX } from './timelineMath'
+
+export type ClusteringLevel = 'full' | 'partial' | 'readable'
+
+export type PlacedFamilyEvent = {
+  event: FamilyEvent
+  x: number
+  y: number
+  alignment?: LabelAlignment
+  nudge?: number
+  compact?: boolean
+  lane?: number
+}
+
+export type PlacedSpanCluster = {
+  chapterId: string
+  title: string
+  subtitle: string
+  from: number
+  to: number
+  summary: string
+  hiddenCount: number
+  totalCount: number
+  leftX: number
+  rightX: number
+  x: number
+  y: number
+  dissolve: number
+}
+
+type LaneSlot = {
+  left: number
+  right: number
+  y: number
+  lane: number
+}
+
+const LANE_OFFSETS = [48, 92, 136, 180]
+const CHAPTER_LANE_OFFSET = 224
+
+export { disclosureProgress, semanticZoomMode, ZOOM_THRESHOLDS, chapterDensity }
+export type { SemanticZoomMode, ChapterDensity, DensityGateInput }
+
+export function eventKindPriority(kind: FamilyEventKind): number {
+  switch (kind) {
+    case 'birth':
+      return 8
+    case 'death':
+      return 7
+    case 'move':
+      return 6
+    case 'service':
+      return 5
+    default:
+      return 1
+  }
+}
+
+function isDirectAncestor(person: Person): boolean {
+  return person.generation != null && person.generation <= 5
+}
+
+function isCollateral(person: Person): boolean {
+  return person.generation != null && person.generation > 5 && !person.focus
+}
+
+function marriageJoinsBranches(event: FamilyEvent): boolean {
+  const spouses = event.person.spouses ?? []
+  if (spouses.length < 1) return false
+  const surname = event.person.name.split(/\s+/).pop()?.toLowerCase() ?? ''
+  return spouses.some((s) => {
+    const spSurname = s.split(/\s+/).pop()?.toLowerCase() ?? ''
+    return spSurname && surname && spSurname !== surname
+  })
+}
+
+/** Importance score — higher = more likely to be a visible landmark. */
+export function eventImportanceScore(
+  event: FamilyEvent,
+  chapters: StoryChapter[],
+  earliestYear: number,
+  rootPersonId: string,
+): number {
+  const linkedChapter = chapters.find((c) => c.relatedEventIds.includes(eventRecordId(event)))
+  if (linkedChapter && linkedChapter.importance >= 80) return 1000 + linkedChapter.importance
+
+  if (event.person.id === rootPersonId) return 920
+  if (event.kind === 'birth' && event.year <= earliestYear + 8) return 900
+  if (event.person.generation != null && event.person.generation <= 1) return 880
+
+  if (event.kind === 'move') {
+    let score = 760
+    if (/chihuahua|california|texas|mexico|england/i.test(`${event.detail} ${event.person.birthPlace}`)) {
+      score += 40
+    }
+    return score
+  }
+
+  if (marriageJoinsBranches(event)) return 720
+
+  if (event.kind === 'service') return 680
+
+  if (event.kind === 'birth' && event.importance >= 10) {
+    if (event.importance >= 12 || event.title.length > 20) return 640
+  }
+
+  if (event.kind === 'birth' && isDirectAncestor(event.person)) return 520
+  if (event.kind === 'death' && isDirectAncestor(event.person)) return 480
+
+  if (event.kind === 'birth' && event.person.focus) return 420
+  if (event.kind === 'death' && event.person.focus) return 400
+
+  if (event.kind === 'birth' && isCollateral(event.person)) return 220
+  if (event.kind === 'death' && isCollateral(event.person)) return 200
+
+  return 100 + eventKindPriority(event.kind) * 8 + (event.importance ?? 0) * 2
+}
+
+/** @deprecated Use eventImportanceScore */
+export function eventSignificanceScore(
+  event: FamilyEvent,
+  chapters: StoryChapter[],
+  earliestYear: number,
+  rootPersonId: string,
+): number {
+  return eventImportanceScore(event, chapters, earliestYear, rootPersonId)
+}
+
+export function estimatedLabelHalfWidth(event: FamilyEvent): number {
+  return measureEventLabelBox(event).halfWidth
+}
+
+function laneY(height: number, lane: number): number {
+  return Math.max(168, height * 0.54 - LANE_OFFSETS[lane])
+}
+
+function chapterLaneY(height: number): number {
+  return Math.max(168, height * 0.54 - CHAPTER_LANE_OFFSET)
+}
+
+function boundsCollide(
+  a: { left: number; right: number },
+  b: { left: number; right: number },
+  gap = ZOOM_THRESHOLDS.MIN_LABEL_GAP_PX,
+): boolean {
+  return !(a.right + gap < b.left || b.right + gap < a.left)
+}
+
+function findCollisionFreeLane(
+  x: number,
+  halfWidth: number,
+  slots: LaneSlot[],
+  height: number,
+  maxLanes: number = ZOOM_THRESHOLDS.MAX_EVENT_LANES,
+): LaneSlot | null {
+  const bounds = { left: x - halfWidth, right: x + halfWidth }
+
+  for (let lane = 0; lane < maxLanes; lane++) {
+    const laneSlots = slots.filter((s) => s.lane === lane)
+    const collides = laneSlots.some((s) => boundsCollide(bounds, s))
+    if (!collides) {
+      return { ...bounds, y: laneY(height, lane), lane }
+    }
+  }
+
+  return null
+}
+
+function addPlacedEventSlots(
+  placed: PlacedFamilyEvent[],
+  width: number,
+  slots: LaneSlot[],
+): void {
+  for (const p of placed) {
+    const footprint = measureDetailedFootprint(p.event, width, p.compact ?? false)
+    const bounds = footprintBounds(
+      p.x,
+      p.y,
+      footprint,
+      p.alignment ?? 'center',
+      p.nudge ?? 0,
+      width,
+    )
+    slots.push({
+      left: bounds.left,
+      right: bounds.right,
+      y: p.y,
+      lane: p.lane ?? 0,
+    })
+  }
+}
+
+function placeChapterCluster(
+  chapter: StoryChapter,
+  hiddenCount: number,
+  totalCount: number,
+  start: number,
+  span: number,
+  width: number,
+  height: number,
+  slots: LaneSlot[],
+  dissolve: number,
+): PlacedSpanCluster | null {
+  const leftX = yearX(chapter.yearStart, start, span, width)
+  const rightX = yearX(chapter.yearEnd, start, span, width)
+  const centerX = (leftX + rightX) / 2
+  const halfWidth = measureChapterLabelHalfWidth(chapter.title)
+  const bounds = { left: centerX - halfWidth, right: centerX + halfWidth }
+
+  let y = chapterLaneY(height)
+  const chapterSlots = slots.filter((s) => s.lane >= ZOOM_THRESHOLDS.MAX_EVENT_LANES)
+  const collides = chapterSlots.some((s) => boundsCollide(bounds, s))
+  if (collides) {
+    const altLane = findCollisionFreeLane(centerX, halfWidth, slots, height, 5)
+    if (!altLane) return null
+    y = altLane.y
+    slots.push({ ...bounds, y, lane: ZOOM_THRESHOLDS.MAX_EVENT_LANES })
+  } else {
+    slots.push({ ...bounds, y, lane: ZOOM_THRESHOLDS.MAX_EVENT_LANES })
+  }
+
+  return {
+    chapterId: chapter.id,
+    title: chapter.title,
+    subtitle: chapter.subtitle,
+    from: chapter.yearStart,
+    to: chapter.yearEnd,
+    summary: chapter.summary,
+    hiddenCount,
+    totalCount,
+    leftX,
+    rightX,
+    x: centerX,
+    y,
+    dissolve,
+  }
+}
+
+function layoutLocalChapters(
+  visible: FamilyEvent[],
+  start: number,
+  end: number,
+  span: number,
+  width: number,
+  height: number,
+  fullSpan: number,
+  earliestYear: number,
+  presentYear: number,
+  rootPersonId: string,
+): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
+  const maxChapters = Math.max(ZOOM_THRESHOLDS.FAR_MAX_CHAPTERS, 12)
+
+  const chapters = buildStoryChaptersForViewport(
+    visible,
+    start,
+    end,
+    span,
+    earliestYear,
+    presentYear,
+    maxChapters,
+    fullSpan,
+  )
+  const chapterMap = assignEventsToChapters(visible, chapters)
+
+  const gate: DensityGateInput = {
+    visible,
+    start,
+    span,
+    width,
+    chapters,
+    chapterMap,
+  }
+  const mode = semanticZoomMode(span, fullSpan, gate)
+
+  if (mode === 'detail') {
+    const scoreOf = (event: FamilyEvent) =>
+      eventImportanceScore(event, chapters, earliestYear, rootPersonId)
+    const { placed } = placeDetailEvents(visible, start, span, width, height, scoreOf)
+    const uniquePlaced: PlacedFamilyEvent[] = []
+    const seen = new Set<string>()
+    for (const p of placed) {
+      const id = canonicalEventId(p.event)
+      if (seen.has(id)) continue
+      seen.add(id)
+      uniquePlaced.push(p)
+    }
+    uniquePlaced.sort((a, b) => a.x - b.x)
+    assertNoDuplicateEvents(
+      uniquePlaced.map((p) => p.event),
+      'layoutLocalChapters.detail',
+    )
+    return { events: uniquePlaced, clusters: [] }
+  }
+
+  const slots: LaneSlot[] = []
+  const clusters: PlacedSpanCluster[] = []
+
+  const scoreOf = (event: FamilyEvent) =>
+    eventImportanceScore(event, chapters, earliestYear, rootPersonId)
+
+  const axisY = timelineAxisY(height)
+  const calloutObstacle = estimateCalloutObstacle(chapters, start, span, width, axisY, mode, height)
+
+  const landmarkCandidates = selectDistributedLandmarks(
+    visible,
+    start,
+    end,
+    span,
+    width,
+    mode,
+    scoreOf,
+    calloutObstacle,
+  )
+
+  const { placed: hybridPlaced } = placeHybridLandmarks(
+    landmarkCandidates,
+    visible,
+    start,
+    span,
+    width,
+    height,
+    calloutObstacle,
+    scoreOf,
+    mode,
+  )
+
+  const allPlaced: PlacedFamilyEvent[] = hybridPlaced.map((p) => ({
+    event: p.event,
+    x: p.x,
+    y: p.y,
+    alignment: p.alignment,
+    nudge: p.nudge,
+    compact: p.compact,
+    lane: p.lane,
+  }))
+
+  addPlacedEventSlots(allPlaced, width, slots)
+
+  if (calloutObstacle) {
+    slots.push({
+      left: calloutObstacle.frame.left,
+      right: calloutObstacle.frame.right,
+      y: (calloutObstacle.frame.top + calloutObstacle.frame.bottom) / 2,
+      lane: 0,
+    })
+  }
+
+  const placedIds = new Set(allPlaced.map((p) => canonicalEventId(p.event)))
+
+  for (const chapter of chapters) {
+    const chapterEvents = (chapterMap.get(chapter.id) ?? []).sort((a, b) => a.year - b.year)
+    if (!chapterEvents.length) continue
+
+    const chapterPlacedCount = chapterEvents.filter((e) =>
+      placedIds.has(canonicalEventId(e)),
+    ).length
+
+    const displayHidden = chapterEvents.length - chapterPlacedCount
+    if (displayHidden <= 0) continue
+
+    const hiddenRatio = displayHidden / chapterEvents.length
+    const dissolve = (() => {
+      if (mode === 'far') {
+        if (chapterPlacedCount >= 3) return 0.68
+        if (chapterPlacedCount >= 2) return 0.76
+        if (chapterPlacedCount >= 1) return 0.84
+        return 0.9
+      }
+      const base = Math.min(1, 0.4 + hiddenRatio * 0.36)
+      if (chapterPlacedCount >= 3) return base * 0.72
+      if (chapterPlacedCount >= 2) return base * 0.82
+      return base
+    })()
+
+    const cluster = placeChapterCluster(
+      chapter,
+      displayHidden,
+      chapterEvents.length,
+      start,
+      span,
+      width,
+      height,
+      slots,
+      dissolve,
+    )
+    if (cluster) clusters.push(cluster)
+  }
+
+  allPlaced.sort((a, b) => a.x - b.x)
+  clusters.sort((a, b) => a.x - b.x)
+  assertNoDuplicateEvents(
+    allPlaced.map((p) => p.event),
+    'layoutLocalChapters.renderList',
+  )
+  return { events: allPlaced, clusters }
+}
+
+export function clusteringLevel(span: number, mode: ZoomMode): ClusteringLevel {
+  if (span > 200 || mode === 'centuries' || mode === 'eras') return 'full'
+  if (span > 90 || mode === 'generations' || mode === 'decades') return 'partial'
+  return 'readable'
+}
+
+export function showBirthPeriodClusters(span: number): boolean {
+  return span > 180
+}
 
 export function chooseFocus(people: Person[], max: number): Person[] {
   const scored = people
@@ -29,34 +465,26 @@ export function placeLabels(
   span: number,
   width: number,
   height: number,
+  occupied: LaneSlot[] = [],
 ): PlacedPerson[] {
-  const lanes = [58, 108, 158, 208]
-  const last = lanes.map(() => -1e9)
+  const slots = [...occupied]
   const items: PlacedPerson[] = []
+  const labelHalf = span < 30 ? 90 : span < 90 ? 82 : 72
 
   for (const p of people) {
     if (!p.birthYear) continue
     const x = yearX(p.birthYear, start, span, width)
-    const labelW = span < 30 ? 180 : span < 90 ? 165 : 145
-    let best = -1
-    for (let i = 0; i < lanes.length; i++) {
-      if (x - last[i] > labelW) {
-        best = i
-        break
-      }
-    }
-    if (best < 0) {
+    const lane = findCollisionFreeLane(x, labelHalf, slots, height)
+
+    if (!lane) {
       items.push({ person: p, x, y: height * 0.54, show: false })
       continue
     }
-    last[best] = x
-    items.push({
-      person: p,
-      x,
-      y: Math.max(176, height * 0.54 - lanes[best]),
-      show: true,
-    })
+
+    slots.push(lane)
+    items.push({ person: p, x, y: lane.y, show: true })
   }
+
   return items
 }
 
@@ -83,19 +511,44 @@ export function buildBirthClusters(
   }
 
   return groups.map((g, i) => {
-    const mid = Math.max(
-      start,
-      Math.min(
-        end,
-        g.people.reduce((a, p) => a + (p.birthYear ?? 0), 0) / g.people.length,
-      ),
-    )
+    const years = g.people.map((p) => p.birthYear!).filter(Boolean)
+    const from = Math.min(...years)
+    const to = Math.min(Math.max(...years), presentYear)
+    const mid = (from + to) / 2
     const x = yearX(mid, start, span, width)
-    const displayY = Math.max(184, height * 0.54 - (i % 2 ? 145 : 82))
-    const from = g.y
-    const to = Math.min(g.y + bin - 1, presentYear)
-    return { y: g.y, people: g.people, from, to, x, displayY }
+    const leftX = yearX(from, start, span, width)
+    const rightX = yearX(to, start, span, width)
+    const displayY = Math.max(184, height * 0.54 - (i % 2 ? 152 : 88))
+    return { y: g.y, people: g.people, from, to, x, leftX, rightX, displayY }
   })
+}
+
+export function layoutBirthClustersProgressive(
+  _clusters: BirthCluster[],
+  birthEvents: FamilyEvent[],
+  start: number,
+  end: number,
+  span: number,
+  width: number,
+  height: number,
+  fullSpan: number,
+  earliestYear: number,
+  rootPersonId: string,
+  presentYear: number,
+): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
+  const visible = birthEvents.filter((e) => e.year >= start && e.year <= end)
+  return layoutLocalChapters(
+    dedupeFamilyEvents(visible),
+    start,
+    end,
+    span,
+    width,
+    height,
+    fullSpan,
+    earliestYear,
+    presentYear,
+    rootPersonId,
+  )
 }
 
 export function clusterThresholdForMode(mode: ZoomMode): number {
@@ -117,6 +570,38 @@ export function peopleBudgetForMode(mode: ZoomMode): number {
   if (mode === 'generations') return 4
   if (mode === 'decades') return 4
   return 6
+}
+
+export function layoutFamilyEventsProgressive(
+  events: FamilyEvent[],
+  start: number,
+  end: number,
+  span: number,
+  width: number,
+  height: number,
+  _mode: ZoomMode,
+  fullSpan: number,
+  earliestYear: number,
+  rootPersonId: string,
+  presentYear: number,
+): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
+  const visible = dedupeFamilyEvents(
+    events.filter((e) => e.year >= start && e.year <= end),
+  )
+  if (!visible.length) return { events: [], clusters: [] }
+
+  return layoutLocalChapters(
+    visible,
+    start,
+    end,
+    span,
+    width,
+    height,
+    fullSpan,
+    earliestYear,
+    presentYear,
+    rootPersonId,
+  )
 }
 
 export function groupFamilyEvents(
@@ -164,20 +649,25 @@ export function assignEventLanes(
   groups: FamilyEventGroup[],
   height: number,
 ): { group: FamilyEventGroup; x: number; y: number }[] {
-  const lanes = [64, 112, 160, 208]
-  const laneLast = lanes.map(() => -1e9)
+  const laneLast = LANE_OFFSETS.map(() => -1e9)
 
   return groups.map((g) => {
     const x = g.x
     let lane = 0
-    for (let i = 0; i < lanes.length; i++) {
+    for (let i = 0; i < LANE_OFFSETS.length; i++) {
       if (x - laneLast[i] > 125) {
         lane = i
         break
       }
     }
     laneLast[lane] = x
-    const y = Math.max(176, height * 0.54 - lanes[lane])
+    const y = Math.max(176, height * 0.54 - LANE_OFFSETS[lane])
     return { group: g, x, y }
   })
 }
+
+export {
+  temporalBucketCount,
+  targetVisibleEventCount,
+} from './landmarkSelection'
+export { eventRecordId }

@@ -1,6 +1,8 @@
 export { buildFamilyEvents } from './buildFamilyEvents'
+export { buildStoryChaptersForViewport, assignEventsToChapters, eventRecordId } from './buildStoryChapters'
 export { eventContext } from './eventContext'
 export { familyDatabase } from './familyDatabase'
+export { placeholderAtlasThinking } from './placeholderAtlasThinking'
 export { featuredNames } from './featuredNames'
 export { historyEvents } from './historyEvents'
 export { storySeeds } from './storySeeds'

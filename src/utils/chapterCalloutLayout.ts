@@ -6,7 +6,14 @@ import type { SemanticZoomMode } from './semanticZoom'
 export const TIMELINE_AXIS_RATIO = 0.54
 
 /** Minimum top offset to preserve separation from upper story panels. */
-export const STORY_PANEL_SAFE_TOP = 36
+export const STORY_PANEL_SAFE_TOP = 20
+
+/** Matches `--story-layer-align-top` in index.css (story-layer-top + 6px). */
+export function storyLayerAlignTop(viewportWidth: number): number {
+  if (viewportWidth <= 760) return 20
+  if (viewportWidth <= 1100) return 28
+  return 34
+}
 
 /** Side gutter when clamping brace width inside the visible timeline canvas. */
 export const TIMELINE_VIEWPORT_GUTTER = 20
@@ -69,8 +76,8 @@ export type EraBraceGeometry = {
 
 const ZOOM_VERTICAL: Record<SemanticZoomMode, ZoomVerticalSpec> = {
   far: {
-    cardTopPreferred: 58,
-    cardTopFloor: 48,
+    cardTopPreferred: 36,
+    cardTopFloor: 28,
     cardBottomToAxisMin: 170,
     cardBottomToAxisTarget: 225,
     cardBottomToAxisMax: 300,
@@ -84,8 +91,8 @@ const ZOOM_VERTICAL: Record<SemanticZoomMode, ZoomVerticalSpec> = {
     braceCapDrop: 18,
   },
   medium: {
-    cardTopPreferred: 132,
-    cardTopFloor: 118,
+    cardTopPreferred: 86,
+    cardTopFloor: 72,
     cardBottomToAxisMin: 150,
     cardBottomToAxisTarget: 190,
     cardBottomToAxisMax: 220,
@@ -99,8 +106,8 @@ const ZOOM_VERTICAL: Record<SemanticZoomMode, ZoomVerticalSpec> = {
     braceCapDrop: 16,
   },
   near: {
-    cardTopPreferred: 78,
-    cardTopFloor: 64,
+    cardTopPreferred: 48,
+    cardTopFloor: 38,
     cardBottomToAxisMin: 118,
     cardBottomToAxisTarget: 142,
     cardBottomToAxisMax: 175,
@@ -114,8 +121,8 @@ const ZOOM_VERTICAL: Record<SemanticZoomMode, ZoomVerticalSpec> = {
     braceCapDrop: 14,
   },
   detail: {
-    cardTopPreferred: 96,
-    cardTopFloor: 82,
+    cardTopPreferred: 68,
+    cardTopFloor: 56,
     cardBottomToAxisMin: 98,
     cardBottomToAxisTarget: 112,
     cardBottomToAxisMax: 132,
@@ -202,8 +209,9 @@ export function resolveChapterVerticalLayout(
 
   const targetGap = scaledValue(spec.cardBottomToAxisMin, spec.cardBottomToAxisTarget, viewportHeight)
   const topFromGap = axisY - targetGap - cardHeight
-  let cardTop = Math.min(spec.cardTopPreferred, topFromGap)
-  cardTop = Math.max(spec.cardTopFloor, cardTop, STORY_PANEL_SAFE_TOP)
+  let cardTop = storyLayerAlignTop(viewportWidth)
+  cardTop = Math.min(cardTop, topFromGap)
+  cardTop = Math.max(cardTop, STORY_PANEL_SAFE_TOP)
 
   const maxTop = axisY - spec.cardBottomToAxisMin - cardHeight
   cardTop = Math.min(cardTop, maxTop)

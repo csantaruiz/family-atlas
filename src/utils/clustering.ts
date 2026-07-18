@@ -17,7 +17,9 @@ import {
   estimateCalloutObstacle,
   placeHybridLandmarks,
   selectDistributedLandmarks,
+  targetVisibleEventCount,
 } from './landmarkSelection'
+import { stabilizeLandmarkSelection } from './landmarkSelectionStability'
 import {
   footprintBounds,
   measureChapterLabelHalfWidth,
@@ -340,7 +342,9 @@ function layoutLocalChapters(
   const axisY = timelineAxisY(height)
   const calloutObstacle = estimateCalloutObstacle(chapters, start, span, width, axisY, mode, height)
 
-  const landmarkCandidates = selectDistributedLandmarks(
+  const density = chapterDensity(visible, start, end)
+  const limit = targetVisibleEventCount(density, mode, visible.length)
+  const freshLandmarks = selectDistributedLandmarks(
     visible,
     start,
     end,
@@ -349,6 +353,15 @@ function layoutLocalChapters(
     mode,
     scoreOf,
     calloutObstacle,
+  )
+  const landmarkCandidates = stabilizeLandmarkSelection(
+    visible,
+    freshLandmarks,
+    start,
+    end,
+    span,
+    mode,
+    limit,
   )
 
   const { placed: hybridPlaced } = placeHybridLandmarks(

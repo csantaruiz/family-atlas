@@ -17,6 +17,10 @@ type AppNavigationContextValue = {
   activeView: AppView
   navigateToView: (view: AppView) => void
   viewOnTimeline: (personId: string, yearRange?: { start: number; end: number }) => void
+  viewOnTree: (personId: string) => void
+  returnToTimeline: () => void
+  treeReturnViewport: SavedViewport | null
+  focusedTreePersonId: string | null
 }
 
 const AppNavigationContext = createContext<AppNavigationContextValue | null>(null)
@@ -27,12 +31,15 @@ function initialView(): AppView {
 }
 
 export function AppNavigationProvider({ children }: { children: ReactNode }) {
-  const { center, span, animateView, openPerson, peopleById } = useTimeline()
+  const { center, span, animateView, openPerson, closeDetail, peopleById } = useTimeline()
   const [activeView, setActiveView] = useState<AppView>(initialView)
+  const [treeReturnViewport, setTreeReturnViewport] = useState<SavedViewport | null>(null)
+  const [focusedTreePersonId, setFocusedTreePersonId] = useState<string | null>(null)
 
   const savedViewportRef = useRef<SavedViewport | null>(null)
   const pendingViewportRef = useRef<SavedViewport | null>(null)
   const isRestoringRef = useRef(false)
+  const enterTreeFromTimelineRef = useRef(false)
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -76,6 +83,17 @@ export function AppNavigationProvider({ children }: { children: ReactNode }) {
         savedViewportRef.current = { center, span }
       }
 
+      if (view === 'tree') {
+        if (!enterTreeFromTimelineRef.current) {
+          setTreeReturnViewport(null)
+          setFocusedTreePersonId(null)
+        }
+        enterTreeFromTimelineRef.current = false
+      } else if (activeView === 'tree') {
+        setTreeReturnViewport(null)
+        setFocusedTreePersonId(null)
+      }
+
       const path = VIEW_PATHS[view]
       const hash = `#${path}`
       if (window.location.hash !== hash) {
@@ -109,10 +127,37 @@ export function AppNavigationProvider({ children }: { children: ReactNode }) {
     [navigateToView, openPerson, peopleById],
   )
 
+  const viewOnTree = useCallback(
+    (personId: string) => {
+      closeDetail()
+      if (activeView === 'journey') {
+        setTreeReturnViewport({ center, span })
+      }
+      setFocusedTreePersonId(personId)
+      enterTreeFromTimelineRef.current = true
+      navigateToView('tree')
+    },
+    [activeView, center, span, closeDetail, navigateToView],
+  )
+
+  const returnToTimeline = useCallback(() => {
+    const saved = treeReturnViewport ?? savedViewportRef.current
+    if (!saved) return
+    pendingViewportRef.current = saved
+    setTreeReturnViewport(null)
+    setFocusedTreePersonId(null)
+    closeDetail()
+    navigateToView('journey')
+  }, [closeDetail, navigateToView, treeReturnViewport])
+
   const value: AppNavigationContextValue = {
     activeView,
     navigateToView,
     viewOnTimeline,
+    viewOnTree,
+    returnToTimeline,
+    treeReturnViewport,
+    focusedTreePersonId,
   }
 
   return <AppNavigationContext.Provider value={value}>{children}</AppNavigationContext.Provider>

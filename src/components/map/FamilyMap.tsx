@@ -13,7 +13,6 @@ import {
   subregionVisibleAtLevel,
   visibleLayers,
 } from '../../utils/mapSemanticZoom'
-import type { PlaceRecord } from '../../utils/placeIndex'
 import { MAP_VIEW_BOX } from '../../utils/mapProjection'
 import { MapDebugOverlay } from './MapDebugOverlay'
 import { MapOverlay } from './MapOverlay'
@@ -26,7 +25,6 @@ type FamilyMapProps = {
   subregions: MapSubregion[]
   routes: RegionalRoute[]
   subroutes: SubregionRoute[]
-  unresolved: PlaceRecord[]
   showRoutes: boolean
   filterKey: string
 }
@@ -47,7 +45,6 @@ export function FamilyMap({
   subregions,
   routes,
   subroutes,
-  unresolved,
   showRoutes,
   filterKey,
 }: FamilyMapProps) {
@@ -158,6 +155,24 @@ export function FamilyMap({
 
   const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
 
+  const edgeBleedPercent = useMemo(
+    () => 4.5 + Math.min(camera.scale * 1.05, 10),
+    [camera.scale],
+  )
+  const svgPlateScale = useMemo(
+    () => 1.045 + Math.min(Math.max(0, camera.scale - 1) * 0.014, 0.05),
+    [camera.scale],
+  )
+  const zoomBleedStyle = useMemo(
+    () =>
+      ({
+        top: `-${edgeBleedPercent}%`,
+        bottom: `-${edgeBleedPercent}%`,
+        minHeight: `${100 + edgeBleedPercent * 2}%`,
+      }) as const,
+    [edgeBleedPercent],
+  )
+
   return (
     <div className="map-atlas-frame" ref={frameRef} onWheel={onWheel}>
       {timelineBridge && (
@@ -184,15 +199,20 @@ export function FamilyMap({
 
       <motion.div
         className="map-atlas-zoom"
+        style={zoomBleedStyle}
         animate={{ transform: cameraTransform(camera) }}
         transition={{ duration: transitionDuration, ease: motionEase }}
       >
         <svg
           className="map-atlas-svg"
           viewBox={`0 0 ${VB.width} ${VB.height}`}
-          preserveAspectRatio="xMidYMid meet"
+          preserveAspectRatio="xMidYMid slice"
           role="img"
           aria-label="Interactive family migration map"
+          style={{
+            transform: `scale(${svgPlateScale})`,
+            transformOrigin: '50% 50%',
+          }}
         >
           <WorldMapBackground />
 
@@ -208,8 +228,8 @@ export function FamilyMap({
                     key={`heat-${region.id}-${filterKey}`}
                     cx={cx}
                     cy={cy}
-                    rx={rx * 1.15}
-                    ry={ry * 1.15}
+                    rx={rx}
+                    ry={ry}
                     className="map-heat-haze"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: faded ? intensity * 0.35 : intensity }}
@@ -324,7 +344,7 @@ export function FamilyMap({
                       ry={ry}
                       className={`map-region-oval map-region-oval--major${isSelected ? ' map-region-group--selected' : ''}${dimmed ? ' map-layer-dimmed' : ''}${faded ? ' map-region-group--faded' : ''}`}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: dimmed ? 0.3 : faded ? 0.55 : isSelected ? 1 : 0.85 }}
+                      animate={{ opacity: dimmed ? 0.22 : faded ? 0.38 : isSelected ? 0.72 : 0.58 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: transitionDuration, ease: motionEase }}
                       pointerEvents="none"
@@ -406,13 +426,6 @@ export function FamilyMap({
         <button type="button" className="map-clear-selection pill" onClick={clearSelection}>
           Clear selection
         </button>
-      )}
-
-      {unresolved.length > 0 && level === 'family' && (
-        <div className="map-unresolved">
-          <div className="eyebrow">Unresolved places</div>
-          <p>{unresolved.length} records lack coordinates and are not mapped.</p>
-        </div>
       )}
 
       <div className="map-hint">

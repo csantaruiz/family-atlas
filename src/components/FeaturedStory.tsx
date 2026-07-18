@@ -98,71 +98,75 @@ export function FeaturedStory() {
         swipeStartX.current = null
       }}
     >
-      <div className="featured-story-nav">
-        <button
-          type="button"
-          className="featured-story-arrow"
-          aria-label="Previous featured story"
-          onClick={(e) => {
-            e.stopPropagation()
-            move(-1)
-          }}
-        >
-          ‹
-        </button>
-        <div className="featured-story-dots" role="tablist" aria-label="Featured stories">
-          {candidates.map((_, i) => (
+      <div className="featured-story-panel">
+        <div className="featured-story-header">
+          <p className="featured-story-kicker">Featured Story</p>
+          <div className="featured-story-nav">
             <button
-              key={i}
               type="button"
-              role="tab"
-              aria-selected={i === index}
-              className={`featured-story-dot ${i === index ? 'is-active' : ''}`}
-              aria-label={`Featured story ${i + 1}`}
+              className="featured-story-arrow"
+              aria-label="Previous featured story"
               onClick={(e) => {
                 e.stopPropagation()
-                setIndex(i)
+                move(-1)
               }}
-            />
-          ))}
+            >
+              ‹
+            </button>
+            <div className="featured-story-dots" role="tablist" aria-label="Featured stories">
+              {candidates.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  className={`featured-story-dot ${i === index ? 'is-active' : ''}`}
+                  aria-label={`Featured story ${i + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIndex(i)
+                  }}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              className="featured-story-arrow"
+              aria-label="Next featured story"
+              onClick={(e) => {
+                e.stopPropagation()
+                move(1)
+              }}
+            >
+              ›
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          className="featured-story-arrow"
-          aria-label="Next featured story"
-          onClick={(e) => {
-            e.stopPropagation()
-            move(1)
-          }}
-        >
-          ›
-        </button>
-      </div>
 
-      <AnimatePresence mode="wait">
-        <motion.article
-          key={`${story.personId}-${story.year}`}
-          className="featured-story-panel"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={fade}
-        >
-          <p className="featured-story-kicker">Featured Story</p>
-          <h2 className="featured-story-headline">{story.title}</h2>
-          <p className="featured-story-narrative">{story.blurb}</p>
-          <button
-            type="button"
-            className="featured-story-read"
-            onClick={(e) => {
-              e.stopPropagation()
-              openPerson(story.personId)
-            }}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${story.personId}-${story.year}`}
+            className="featured-story-body"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={fade}
           >
-            Read story →
-          </button>
-        </motion.article>
-      </AnimatePresence>
+            <h2 className="featured-story-headline">{story.title}</h2>
+            <p className="featured-story-narrative">{story.blurb}</p>
+            <button
+              type="button"
+              className="featured-story-read"
+              onClick={(e) => {
+                e.stopPropagation()
+                openPerson(story.personId)
+              }}
+            >
+              Read story →
+            </button>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </section>
   )
 }

@@ -2,14 +2,18 @@ import { useMemo } from 'react'
 import { useReducedMotion } from 'framer-motion'
 import worldLand from '../../data/worldLand110m.json'
 import {
-  createAtlasPathGenerator,
   createAtlasGraticulePath,
+  createAtlasPathGenerator,
   MAP_VIEW_BOX,
   WORLD_MAP_COASTLINE_STROKE,
   WORLD_MAP_COASTLINE_WIDTH,
   WORLD_MAP_GRATICULE_STROKE,
   WORLD_MAP_GRATICULE_WIDTH,
   WORLD_MAP_LAND_FILL,
+  WORLD_MAP_WATER_DEEP,
+  WORLD_MAP_WATER_FILL,
+  WORLD_MAP_WATER_SHALLOW,
+  WORLD_MAP_WATER_TINT,
 } from '../../utils/mapProjection'
 
 type LandFeature = {
@@ -36,21 +40,55 @@ export function WorldMapBackground() {
   const graticulePath = useMemo(() => createAtlasGraticulePath(), [])
 
   return (
-    <g className={`world-map-layer${prefersReducedMotion ? '' : ' world-map-layer--fade-in'}`} aria-hidden="true">
+    <g
+      className={`world-map-layer${prefersReducedMotion ? '' : ' world-map-layer--fade-in'}`}
+      aria-hidden="true"
+    >
       <defs>
-        <linearGradient id="atlasMapEdgeFadeX" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="rgba(9, 11, 13, 0.55)" />
-          <stop offset="8%" stopColor="rgba(9, 11, 13, 0)" />
-          <stop offset="92%" stopColor="rgba(9, 11, 13, 0)" />
-          <stop offset="100%" stopColor="rgba(9, 11, 13, 0.55)" />
-        </linearGradient>
-        <radialGradient id="atlasMapSoftVignette" cx="50%" cy="48%" r="58%">
-          <stop offset="0%" stopColor="rgba(191, 165, 110, 0.035)" />
-          <stop offset="55%" stopColor="rgba(0, 0, 0, 0)" />
-          <stop offset="100%" stopColor="rgba(0, 0, 0, 0.14)" />
+        <radialGradient id="atlasOceanDepth" cx="44%" cy="40%" r="72%">
+          <stop offset="0%" stopColor={WORLD_MAP_WATER_SHALLOW} />
+          <stop offset="42%" stopColor={WORLD_MAP_WATER_TINT} />
+          <stop offset="100%" stopColor={WORLD_MAP_WATER_DEEP} />
         </radialGradient>
+
+        <linearGradient id="atlasOceanHorizon" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="rgba(72, 98, 104, 0.08)" />
+          <stop offset="48%" stopColor="rgba(0, 0, 0, 0)" />
+          <stop offset="100%" stopColor="rgba(28, 44, 48, 0.16)" />
+        </linearGradient>
+
+        <linearGradient id="atlasLandBase" x1="18%" y1="8%" x2="82%" y2="92%">
+          <stop offset="0%" stopColor="rgba(176, 152, 112, 0.14)" />
+          <stop offset="46%" stopColor={WORLD_MAP_LAND_FILL} />
+          <stop offset="100%" stopColor="rgba(118, 102, 78, 0.16)" />
+        </linearGradient>
+
+        <filter id="atlasLandPaper" x="-4%" y="-4%" width="108%" height="108%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.92"
+            numOctaves="2"
+            seed="8"
+            result="noise"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="0 0 0 0 0.68  0 0 0 0 0.62  0 0 0 0 0.54  0 0 0 0.028 0"
+            in="noise"
+            result="grain"
+          />
+          <feBlend in="SourceGraphic" in2="grain" mode="multiply" />
+        </filter>
+
+        <filter id="atlasCoastSoftness" x="-2%" y="-2%" width="104%" height="104%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="0.08" />
+        </filter>
       </defs>
-      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill="transparent" />
+
+      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill={WORLD_MAP_WATER_FILL} />
+      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill="url(#atlasOceanDepth)" />
+      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill="url(#atlasOceanHorizon)" />
+
       {graticulePath && (
         <path
           className="world-map-graticule"
@@ -62,28 +100,39 @@ export function WorldMapBackground() {
           pointerEvents="none"
         />
       )}
-      <g className="world-map-landmasses">
+
+      <g className="world-map-landmasses" filter="url(#atlasLandPaper)">
         {landPaths.map((path) => (
           <path
             key={path.id}
             d={path.d}
-            fill={WORLD_MAP_LAND_FILL}
+            fill="url(#atlasLandBase)"
             stroke={WORLD_MAP_COASTLINE_STROKE}
             strokeWidth={WORLD_MAP_COASTLINE_WIDTH}
             vectorEffect="non-scaling-stroke"
           />
         ))}
       </g>
+
+      <g className="world-map-coastline-wash" filter="url(#atlasCoastSoftness)" pointerEvents="none">
+        {landPaths.map((path) => (
+          <path
+            key={`coast-${path.id}`}
+            d={path.d}
+            fill="none"
+            stroke="rgba(210, 192, 152, 0.06)"
+            strokeWidth={WORLD_MAP_COASTLINE_WIDTH * 1.6}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </g>
+
       <rect
+        className="world-map-ocean-vignette"
         width={MAP_VIEW_BOX.width}
         height={MAP_VIEW_BOX.height}
-        fill="url(#atlasMapSoftVignette)"
-        pointerEvents="none"
-      />
-      <rect
-        width={MAP_VIEW_BOX.width}
-        height={MAP_VIEW_BOX.height}
-        fill="url(#atlasMapEdgeFadeX)"
+        fill="url(#atlasOceanDepth)"
+        opacity="0.48"
         pointerEvents="none"
       />
     </g>

@@ -37,6 +37,9 @@ export const ZOOM_THRESHOLDS = {
   MIN_LABEL_GAP_PX: 24,
 } as const
 
+/** Minimum family and history markers to aim for at every zoom level when data allows. */
+export const MIN_VIEWPORT_EVENTS = 4
+
 export type SemanticZoomMode = 'far' | 'medium' | 'near' | 'detail'
 
 export type ChapterDensity = 'sparse' | 'moderate' | 'dense' | 'very_dense'

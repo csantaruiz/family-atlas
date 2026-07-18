@@ -32,7 +32,7 @@ function getMeasureContext(): CanvasRenderingContext2D | null {
   return measureCtx
 }
 
-export function categoryLabel(event: FamilyEvent): string {
+export function categoryTypeLabel(event: FamilyEvent): string {
   switch (event.kind) {
     case 'birth':
       return 'BIRTH OF'
@@ -45,6 +45,10 @@ export function categoryLabel(event: FamilyEvent): string {
     default:
       return 'FAMILY STORY'
   }
+}
+
+export function categoryLabel(event: FamilyEvent): string {
+  return `${categoryTypeLabel(event)} (${event.year})`
 }
 
 export function displayName(event: FamilyEvent, compact = false): string {

@@ -11,8 +11,8 @@ export const PLACE_MIN_SCALE = 2
 export const PLACE_MAX_SCALE = 5.5
 
 export const REGION_FIT_PADDING = 5
-export const REGION_FIT_TARGET_WIDTH_RATIO = 0.5
-export const REGION_FIT_TARGET_HEIGHT_RATIO = 0.52
+export const REGION_FIT_TARGET_WIDTH_RATIO = 0.52
+export const REGION_FIT_TARGET_HEIGHT_RATIO = 0.58
 
 export const MAP_CAMERA_TRANSITION_MS = 420
 
@@ -20,7 +20,7 @@ export const MAP_PANEL_WIDTH_PX = 340
 export const MAP_PANEL_GAP_PX = 24
 export const MAP_FRAME_PADDING_PX = 28
 
-export const DEFAULT_OVERVIEW_CAMERA: MapCamera = { cx: 50, cy: 48, scale: MAP_OVERVIEW_SCALE }
+export const DEFAULT_OVERVIEW_CAMERA: MapCamera = { cx: 50, cy: 50, scale: MAP_OVERVIEW_SCALE }
 
 export type MapViewportLayout = {
   frameWidthPx: number

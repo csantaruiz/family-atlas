@@ -20,7 +20,10 @@ export const MAP_ZOOM_LEVELS: MapZoomLevel[] = [
   'record',
 ]
 
-export const DEFAULT_CAMERA: MapCamera = { cx: 50, cy: 48, scale: 1 }
+/** Extra framing scale so the map plate always covers the atlas frame at every zoom level. */
+export const MAP_FRAME_COVERAGE = 1.08
+
+export const DEFAULT_CAMERA: MapCamera = { cx: 50, cy: 50, scale: 1 }
 
 /** Max ~12% framing zoom — typography stays fixed in overlay. */
 const LEVEL_SCALE: Record<MapZoomLevel, number> = {
@@ -74,16 +77,18 @@ export function projectMapPoint(
   y: number,
   camera: MapCamera,
 ): { left: number; top: number } {
+  const scale = camera.scale * MAP_FRAME_COVERAGE
   return {
-    left: 50 + (x - camera.cx) * camera.scale,
-    top: 50 + (y - camera.cy) * camera.scale,
+    left: 50 + (x - camera.cx) * scale,
+    top: 50 + (y - camera.cy) * scale,
   }
 }
 
 export function cameraTransform(camera: MapCamera): string {
-  const tx = (50 - camera.cx) * camera.scale
-  const ty = (50 - camera.cy) * camera.scale
-  return `translate(${tx}%, ${ty}%) scale(${camera.scale})`
+  const scale = camera.scale * MAP_FRAME_COVERAGE
+  const tx = (50 - camera.cx) * scale
+  const ty = (50 - camera.cy) * scale
+  return `translate(${tx}%, ${ty}%) scale(${scale})`
 }
 
 export type MapLayerVisibility = {

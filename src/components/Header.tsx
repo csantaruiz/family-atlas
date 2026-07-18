@@ -6,6 +6,7 @@ import type { AppView } from '../types/navigation'
 const NAV_ITEMS: { label: string; view: AppView }[] = [
   { label: 'Journey', view: 'journey' },
   { label: 'People', view: 'people' },
+  { label: 'Tree', view: 'tree' },
   { label: 'Map', view: 'map' },
   { label: 'About', view: 'about' },
 ]
@@ -65,38 +66,36 @@ export function Header() {
           <small>Every life leaves a trail</small>
         </div>
       </div>
-      <div className="top-right">
-        <div className="top-stats stats">
-          <div className="stat">
-            <strong>{stats.people}</strong>
-            <span>people</span>
-          </div>
-          <div className="stat">
-            <strong>{stats.families}</strong>
-            <span>families</span>
-          </div>
-          <div className="stat">
-            <strong>{generationCount}</strong>
-            <span>generations</span>
-          </div>
+      <div className="top-stats stats">
+        <div className="stat">
+          <strong>{stats.people}</strong>
+          <span>people</span>
         </div>
-        <nav className="nav" aria-label="Primary">
-          {NAV_ITEMS.map(({ label, view }) => {
-            const isActive = activeView === view
-            return (
-              <button
-                key={view}
-                type="button"
-                className={isActive ? 'active' : ''}
-                aria-current={isActive ? 'page' : undefined}
-                onClick={() => navigateToView(view)}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </nav>
+        <div className="stat">
+          <strong>{stats.families}</strong>
+          <span>families</span>
+        </div>
+        <div className="stat">
+          <strong>{generationCount}</strong>
+          <span>generations</span>
+        </div>
       </div>
+      <nav className="nav" aria-label="Primary">
+        {NAV_ITEMS.map(({ label, view }) => {
+          const isActive = activeView === view
+          return (
+            <button
+              key={view}
+              type="button"
+              className={isActive ? 'active' : ''}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={() => navigateToView(view)}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </nav>
     </header>
   )
 }

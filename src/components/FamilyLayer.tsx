@@ -11,6 +11,8 @@ import { familyDatabase } from '../data/familyDatabase'
 import { assignEventsToChapters, buildStoryChaptersForViewport } from '../data/buildStoryChapters'
 import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
+import { useAppNavigation } from '../context/AppNavigationContext'
+import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
   buildBirthClusters,
   chooseFocus,
@@ -24,7 +26,7 @@ import {
 } from '../utils/clustering'
 import { movementSummary } from '../utils/placeUtils'
 import { eventAccessibleTitle } from '../utils/detailPlacement'
-import { displayName } from '../utils/labelMeasure'
+import { categoryTypeLabel, displayName, measureDetailedFootprint } from '../utils/labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents } from '../utils/canonicalEvent'
 import {
   connectorElbowX,
@@ -32,7 +34,6 @@ import {
   connectorStemColor,
   CONNECTOR_V_LABEL,
   CONNECTOR_V_MARKER,
-  labelWidthForEvent,
 } from '../utils/eventConnector'
 import { yearX, zoomMode } from '../utils/timelineMath'
 import type { FamilyEvent } from '../types'
@@ -132,11 +133,25 @@ function EventConnector({
   )
 }
 
+function EventCategoryLabel({ event }: { event: FamilyEvent }) {
+  return (
+    <>
+      {event.kind === 'birth' ? <SunriseIcon /> : null}
+      {event.kind === 'death' ? <CrossIcon /> : null}
+      <span className="event-copy-type">{categoryTypeLabel(event)}</span>
+      <span className="event-copy-year">({event.year})</span>
+    </>
+  )
+}
+
 function FamilyEventButton({
   event,
   x,
   y,
+  viewportWidth,
   onOpen,
+  onExplore,
+  onViewTree,
   alignment = 'center',
   nudge = 0,
   compact = false,
@@ -145,7 +160,10 @@ function FamilyEventButton({
   event: FamilyEvent
   x: number
   y: number
+  viewportWidth: number
   onOpen: (event: FamilyEvent) => void
+  onExplore?: (personId: string) => void
+  onViewTree?: (personId: string) => void
   alignment?: LabelAlignment
   nudge?: number
   compact?: boolean
@@ -157,32 +175,22 @@ function FamilyEventButton({
   const accessibleTitle = eventAccessibleTitle(event)
 
   if (event.kind === 'birth') {
-    label = (
-      <>
-        <SunriseIcon />
-        BIRTH OF
-      </>
-    )
+    label = <EventCategoryLabel event={event} />
     title = displayName(event, compact)
   } else if (event.kind === 'death') {
-    label = (
-      <>
-        <CrossIcon />
-        DEATH OF
-      </>
-    )
+    label = <EventCategoryLabel event={event} />
     title = displayName(event, compact)
   } else if (event.kind === 'move') {
-    label = 'MIGRATION'
+    label = <EventCategoryLabel event={event} />
     title = displayName(event, compact)
     sub = compact ? '' : movementSummary(event)
   } else {
-    label = 'FAMILY STORY'
+    label = <EventCategoryLabel event={event} />
     title = compact ? displayName(event, true) : event.title
     sub = compact ? '' : event.detail || event.person.name
   }
 
-  const labelWidth = labelWidthForEvent(event, compact)
+  const labelWidth = measureDetailedFootprint(event, viewportWidth, compact).width
   const elbowX = connectorElbowX(alignment, nudge, labelWidth)
   const hasElbow = connectorNeedsElbow(elbowX)
 
@@ -190,6 +198,7 @@ function FamilyEventButton({
     left: Math.round(x),
     top: Math.round(y),
     '--label-nudge': `${nudge}px`,
+    '--label-width': `${labelWidth}px`,
   } as React.CSSProperties
 
   const className = [
@@ -216,6 +225,13 @@ function FamilyEventButton({
         onOpen(event)
       }}
     >
+      {onViewTree && onExplore ? (
+        <FamilyMemberActionTip
+          personId={event.person.id}
+          onExplore={onExplore}
+          onViewTree={onViewTree}
+        />
+      ) : null}
       <span className="event-copy">
         <em>{label}</em>
         <b>{title}</b>
@@ -241,6 +257,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     setThinkingFocusRange,
     isZooming,
   } = useTimeline()
+  const { viewOnTree } = useAppNavigation()
 
   const mode = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
@@ -449,12 +466,36 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   }, [activeLayout])
 
   const zoomToCluster = (from: number, to: number) => {
-    setThinkingFocusRange({ start: from, end: to })
-    const targetCenter = (from + to) / 2
-    const naturalSpan = Math.max(7, (to - from) * 2.2 + 8)
-    const targetSpan = Math.max(6, Math.min(naturalSpan, span * 0.55))
+    const targetSpan = chapterZoomInSpan(from, to)
     if (targetSpan >= span * 0.98) return
-    animateView(targetCenter, targetSpan, 820)
+    setThinkingFocusRange({ start: from, end: to })
+    animateView((from + to) / 2, targetSpan, 820)
+  }
+
+  const zoomOutFromCluster = (from: number, to: number) => {
+    const targetSpan = chapterZoomOutSpan()
+    if (targetSpan <= span * 1.02) return
+    setThinkingFocusRange(null)
+    animateView((from + to) / 2, targetSpan, 820)
+  }
+
+  const canChapterZoomIn = (from: number, to: number) => chapterZoomInSpan(from, to) < span * 0.98
+
+  const canChapterZoomOut = () => chapterZoomOutSpan() > span * 1.02
+
+  function chapterZoomInSpan(from: number, to: number) {
+    if (useBirthClusters) {
+      const bin = span > 430 ? 100 : span > 280 ? 50 : 25
+      const naturalSpan = Math.max(18, bin * 1.4)
+      return Math.max(6, Math.min(naturalSpan, span * 0.55))
+    }
+
+    const naturalSpan = Math.max(7, (to - from) * 2.2 + 8)
+    return Math.max(6, Math.min(naturalSpan, span * 0.55))
+  }
+
+  function chapterZoomOutSpan() {
+    return Math.min(fullSpan, span / 0.55)
   }
 
   const handleEventOpen = (event: FamilyEvent) => {
@@ -495,14 +536,10 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           viewportWidth={width}
           layout={calloutLayout}
           motionEnabled={motionEnabled}
-          onZoom={(c) => {
-            const bin = span > 430 ? 100 : span > 280 ? 50 : 25
-            const naturalSpan = Math.max(18, bin * 1.4)
-            const targetSpan = Math.max(6, Math.min(naturalSpan, span * 0.55))
-            if (targetSpan >= span * 0.98) return
-            setThinkingFocusRange({ start: c.from, end: c.to })
-            animateView((c.from + c.to) / 2, targetSpan, 820)
-          }}
+          onZoom={(c) => zoomToCluster(c.from, c.to)}
+          onZoomOut={(c) => zoomOutFromCluster(c.from, c.to)}
+          canZoomIn={canChapterZoomIn(primaryCluster.from, primaryCluster.to)}
+          canZoomOut={canChapterZoomOut()}
         />
       )}
 
@@ -518,6 +555,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           layout={calloutLayout}
           motionEnabled={motionEnabled}
           onZoom={(c) => zoomToCluster(c.from, c.to)}
+          onZoomOut={(c) => zoomOutFromCluster(c.from, c.to)}
+          canZoomIn={canChapterZoomIn(primaryCluster.from, primaryCluster.to)}
+          canZoomOut={canChapterZoomOut()}
         />
       )}
 
@@ -540,11 +580,14 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   event={event}
                   x={0}
                   y={0}
+                  viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
                   motionEnabled={zoomSemantic === 'detail'}
                   onOpen={handleEventOpen}
+                  onExplore={openPerson}
+                  onViewTree={viewOnTree}
                 />
               )
 
@@ -574,10 +617,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   event={event}
                   x={x}
                   y={y}
+                  viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
                   onOpen={handleEventOpen}
+                  onExplore={openPerson}
+                  onViewTree={viewOnTree}
                 />
               )
             })}
@@ -593,11 +639,14 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   event={event}
                   x={0}
                   y={0}
+                  viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
                   motionEnabled={zoomSemantic === 'detail'}
                   onOpen={handleEventOpen}
+                  onExplore={openPerson}
+                  onViewTree={viewOnTree}
                 />
               )
 
@@ -627,10 +676,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   event={event}
                   x={x}
                   y={y}
+                  viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
                   onOpen={handleEventOpen}
+                  onExplore={openPerson}
+                  onViewTree={viewOnTree}
                 />
               )
             })}
@@ -638,27 +690,36 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         )}
 
         {representativeNodes.map(({ person: p, x, y }) => (
-          <button
+          <div
             key={p.id}
-            type="button"
-            className="node representative"
+            className="node representative-wrap"
             style={{ left: Math.round(x), top: Math.round(y) }}
-            title={`${p.name} · ${p.birthYear}`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation()
-              openPerson(p.id)
-            }}
           >
-            <span className="node-dot" />
-            <span className="node-label">
-              <b>{p.name}</b>
-              <small>
-                {p.birthYear}
-                {p.birthPlace ? ` · ${p.birthPlace.split(',')[0]}` : ''}
-              </small>
-            </span>
-          </button>
+            <FamilyMemberActionTip
+              personId={p.id}
+              onExplore={openPerson}
+              onViewTree={viewOnTree}
+            />
+            <button
+              type="button"
+              className="node representative"
+              title={`${p.name} · ${p.birthYear}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                openPerson(p.id)
+              }}
+            >
+              <span className="node-dot" />
+              <span className="node-label">
+                <b>{p.name}</b>
+                <small>
+                  {p.birthYear}
+                  {p.birthPlace ? ` · ${p.birthPlace.split(',')[0]}` : ''}
+                </small>
+              </span>
+            </button>
+          </div>
         ))}
       </div>
     </>

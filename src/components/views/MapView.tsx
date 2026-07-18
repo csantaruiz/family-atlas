@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { familyDatabase } from '../../data'
-import { MapExplorationProvider } from '../../context/MapExplorationContext'
+import { MapExplorationProvider, useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import {
   branchOptions,
@@ -33,6 +33,7 @@ const EVENT_TYPES = [
 
 function MapViewContent({ active }: MapViewProps) {
   const { familyEvents } = useTimeline()
+  const { level } = useMapExploration()
   const people = familyDatabase.people
 
   const [branch, setBranch] = useState('')
@@ -82,10 +83,22 @@ function MapViewContent({ active }: MapViewProps) {
   const filterKey = `${branch}-${eventType}-${century}-${directAncestorsOnly}`
 
   return (
-    <section id="map" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
+    <section id="map" className={`view atlas-page${active ? ' active' : ''}`} aria-hidden={!active}>
       <div className="map-wrap">
-        <header className="map-chrome">
-          <div className="map-chrome-title map-title">
+        <div className="map-page-atmosphere" aria-hidden="true" />
+        <div className="map-page-focus" aria-hidden="true" />
+
+        <div className="map-page-visual">
+          <FamilyMap
+            regions={regions}
+            subregions={subregions}
+            routes={routes}
+            subroutes={subroutes}
+            showRoutes={showRoutes}
+            filterKey={filterKey}
+          />
+
+          <header className="map-page-intro map-title">
             <div className="eyebrow">Known places</div>
             <h2>A family in motion.</h2>
             <div className="map-summary">
@@ -101,10 +114,10 @@ function MapViewContent({ active }: MapViewProps) {
                 </span>
               )}
             </div>
-          </div>
+          </header>
 
-          <div className="map-chrome-filters map-filters">
-            <div className="map-filter-row map-filter-row--primary">
+          <div className="map-page-controls map-filters">
+            <div className="map-filter-grid">
               <label className="filter-field">
                 <span>Branch</span>
                 <select value={branch} onChange={(e) => setBranch(e.target.value)}>
@@ -126,8 +139,6 @@ function MapViewContent({ active }: MapViewProps) {
                   ))}
                 </select>
               </label>
-            </div>
-            <div className="map-filter-row map-filter-row--secondary">
               <label className="filter-field">
                 <span>Century</span>
                 <select value={century} onChange={(e) => setCentury(e.target.value)}>
@@ -139,37 +150,36 @@ function MapViewContent({ active }: MapViewProps) {
                   ))}
                 </select>
               </label>
-              <label className="filter-field filter-check">
-                <input
-                  type="checkbox"
-                  checked={directAncestorsOnly}
-                  onChange={(e) => setDirectAncestorsOnly(e.target.checked)}
-                />
-                <span>Direct ancestors</span>
-              </label>
-              <label className="filter-field filter-check">
-                <input
-                  type="checkbox"
-                  checked={showRoutes}
-                  onChange={(e) => setShowRoutes(e.target.checked)}
-                />
-                <span>Migration routes</span>
-              </label>
+              <div className="map-filter-checks">
+                <label className="filter-field filter-check">
+                  <input
+                    type="checkbox"
+                    checked={directAncestorsOnly}
+                    onChange={(e) => setDirectAncestorsOnly(e.target.checked)}
+                  />
+                  <span>Direct ancestors</span>
+                </label>
+                <label className="filter-field filter-check">
+                  <input
+                    type="checkbox"
+                    checked={showRoutes}
+                    onChange={(e) => setShowRoutes(e.target.checked)}
+                  />
+                  <span>Migration routes</span>
+                </label>
+              </div>
             </div>
           </div>
-        </header>
 
-        <FamilyMap
-          regions={regions}
-          subregions={subregions}
-          routes={routes}
-          subroutes={subroutes}
-          unresolved={unresolved}
-          showRoutes={showRoutes}
-          filterKey={filterKey}
-        />
-
-        <MapDetailPanel subregions={subregions} />
+          <MapDetailPanel subregions={subregions} />
+          <div className="map-page-vignette" aria-hidden="true" />
+          {unresolved.length > 0 && level === 'family' && (
+            <div className="map-unresolved">
+              <div className="eyebrow">Unresolved places</div>
+              <p>{unresolved.length} records lack coordinates and are not mapped.</p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )

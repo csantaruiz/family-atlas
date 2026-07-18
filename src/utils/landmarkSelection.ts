@@ -1,7 +1,7 @@
 import type { FamilyEvent, StoryChapter } from '../types'
 import { canonicalEventId } from './canonicalEvent'
 import type { SemanticZoomMode } from './semanticZoom'
-import { chapterDensity, type ChapterDensity } from './semanticZoom'
+import { chapterDensity, MIN_VIEWPORT_EVENTS, type ChapterDensity } from './semanticZoom'
 import {
   effectiveLabelNudge,
   footprintBounds,
@@ -10,6 +10,12 @@ import {
   type LabelAlignment,
 } from './labelMeasure'
 import { DETAIL_NUDGES } from './detailPlacement'
+import {
+  getStableLandmarkPlacement,
+  landmarkStabilityKey,
+  rememberStableLandmarkPlacement,
+  type StableLandmarkPlacement,
+} from './landmarkSelectionStability'
 import { yearX } from './timelineMath'
 import {
   chapterCenterX,
@@ -89,14 +95,14 @@ export function targetVisibleEventCount(
 ): number {
   const caps: Record<ChapterDensity, { far: number; medium: number; near: number }> = {
     sparse: { far: 4, medium: 6, near: 6 },
-    moderate: { far: 3, medium: 7, near: 8 },
-    dense: { far: 2, medium: 4, near: 5 },
-    very_dense: { far: 1, medium: 3, near: 3 },
+    moderate: { far: 4, medium: 7, near: 8 },
+    dense: { far: 4, medium: 5, near: 6 },
+    very_dense: { far: 4, medium: 4, near: 5 },
   }
 
   if (mode === 'detail') return available
   const limit = caps[density][mode]
-  return Math.min(available, limit)
+  return Math.min(available, Math.max(MIN_VIEWPORT_EVENTS, limit))
 }
 
 export function normalizedViewportPosition(year: number, start: number, end: number): number {
@@ -450,6 +456,17 @@ export function selectDistributedLandmarks(
     reportLandmarkDebug(snapshot)
   }
 
+  const minimum = Math.min(events.length, MIN_VIEWPORT_EVENTS)
+  if (picked.length < minimum) {
+    for (const event of sortByImportance(events, scoreOf)) {
+      if (picked.length >= minimum) break
+      const id = canonicalEventId(event)
+      if (pickedIds.has(id)) continue
+      pickedIds.add(id)
+      picked.push(event)
+    }
+  }
+
   return picked
 }
 
@@ -617,25 +634,34 @@ function placeOneHybridEvent(
   return null
 }
 
-function zonePreferenceOrder(
-  placed: HybridPlacedEvent[],
-  start: number,
-  end: number,
-  failedZone: TemporalZone,
-): TemporalZone[] {
-  const counts = countZones(
-    placed.map((p) => p.event),
-    start,
-    end,
-  )
-  const zones: TemporalZone[] = ['left', 'center', 'right']
-  return [...zones].sort((a, b) => {
-    const diff = counts[a] - counts[b]
-    if (diff !== 0) return diff
-    if (a === failedZone) return 1
-    if (b === failedZone) return -1
-    return 0
+function applyCachedHybridPlacement(
+  event: FamilyEvent,
+  profile: StableLandmarkPlacement,
+  markerX: number,
+  width: number,
+  height: number,
+  placedRects: PlacedRect[],
+): HybridPlacedEvent {
+  const anchorY = laneY(height, profile.lane)
+  const footprint = measureDetailedFootprint(event, width, profile.compact)
+  const bounds = footprintBounds(markerX, anchorY, footprint, profile.alignment, profile.nudge, width)
+  placedRects.push({
+    left: bounds.left,
+    right: bounds.right,
+    top: bounds.top,
+    bottom: bounds.bottom,
+    markerX,
+    anchorY,
   })
+  return {
+    event,
+    x: markerX,
+    y: anchorY,
+    alignment: profile.alignment,
+    nudge: profile.nudge,
+    compact: profile.compact,
+    lane: profile.lane,
+  }
 }
 
 export function placeHybridLandmarks(
@@ -646,14 +672,15 @@ export function placeHybridLandmarks(
   width: number,
   height: number,
   obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
-  scoreOf: (event: FamilyEvent) => number,
-  _mode: SemanticZoomMode,
+  _scoreOf: (event: FamilyEvent) => number,
+  mode: SemanticZoomMode,
 ): { placed: HybridPlacedEvent[]; unplaced: FamilyEvent[] } {
   const placedRects: PlacedRect[] = []
   const placed: HybridPlacedEvent[] = []
   const unplaced: FamilyEvent[] = []
   const placedIds = new Set<string>()
   const end = start + span
+  const stabilityKey = landmarkStabilityKey(mode, span)
 
   const debugRejected: LandmarkDebugSnapshot['rejected'] = []
   const debugReplacements: LandmarkDebugSnapshot['replacements'] = []
@@ -661,57 +688,65 @@ export function placeHybridLandmarks(
   for (const event of candidates) {
     const markerX = yearX(event.year, start, span, width)
     const failedZone = zoneForYear(event.year, start, end)
-    const result = placeOneHybridEvent(event, markerX, width, height, placedRects, obstacles)
-    if (result) {
-      placed.push(result)
-      placedIds.add(canonicalEventId(event))
+    const eventId = canonicalEventId(event)
+    const cached = getStableLandmarkPlacement(stabilityKey, eventId)
+
+    if (cached) {
+      placed.push(applyCachedHybridPlacement(event, cached, markerX, width, height, placedRects))
+      placedIds.add(eventId)
       continue
     }
 
-    let replaced = false
-    const zoneOrder = zonePreferenceOrder(placed, start, end, failedZone)
-
-    for (const zone of zoneOrder) {
-      if (replaced) break
-      const zoneCandidates = sortByImportance(
-        alternates.filter(
-          (e) =>
-            zoneForYear(e.year, start, end) === zone && !placedIds.has(canonicalEventId(e)),
-        ),
-        scoreOf,
-      )
-      for (const alt of zoneCandidates) {
-        const altX = yearX(alt.year, start, span, width)
-        const altResult = placeOneHybridEvent(alt, altX, width, height, placedRects, obstacles)
-        if (altResult) {
-          placed.push(altResult)
-          placedIds.add(canonicalEventId(alt))
-          replaced = true
-          if (LANDMARK_DEBUG) {
-            debugReplacements.push({
-              fromZone: failedZone,
-              toZone: zone,
-              eventId: canonicalEventId(alt),
-            })
-          }
-          break
-        }
-      }
+    let result = placeOneHybridEvent(event, markerX, width, height, placedRects, obstacles)
+    if (!result) {
+      result = placeOneHybridEvent(event, markerX, width, height, placedRects, null)
+    }
+    if (result) {
+      rememberStableLandmarkPlacement(stabilityKey, eventId, {
+        lane: result.lane,
+        alignment: result.alignment,
+        nudge: result.nudge,
+        compact: result.compact,
+      })
+      placed.push(result)
+      placedIds.add(eventId)
+      continue
     }
 
-    if (!replaced) {
-      unplaced.push(event)
-      if (LANDMARK_DEBUG) {
-        debugRejected.push({
-          eventId: canonicalEventId(event),
-          reason: 'collision',
-          zone: failedZone,
-        })
-      }
+    unplaced.push(event)
+    if (LANDMARK_DEBUG) {
+      debugRejected.push({
+        eventId: canonicalEventId(event),
+        reason: 'collision',
+        zone: failedZone,
+      })
     }
   }
 
   placed.sort((a, b) => a.x - b.x)
+
+  const minimum = Math.min(alternates.length, MIN_VIEWPORT_EVENTS)
+  if (placed.length < minimum) {
+    const ranked = sortByImportance(
+      alternates.filter((event) => !placedIds.has(canonicalEventId(event))),
+      _scoreOf,
+    )
+    for (const event of ranked) {
+      if (placed.length >= minimum) break
+      const markerX = yearX(event.year, start, span, width)
+      const result = placeOneHybridEvent(event, markerX, width, height, placedRects, null)
+      if (!result) continue
+      rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
+        lane: result.lane,
+        alignment: result.alignment,
+        nudge: result.nudge,
+        compact: result.compact,
+      })
+      placed.push(result)
+      placedIds.add(canonicalEventId(event))
+    }
+    placed.sort((a, b) => a.x - b.x)
+  }
 
   if (LANDMARK_DEBUG) {
     reportLandmarkDebug({

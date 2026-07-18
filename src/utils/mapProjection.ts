@@ -61,12 +61,18 @@ export const MAP_REFERENCE_ANCHORS = [
 
 export const MAP_VIEW_BOX = { width: 100, height: 100 } as const
 
-/** Land fill and coastline stroke for the archival watermark. */
-export const WORLD_MAP_LAND_FILL = 'rgba(190, 169, 122, 0.08)'
-export const WORLD_MAP_COASTLINE_STROKE = 'rgba(205, 185, 137, 0.12)'
-export const WORLD_MAP_COASTLINE_WIDTH = 0.65
-export const WORLD_MAP_GRATICULE_STROKE = 'rgba(205, 185, 137, 0.06)'
-export const WORLD_MAP_GRATICULE_WIDTH = 0.28
+/** Archival expedition-map palette — warm land on quiet oxidized sea. */
+export const WORLD_MAP_WATER_FILL = '#0a1216'
+export const WORLD_MAP_WATER_DEEP = 'rgba(36, 58, 64, 0.38)'
+export const WORLD_MAP_WATER_TINT = 'rgba(52, 78, 84, 0.24)'
+export const WORLD_MAP_WATER_SHALLOW = 'rgba(68, 98, 102, 0.14)'
+export const WORLD_MAP_LAND_FILL = 'rgba(148, 128, 96, 0.18)'
+export const WORLD_MAP_LAND_WASH = 'rgba(168, 146, 108, 0.12)'
+export const WORLD_MAP_LAND_HIGHLIGHT = 'rgba(196, 176, 138, 0.08)'
+export const WORLD_MAP_COASTLINE_STROKE = 'rgba(186, 168, 132, 0.36)'
+export const WORLD_MAP_COASTLINE_WIDTH = 0.38
+export const WORLD_MAP_GRATICULE_STROKE = 'rgba(160, 148, 124, 0.038)'
+export const WORLD_MAP_GRATICULE_WIDTH = 0.22
 
 let cachedProjection: AtlasProjection | null = null
 let cachedPathGenerator: d3.GeoPath<GeoPermissibleObjects, string> | null = null

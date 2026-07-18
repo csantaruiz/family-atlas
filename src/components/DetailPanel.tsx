@@ -1,13 +1,16 @@
 import { eventContext } from '../data'
 import { ARCHIVAL_PORTRAIT_PLACEHOLDER } from '../data/portraitPlaceholder'
+import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
 import { initials } from '../utils/format'
+import { eventSummaryForPerson, primaryLocations } from '../utils/personDirectory'
 import { movementSummary, peopleRelevantToEvent } from '../utils/placeUtils'
 import { DetailPortrait } from './DetailPortrait'
-import type { PersonImage } from '../types'
+import type { FamilyEvent, PersonImage } from '../types'
 
 export function DetailPanel() {
-  const { detail, peopleById, birthPeople, closeDetail, openPerson } = useTimeline()
+  const { detail, peopleById, birthPeople, familyEvents, closeDetail, openPerson } = useTimeline()
+  const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
 
   const isOpen = detail !== null
 
@@ -31,10 +34,17 @@ export function DetailPanel() {
   } | null = null
   let portraitImage: PersonImage | null = null
   let useArchivalPlaceholder = false
+  let personEvents: FamilyEvent[] = []
+  let showReturnToTimeline = false
 
   if (detail?.type === 'person') {
     const p = peopleById[detail.personId]
     if (p) {
+      personEvents = familyEvents
+        .filter((event) => event.person.id === p.id)
+        .sort((a, b) => a.year - b.year)
+      showReturnToTimeline = treeReturnViewport != null && activeView === 'tree'
+
       initialsText = initials(p.name)
       name = p.name
       gen =
@@ -43,22 +53,34 @@ export function DetailPanel() {
           : p.generation != null
             ? `Generation ${p.generation} before Craig`
             : 'Extended family record'
-      life = `${p.birthDate || p.birthYear || 'Birth unknown'} — ${p.deathDate || p.deathYear || ''}`
+      life = `${p.birthDate || p.birthYear || 'Birth unknown'} — ${p.deathDate || p.deathYear || 'Living'}`
       story =
         `${p.name} enters the documented family record ` +
         (p.birthYear ? `in ${p.birthYear}` : 'at an uncertain date') +
         (p.birthPlace ? `, in ${p.birthPlace}` : '') +
         '. '
+      if (p.deathYear) {
+        story += `The record closes in ${p.deathYear}${p.deathPlace ? ` at ${p.deathPlace}` : ''}. `
+      } else if (p.deathDate) {
+        story += `The record notes death on ${p.deathDate}. `
+      }
       if (p.occupation?.length) {
-        story += `The tree records ${p.occupation.join(', ')} as an occupation. `
+        story += `Occupations recorded: ${p.occupation.join(', ')}. `
+      }
+      if (personEvents.length) {
+        story += eventSummaryForPerson(p, familyEvents) + '. '
       }
       story +=
-        'This Atlas preserves the known dates and relationships while leaving room for photographs, documents, memories, and verified historical context.'
+        'This Atlas preserves known dates, places, and relationships while leaving room for photographs, documents, and verified historical context.'
       facts = [
-        ['Born', p.birthDate || 'Not recorded'],
+        ['Born', p.birthDate || (p.birthYear != null ? String(p.birthYear) : 'Not recorded')],
         ['Birthplace', p.birthPlace || 'Not recorded'],
-        ['Died', p.deathDate || 'Not recorded'],
+        ['Died', p.deathDate || (p.deathYear != null ? String(p.deathYear) : 'Not recorded')],
         ['Death place', p.deathPlace || 'Not recorded'],
+        ['Sex', p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : p.sex || 'Not recorded'],
+        ['Places linked', primaryLocations(p).join(' · ') || 'Not recorded'],
+        ['Occupation', p.occupation?.length ? p.occupation.join(', ') : 'Not recorded'],
+        ['Timeline events', personEvents.length ? String(personEvents.length) : 'None indexed'],
       ]
       relations = [
         ...(p.parents ?? []).map((id) => ({ kind: 'Parent', id, name: peopleById[id]?.name ?? '' })),
@@ -240,6 +262,24 @@ export function DetailPanel() {
               <div className="history-related">
                 <div className="eyebrow">Family alive during this event</div>
               </div>
+            )}
+            {detail?.type === 'person' && personEvents.length > 0 && (
+              <div className="detail-event-list">
+                <div className="eyebrow">Timeline events</div>
+                <ul>
+                  {personEvents.map((event) => (
+                    <li key={`${event.kind}-${event.year}-${event.title}`}>
+                      <strong>{event.year}</strong> · {event.title}
+                      {event.detail ? ` — ${event.detail}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {showReturnToTimeline && (
+              <button type="button" className="detail-return-timeline" onClick={returnToTimeline}>
+                Return to timeline →
+              </button>
             )}
           </div>
         </>

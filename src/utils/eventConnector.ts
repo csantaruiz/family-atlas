@@ -7,7 +7,7 @@ export function labelWidthForEvent(event: FamilyEvent, compact: boolean): number
   return 178
 }
 
-/** Signed horizontal offset from marker center to label anchor (px). */
+/** Signed horizontal offset from marker center to the connector elbow (px). */
 export function connectorElbowX(
   alignment: LabelAlignment,
   nudge: number,
@@ -15,9 +15,9 @@ export function connectorElbowX(
 ): number {
   switch (alignment) {
     case 'left':
-      return nudge + labelWidth / 2
+      return nudge
     case 'right':
-      return -(nudge + labelWidth / 2)
+      return -(nudge + labelWidth)
     case 'center':
     default:
       return nudge

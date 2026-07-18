@@ -1,4 +1,5 @@
 import type { FamilyEvent } from '../types'
+import { canonicalEventId } from './canonicalEvent'
 import {
   categoryLabel,
   displayName,
@@ -10,6 +11,7 @@ import {
   type MeasuredFootprint,
 } from './labelMeasure'
 import { movementSummary } from './placeUtils'
+import { MIN_VIEWPORT_EVENTS } from './semanticZoom'
 import { yearX } from './timelineMath'
 
 export type DetailPlacedEvent = {
@@ -321,6 +323,51 @@ export function placeDetailEvents(
     })
 
     i = j
+  }
+
+  const minimum = Math.min(candidates.length, MIN_VIEWPORT_EVENTS)
+  if (placed.length < minimum) {
+    const placedIds = new Set(placed.map((item) => canonicalEventId(item.event)))
+    const remaining = candidates
+      .filter((event) => !placedIds.has(canonicalEventId(event)))
+      .sort((a, b) => scoreOf(b) - scoreOf(a) || a.year - b.year)
+
+    for (const event of remaining) {
+      if (placed.length >= minimum) break
+      const markerX = yearX(event.year, start, span, width)
+      let result = findDetailPlacement(event, markerX, width, height, placedRects, scoreOf(event))
+      if (!result) {
+        result = forceCompactPlacement(event, markerX, width, height, placedRects, scoreOf(event))
+      }
+      if (!result) continue
+
+      const anchorY = laneY(height, result.lane)
+      placedRects.push({
+        left: result.bounds.left,
+        right: result.bounds.right,
+        top: result.bounds.top,
+        bottom: result.bounds.bottom,
+        markerX,
+        anchorY,
+        alignment: result.alignment,
+      })
+      placed.push({
+        event,
+        x: markerX,
+        y: anchorY,
+        alignment: result.alignment,
+        nudge: effectiveLabelNudge(
+          markerX,
+          anchorY,
+          result.footprint,
+          result.alignment,
+          result.nudge,
+          width,
+        ),
+        compact: result.compact,
+        lane: result.lane,
+      })
+    }
   }
 
   return { placed, unplaced }

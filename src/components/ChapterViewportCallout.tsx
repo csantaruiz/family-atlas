@@ -1,5 +1,5 @@
-import { useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { Search } from 'lucide-react'
+import { useId, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   getChapterPresentation,
@@ -13,9 +13,25 @@ import {
   type ChapterVerticalLayout,
 } from '../utils/chapterCalloutLayout'
 import type { PlacedSpanCluster, SemanticZoomMode } from '../utils/clustering'
+import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
+const CALLOUT_CROSSFADE_S = 0.58
+
+const calloutCrossfadeTransition = { duration: CALLOUT_CROSSFADE_S, ease: motionEase }
+
+const calloutCrossfade = {
+  initial: { opacity: 0, '--callout-vivid': 0 },
+  animate: { opacity: 1, '--callout-vivid': 1 },
+  exit: { opacity: 0, '--callout-vivid': 0 },
+} as const
+
+const connectorCrossfade = {
+  initial: { opacity: 0, '--connector-vivid': 0 },
+  animate: { opacity: 1, '--connector-vivid': 1 },
+  exit: { opacity: 0, '--connector-vivid': 0 },
+} as const
 
 /** Fallback connector start when layout has not been measured yet. */
 export const CHAPTER_CALLOUT_ANCHOR_Y = 228
@@ -231,6 +247,9 @@ type ChapterViewportCalloutProps = {
   layout: CalloutLayoutProfile
   verticalLayout: ChapterVerticalLayout
   onZoom: (cluster: PlacedSpanCluster) => void
+  onZoomOut: (cluster: PlacedSpanCluster) => void
+  canZoomIn: boolean
+  canZoomOut: boolean
   frameRef?: RefObject<HTMLDivElement | null>
 }
 
@@ -242,12 +261,27 @@ export function ChapterViewportCallout({
   layout,
   verticalLayout,
   onZoom,
+  onZoomOut,
+  canZoomIn,
+  canZoomOut,
   frameRef: externalFrameRef,
 }: ChapterViewportCalloutProps) {
   const localFrameRef = useRef<HTMLDivElement>(null)
   const frameRef = externalFrameRef ?? localFrameRef
   const layerRef = useRef<HTMLDivElement>(null)
   const { chapterCenterX } = verticalLayout
+
+  const handleZoomOut = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (!canZoomOut) return
+    onZoomOut(cluster)
+  }
+
+  const handleZoomIn = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (!canZoomIn) return
+    onZoom(cluster)
+  }
 
   const presentation = getChapterPresentation({
     title: cluster.title,
@@ -292,11 +326,7 @@ export function ChapterViewportCallout({
       ) : null}
       {layout.showCta ? (
         <span className="chapter-callout-cta">
-          <Search className="chapter-callout-cta-icon" size={13} strokeWidth={1.75} aria-hidden="true" />
           <span className="chapter-callout-cta-text">{presentation.ctaLabel}</span>
-          <span className="chapter-callout-cta-arrow" aria-hidden="true">
-            →
-          </span>
         </span>
       ) : null}
     </button>
@@ -316,7 +346,29 @@ export function ChapterViewportCallout({
       <div className="chapter-callout-halo" aria-hidden="true" />
       <div ref={frameRef} className="chapter-callout-frame">
         <div className="chapter-callout-inner" style={{ opacity: cluster.dissolve }}>
+          <button
+            type="button"
+            className="chapter-callout-zoom chapter-callout-zoom--out"
+            aria-label="Zoom out timeline"
+            title="Zoom out"
+            disabled={!canZoomOut}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleZoomOut}
+          >
+            <ChevronLeft size={34} strokeWidth={2.15} aria-hidden="true" />
+          </button>
           {content}
+          <button
+            type="button"
+            className="chapter-callout-zoom chapter-callout-zoom--in"
+            aria-label="Zoom in timeline"
+            title="Zoom in"
+            disabled={!canZoomIn}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={handleZoomIn}
+          >
+            <ChevronRight size={34} strokeWidth={2.15} aria-hidden="true" />
+          </button>
         </div>
       </div>
       {isCalloutCenterDebugEnabled() ? (
@@ -413,6 +465,9 @@ export function ChapterCalloutPresence({
   layout,
   motionEnabled,
   onZoom,
+  onZoomOut,
+  canZoomIn,
+  canZoomOut,
 }: {
   primary: PlacedSpanCluster | null
   clusters: PlacedSpanCluster[]
@@ -424,10 +479,14 @@ export function ChapterCalloutPresence({
   layout: CalloutLayoutProfile
   motionEnabled: boolean
   onZoom: (cluster: PlacedSpanCluster) => void
+  onZoomOut: (cluster: PlacedSpanCluster) => void
+  canZoomIn: boolean
+  canZoomOut: boolean
 }) {
   const frameRef = useRef<HTMLDivElement>(null)
   const [cardAnchor, setCardAnchor] = useState<CalloutLayoutAnchor | null>(null)
   const { introProgress, isIntroActive, completeIntro } = useJourneyIntro()
+  const { isZooming } = useTimeline()
 
   useLayoutEffect(() => {
     const frame = frameRef.current
@@ -472,6 +531,12 @@ export function ChapterCalloutPresence({
         completeIntro()
         onZoom(c)
       }}
+      onZoomOut={(c) => {
+        completeIntro()
+        onZoomOut(c)
+      }}
+      canZoomIn={canZoomIn}
+      canZoomOut={canZoomOut}
       frameRef={frameRef}
     />
   )
@@ -485,33 +550,56 @@ export function ChapterCalloutPresence({
 
   return (
     <>
-      <AnimatePresence mode="wait">
+      <div className={`chapter-callout-presence-stack${isZooming ? ' is-scroll-muted' : ''}`}>
+        <AnimatePresence initial={false}>
+          {motionEnabled ? (
+            <motion.div
+              key={primary.chapterId}
+              className="chapter-callout-presence"
+              initial={isIntroActive ? false : calloutCrossfade.initial}
+              animate={isIntroActive ? undefined : calloutCrossfade.animate}
+              exit={calloutCrossfade.exit}
+              transition={calloutCrossfadeTransition}
+              style={cardMotionStyle}
+            >
+              {callout}
+            </motion.div>
+          ) : (
+            <div className="chapter-callout-presence" style={cardMotionStyle}>
+              {callout}
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <AnimatePresence initial={false}>
         {motionEnabled ? (
           <motion.div
-            key={primary.chapterId}
-            className="chapter-callout-presence"
-            initial={isIntroActive ? false : { opacity: 0 }}
-            animate={isIntroActive ? undefined : { opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.45, ease: motionEase }}
-            style={cardMotionStyle}
+            key={`connector-${primary.chapterId}`}
+            className="chapter-connector-presence"
+            initial={connectorCrossfade.initial}
+            animate={connectorCrossfade.animate}
+            exit={connectorCrossfade.exit}
+            transition={calloutCrossfadeTransition}
           >
-            {callout}
+            <ChapterConnectorLayer
+              clusters={clusters}
+              primaryCluster={primary}
+              verticalLayout={verticalLayout}
+              zoomMode={zoomMode}
+              cardAnchor={cardAnchor}
+            />
           </motion.div>
         ) : (
-          <div className="chapter-callout-presence" style={cardMotionStyle}>
-            {callout}
-          </div>
+          <ChapterConnectorLayer
+            clusters={clusters}
+            primaryCluster={primary}
+            verticalLayout={verticalLayout}
+            zoomMode={zoomMode}
+            cardAnchor={cardAnchor}
+          />
         )}
       </AnimatePresence>
-
-      <ChapterConnectorLayer
-        clusters={clusters}
-        primaryCluster={primary}
-        verticalLayout={verticalLayout}
-        zoomMode={zoomMode}
-        cardAnchor={cardAnchor}
-      />
     </>
   )
 }

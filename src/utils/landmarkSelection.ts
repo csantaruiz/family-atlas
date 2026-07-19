@@ -11,6 +11,11 @@ import {
 } from './labelMeasure'
 import { DETAIL_NUDGES } from './detailPlacement'
 import {
+  groupByLabelProximity,
+  minLaneForGroupIndex,
+  staggerAlignmentForIndex,
+} from './labelStagger'
+import {
   getStableLandmarkPlacement,
   landmarkStabilityKey,
   rememberStableLandmarkPlacement,
@@ -21,6 +26,7 @@ import {
   chapterCenterX,
   computeEraBraceGeometry,
   estimateCardFrameHeight,
+  type MeasuredPlaqueAnchor,
   resolveChapterVerticalLayout,
   visibleTimelineViewport,
 } from './chapterCalloutLayout'
@@ -534,8 +540,19 @@ function tryHybridPlacement(
   nudge: number,
   compact: boolean,
 ): PlacedRect | null {
-  const anchorY = laneY(height, lane)
+  let anchorY = laneY(height, lane)
   const footprint = measureDetailedFootprint(event, width, compact)
+  if (obstacles && 'frame' in obstacles) {
+    const frame = obstacles.frame
+    const boundsProbe = footprintBounds(markerX, anchorY, footprint, alignment, nudge, width)
+    const overlapsHorizontally = !(
+      boundsProbe.right + HYBRID_H_GAP < frame.left ||
+      boundsProbe.left - HYBRID_H_GAP > frame.right
+    )
+    if (overlapsHorizontally && boundsProbe.top < frame.bottom) {
+      anchorY += frame.bottom - boundsProbe.top
+    }
+  }
   const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, width)
   const rect: PlacedRect = {
     left: bounds.left,
@@ -564,10 +581,15 @@ function placeOneHybridEvent(
   height: number,
   placed: PlacedRect[],
   obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+  minLane = 0,
+  forceAlignment?: LabelAlignment,
 ): HybridPlacedEvent | null {
-  const alignments = hybridAlignmentOrder(markerX, width)
+  const alignments =
+    forceAlignment != null
+      ? [forceAlignment, ...hybridAlignmentOrder(markerX, width).filter((a) => a !== forceAlignment)]
+      : hybridAlignmentOrder(markerX, width)
 
-  for (let lane = 0; lane < HYBRID_MAX_LANES; lane++) {
+  for (let lane = minLane; lane < HYBRID_MAX_LANES; lane++) {
     for (const alignment of alignments) {
       for (const nudge of DETAIL_NUDGES) {
         const rect = tryHybridPlacement(
@@ -599,7 +621,7 @@ function placeOneHybridEvent(
     }
   }
 
-  for (let lane = 0; lane < HYBRID_MAX_LANES; lane++) {
+  for (let lane = minLane; lane < HYBRID_MAX_LANES; lane++) {
     for (const alignment of alignments) {
       for (const nudge of DETAIL_NUDGES) {
         const rect = tryHybridPlacement(
@@ -641,22 +663,27 @@ function applyCachedHybridPlacement(
   width: number,
   height: number,
   placedRects: PlacedRect[],
-): HybridPlacedEvent {
-  const anchorY = laneY(height, profile.lane)
-  const footprint = measureDetailedFootprint(event, width, profile.compact)
-  const bounds = footprintBounds(markerX, anchorY, footprint, profile.alignment, profile.nudge, width)
-  placedRects.push({
-    left: bounds.left,
-    right: bounds.right,
-    top: bounds.top,
-    bottom: bounds.bottom,
+  obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+): HybridPlacedEvent | null {
+  const rect = tryHybridPlacement(
+    event,
     markerX,
-    anchorY,
-  })
+    width,
+    height,
+    placedRects,
+    obstacles,
+    profile.lane,
+    profile.alignment,
+    profile.nudge,
+    profile.compact,
+  )
+  if (!rect) return null
+
+  placedRects.push(rect)
   return {
     event,
     x: markerX,
-    y: anchorY,
+    y: rect.anchorY,
     alignment: profile.alignment,
     nudge: profile.nudge,
     compact: profile.compact,
@@ -685,22 +712,81 @@ export function placeHybridLandmarks(
   const debugRejected: LandmarkDebugSnapshot['rejected'] = []
   const debugReplacements: LandmarkDebugSnapshot['replacements'] = []
 
-  for (const event of candidates) {
-    const markerX = yearX(event.year, start, span, width)
+  const markerEntries = candidates.map((event) => ({
+    event,
+    markerX: yearX(event.year, start, span, width),
+    labelWidth: measureDetailedFootprint(event, width, false).width,
+  }))
+
+  const groups = groupByLabelProximity(
+    markerEntries.map((entry) => ({
+      item: entry,
+      markerX: entry.markerX,
+      labelWidth: entry.labelWidth,
+    })),
+    HYBRID_H_GAP,
+  )
+
+  const placementPlan: Array<{
+    event: FamilyEvent
+    markerX: number
+    minLane: number
+    forceAlignment?: LabelAlignment
+  }> = []
+
+  for (const group of groups) {
+    const ordered = [...group]
+      .map((entry) => entry.item)
+      .sort(
+        (a, b) =>
+          _scoreOf(b.event) - _scoreOf(a.event) ||
+          a.event.year - b.event.year ||
+          a.event.person.name.localeCompare(b.event.person.name),
+      )
+
+    ordered.forEach((entry, groupIndex) => {
+      placementPlan.push({
+        event: entry.event,
+        markerX: entry.markerX,
+        minLane: minLaneForGroupIndex(groupIndex, HYBRID_MAX_LANES),
+        forceAlignment: ordered.length > 1 ? staggerAlignmentForIndex(groupIndex) : undefined,
+      })
+    })
+  }
+
+  for (const plan of placementPlan) {
+    const { event, markerX, minLane, forceAlignment } = plan
     const failedZone = zoneForYear(event.year, start, end)
     const eventId = canonicalEventId(event)
     const cached = getStableLandmarkPlacement(stabilityKey, eventId)
 
     if (cached) {
-      placed.push(applyCachedHybridPlacement(event, cached, markerX, width, height, placedRects))
-      placedIds.add(eventId)
-      continue
+      const cachedResult = applyCachedHybridPlacement(
+        event,
+        cached,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+      )
+      if (cachedResult) {
+        placed.push(cachedResult)
+        placedIds.add(eventId)
+        continue
+      }
     }
 
-    let result = placeOneHybridEvent(event, markerX, width, height, placedRects, obstacles)
-    if (!result) {
-      result = placeOneHybridEvent(event, markerX, width, height, placedRects, null)
-    }
+    let result = placeOneHybridEvent(
+      event,
+      markerX,
+      width,
+      height,
+      placedRects,
+      obstacles,
+      minLane,
+      forceAlignment,
+    )
     if (result) {
       rememberStableLandmarkPlacement(stabilityKey, eventId, {
         lane: result.lane,
@@ -734,7 +820,7 @@ export function placeHybridLandmarks(
     for (const event of ranked) {
       if (placed.length >= minimum) break
       const markerX = yearX(event.year, start, span, width)
-      const result = placeOneHybridEvent(event, markerX, width, height, placedRects, null)
+      const result = placeOneHybridEvent(event, markerX, width, height, placedRects, obstacles)
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
         lane: result.lane,
@@ -848,6 +934,63 @@ export function estimateCalloutObstacle(
       bottom: connectorBottom,
     },
     brace: braceBand,
+  }
+}
+
+const PLAQUE_EVENT_CLEARANCE_PX = 24
+
+/** Merge estimated callout geometry with a measured plaque anchor from the DOM. */
+export function resolveCalloutObstacle(
+  chapters: StoryChapter[],
+  start: number,
+  span: number,
+  width: number,
+  axisY = 0,
+  zoomMode: SemanticZoomMode = 'medium',
+  viewportHeight = 720,
+  measuredPlaque?: MeasuredPlaqueAnchor | null,
+): CalloutObstacles | null {
+  const estimated = estimateCalloutObstacle(chapters, start, span, width, axisY, zoomMode, viewportHeight)
+  if (!measuredPlaque) return estimated
+
+  const gap = PLAQUE_EVENT_CLEARANCE_PX
+  const measuredHalfW = measuredPlaque.width / 2 + 28
+  const measuredBottom = measuredPlaque.bottomY + gap
+
+  if (!estimated) {
+    return {
+      frame: {
+        left: measuredPlaque.centerX - measuredHalfW,
+        right: measuredPlaque.centerX + measuredHalfW,
+        top: 0,
+        bottom: measuredBottom,
+      },
+      connector: {
+        left: measuredPlaque.centerX - 16,
+        right: measuredPlaque.centerX + 16,
+        top: measuredPlaque.bottomY,
+        bottom: measuredPlaque.bottomY + 140,
+      },
+      brace: null,
+    }
+  }
+
+  const frameHalfW = Math.max(measuredHalfW, (estimated.frame.right - estimated.frame.left) / 2)
+
+  return {
+    ...estimated,
+    frame: {
+      left: measuredPlaque.centerX - frameHalfW,
+      right: measuredPlaque.centerX + frameHalfW,
+      top: Math.min(estimated.frame.top, 0),
+      bottom: Math.max(estimated.frame.bottom, measuredBottom),
+    },
+    connector: {
+      ...estimated.connector,
+      left: Math.min(estimated.connector.left, measuredPlaque.centerX - 16),
+      right: Math.max(estimated.connector.right, measuredPlaque.centerX + 16),
+      top: Math.min(estimated.connector.top, measuredPlaque.bottomY),
+    },
   }
 }
 

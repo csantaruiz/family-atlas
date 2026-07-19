@@ -1,11 +1,16 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTimeline } from '../context/TimelineContext'
 import {
+  DEFAULT_TIMELINE_FILTERS,
   TIMELINE_FILTER_GROUPS,
   TIMELINE_FILTER_LABELS,
   type TimelineFilterKey,
 } from '../types/timelineFilters'
+
+const ALL_FILTER_KEYS = Object.keys(DEFAULT_TIMELINE_FILTERS) as TimelineFilterKey[]
+
+const panelEase = [0.22, 0.8, 0.2, 1] as const
 
 function FilterIcon() {
   return (
@@ -56,9 +61,16 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
   const panelMotion = prefersReducedMotion
     ? { initial: { opacity: 1 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
     : {
-        initial: { opacity: 0, y: 8, scale: 0.96 },
+        initial: { opacity: 0, y: 14, scale: 0.94 },
         animate: { opacity: 1, y: 0, scale: 1 },
-        exit: { opacity: 0, y: 6, scale: 0.97 },
+        exit: { opacity: 0, y: 10, scale: 0.96 },
+      }
+
+  const panelTransition = prefersReducedMotion
+    ? { duration: 0.01 }
+    : {
+        duration: 0.34,
+        ease: panelEase,
       }
 
   return (
@@ -82,7 +94,8 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
             aria-label="Timeline filters"
             className="timeline-filters-panel"
             {...panelMotion}
-            transition={{ duration: 0.22, ease: [0.22, 0.8, 0.2, 1] }}
+            transition={panelTransition}
+            style={{ transformOrigin: 'bottom center' }}
           >
             <TimelineFiltersPanel onClose={onClose} />
           </motion.div>
@@ -93,10 +106,27 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
 }
 
 function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
-  const { timelineFilters, setTimelineFilter } = useTimeline()
+  const { timelineFilters, setTimelineFilter, setTimelineFilters } = useTimeline()
+  const masterCheckboxRef = useRef<HTMLInputElement>(null)
+
+  const allSelected = useMemo(
+    () => ALL_FILTER_KEYS.every((key) => timelineFilters[key]),
+    [timelineFilters],
+  )
+
+  useEffect(() => {
+    const master = masterCheckboxRef.current
+    if (!master) return
+    master.indeterminate = !allSelected && ALL_FILTER_KEYS.some((key) => timelineFilters[key])
+  }, [timelineFilters, allSelected])
 
   const handleChange = (key: TimelineFilterKey, checked: boolean) => {
     setTimelineFilter(key, checked)
+  }
+
+  const handleToggleAll = () => {
+    const nextValue = !allSelected
+    setTimelineFilters(Object.fromEntries(ALL_FILTER_KEYS.map((key) => [key, nextValue])))
   }
 
   return (
@@ -107,6 +137,19 @@ function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
           ×
         </button>
       </header>
+
+      <div className="timeline-filters-toggle-all">
+        <label className="timeline-filter-option timeline-filter-option--master">
+          <input
+            ref={masterCheckboxRef}
+            type="checkbox"
+            checked={allSelected}
+            onChange={handleToggleAll}
+          />
+          <span className="timeline-filter-check" aria-hidden="true" />
+          <span>{allSelected ? 'Deselect all' : 'Select all'}</span>
+        </label>
+      </div>
 
       {TIMELINE_FILTER_GROUPS.map((group) => (
         <section key={group.title} className="timeline-filters-group">

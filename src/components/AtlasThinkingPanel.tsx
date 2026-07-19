@@ -57,6 +57,7 @@ export function AtlasThinkingPanel() {
 
   return (
     <aside className="atlas-thinking" aria-label="Atlas thinking" aria-live="polite">
+      <div className="editorial-cloud-vapor editorial-cloud-vapor--cool" aria-hidden="true" />
       <div className="atlas-thinking-panel">
         <div className="atlas-thinking-header">
           <p className="atlas-thinking-kicker">Atlas Thinking</p>

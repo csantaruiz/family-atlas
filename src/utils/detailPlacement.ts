@@ -10,7 +10,14 @@ import {
   type LabelAlignment,
   type MeasuredFootprint,
 } from './labelMeasure'
+import {
+  allowedLanes,
+  groupByLabelProximity,
+  minLaneForGroupIndex,
+  staggerAlignmentForIndex,
+} from './labelStagger'
 import { movementSummary } from './placeUtils'
+import type { CalloutObstacles, CollisionObstacle } from './landmarkSelection'
 import { MIN_VIEWPORT_EVENTS } from './semanticZoom'
 import { yearX } from './timelineMath'
 
@@ -92,12 +99,8 @@ function preferredLane(score: number): number {
   return 3
 }
 
-function laneOrder(preferred: number): number[] {
-  const order = [preferred]
-  for (let i = 0; i < DETAIL_MAX_LANES; i++) {
-    if (!order.includes(i)) order.push(i)
-  }
-  return order
+function laneOrder(preferred: number, minLane = 0): number[] {
+  return allowedLanes(preferred, minLane, DETAIL_MAX_LANES)
 }
 
 function edgeAlignment(markerX: number, viewportWidth: number): LabelAlignment | null {
@@ -133,6 +136,25 @@ function alignmentOrder(markerX: number, placed: PlacedRect[], viewportWidth: nu
   return [...new Set(order)]
 }
 
+function collidesWithCalloutObstacle(
+  bounds: { left: number; right: number; top: number; bottom: number },
+  markerX: number,
+  obstacles?: CalloutObstacles | CollisionObstacle | null,
+): boolean {
+  if (!obstacles) return false
+
+  if ('frame' in obstacles) {
+    if (rectsCollide(bounds, obstacles.frame)) return true
+    const connectorCenter = (obstacles.connector.left + obstacles.connector.right) / 2
+    const nearStem = Math.abs(markerX - connectorCenter) < 48
+    if (nearStem && rectsCollide(bounds, obstacles.connector)) return true
+    if (obstacles.brace && rectsCollide(bounds, obstacles.brace)) return true
+    return false
+  }
+
+  return rectsCollide(bounds, obstacles)
+}
+
 function tryPlacement(
   markerX: number,
   event: FamilyEvent,
@@ -143,6 +165,7 @@ function tryPlacement(
   alignment: LabelAlignment,
   nudge: number,
   compact: boolean,
+  obstacles?: CalloutObstacles | CollisionObstacle | null,
 ): PlacementCandidate | null {
   const anchorY = laneY(height, lane)
   const footprint = measureDetailedFootprint(event, viewportWidth, compact)
@@ -158,6 +181,7 @@ function tryPlacement(
     alignment,
   }
 
+  if (collidesWithCalloutObstacle(boundsRect, markerX, obstacles)) return null
   if (placementCollides(markerX, anchorY, boundsRect, placed, footprint)) return null
   return { lane, alignment, nudge, compact, footprint, bounds }
 }
@@ -169,10 +193,11 @@ function findDetailPlacement(
   height: number,
   placed: PlacedRect[],
   score: number,
-  forceLane?: number,
+  minLane = 0,
   forceAlignment?: LabelAlignment,
+  obstacles?: CalloutObstacles | CollisionObstacle | null,
 ): PlacementCandidate | null {
-  const lanes = forceLane != null ? [forceLane, ...laneOrder(preferredLane(score)).filter((l) => l !== forceLane)] : laneOrder(preferredLane(score))
+  const lanes = laneOrder(preferredLane(score), minLane)
   const alignments =
     forceAlignment != null
       ? [forceAlignment, ...alignmentOrder(markerX, placed, viewportWidth).filter((a) => a !== forceAlignment)]
@@ -181,7 +206,18 @@ function findDetailPlacement(
   for (const lane of lanes) {
     for (const alignment of alignments) {
       for (const nudge of DETAIL_NUDGES) {
-        const attempt = tryPlacement(markerX, event, viewportWidth, height, placed, lane, alignment, nudge, false)
+        const attempt = tryPlacement(
+          markerX,
+          event,
+          viewportWidth,
+          height,
+          placed,
+          lane,
+          alignment,
+          nudge,
+          false,
+          obstacles,
+        )
         if (attempt) return attempt
       }
     }
@@ -190,7 +226,18 @@ function findDetailPlacement(
   for (const lane of lanes) {
     for (const alignment of alignments) {
       for (const nudge of DETAIL_NUDGES) {
-        const attempt = tryPlacement(markerX, event, viewportWidth, height, placed, lane, alignment, nudge, true)
+        const attempt = tryPlacement(
+          markerX,
+          event,
+          viewportWidth,
+          height,
+          placed,
+          lane,
+          alignment,
+          nudge,
+          true,
+          obstacles,
+        )
         if (attempt) return attempt
       }
     }
@@ -206,25 +253,33 @@ function forceCompactPlacement(
   height: number,
   placed: PlacedRect[],
   score: number,
+  minLane = 0,
+  obstacles?: CalloutObstacles | CollisionObstacle | null,
 ): PlacementCandidate | null {
-  const lanes = laneOrder(preferredLane(score))
+  const lanes = laneOrder(preferredLane(score), minLane)
   const alignments: LabelAlignment[] = ['left', 'right', 'center']
 
   for (const lane of lanes) {
     for (const alignment of alignments) {
       for (const nudge of DETAIL_NUDGES) {
-        const attempt = tryPlacement(markerX, event, viewportWidth, height, placed, lane, alignment, nudge, true)
+        const attempt = tryPlacement(
+          markerX,
+          event,
+          viewportWidth,
+          height,
+          placed,
+          lane,
+          alignment,
+          nudge,
+          true,
+          obstacles,
+        )
         if (attempt) return attempt
       }
     }
   }
 
-  const lane = DETAIL_MAX_LANES - 1
-  const anchorY = laneY(height, lane)
-  const footprint = measureDetailedFootprint(event, viewportWidth, true)
-  const alignment = edgeAlignment(markerX, viewportWidth) ?? 'center'
-  const bounds = footprintBounds(markerX, anchorY, footprint, alignment, 0, viewportWidth)
-  return { lane, alignment, nudge: 0, compact: true, footprint, bounds }
+  return null
 }
 
 function sortDetailEvents(
@@ -248,6 +303,7 @@ export function placeDetailEvents(
   width: number,
   height: number,
   scoreOf: (event: FamilyEvent) => number,
+  obstacles?: CalloutObstacles | CollisionObstacle | null,
 ): { placed: DetailPlacedEvent[]; unplaced: FamilyEvent[] } {
   const sorted = sortDetailEvents(candidates, scoreOf).map((item) => ({
     ...item,
@@ -257,21 +313,34 @@ export function placeDetailEvents(
   const placed: DetailPlacedEvent[] = []
   const unplaced: FamilyEvent[] = []
 
-  const markerPositions = sorted
-  let i = 0
-  while (i < markerPositions.length) {
-    const current = markerPositions[i]
-    const group = [current]
-    let j = i + 1
-    while (j < markerPositions.length && Math.abs(markerPositions[j].markerX - current.markerX) < NEAR_DATE_PX) {
-      group.push(markerPositions[j])
-      j++
-    }
+  const markerPositions = sorted.map((item) => ({
+    ...item,
+    labelWidth: measureDetailedFootprint(item.event, width, false).width,
+  }))
 
-    group.forEach((item, groupIndex) => {
-      const forceLane = Math.min(DETAIL_MAX_LANES - 1, groupIndex % DETAIL_MAX_LANES)
-      const forceAlignment: LabelAlignment =
-        groupIndex % 2 === 0 ? 'left' : groupIndex % 3 === 1 ? 'right' : opposingAlignment(item.markerX, placedRects, width)
+  const groups = groupByLabelProximity(
+    markerPositions.map((item) => ({
+      item,
+      markerX: item.markerX,
+      labelWidth: item.labelWidth,
+    })),
+    DETAIL_H_GAP,
+  )
+
+  for (const group of groups) {
+    const orderedGroup = [...group]
+      .map((entry) => entry.item)
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          a.event.year - b.event.year ||
+          a.event.person.name.localeCompare(b.event.person.name),
+      )
+
+    orderedGroup.forEach((item, groupIndex) => {
+      const minLane = minLaneForGroupIndex(groupIndex, DETAIL_MAX_LANES)
+      const forceAlignment =
+        orderedGroup.length > 1 ? staggerAlignmentForIndex(groupIndex) : undefined
 
       let result = findDetailPlacement(
         item.event,
@@ -280,12 +349,22 @@ export function placeDetailEvents(
         height,
         placedRects,
         item.score,
-        group.length > 1 ? forceLane : undefined,
-        group.length > 1 ? forceAlignment : undefined,
+        minLane,
+        forceAlignment,
+        obstacles,
       )
 
       if (!result) {
-        result = forceCompactPlacement(item.event, item.markerX, width, height, placedRects, item.score)
+        result = forceCompactPlacement(
+          item.event,
+          item.markerX,
+          width,
+          height,
+          placedRects,
+          item.score,
+          minLane,
+          obstacles,
+        )
       }
 
       if (!result) {
@@ -321,8 +400,6 @@ export function placeDetailEvents(
         lane: result.lane,
       })
     })
-
-    i = j
   }
 
   const minimum = Math.min(candidates.length, MIN_VIEWPORT_EVENTS)

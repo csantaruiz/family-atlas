@@ -1,4 +1,5 @@
 import type { FamilyEvent } from '../types'
+import type { MeasuredPlaqueAnchor } from './chapterCalloutLayout'
 import { movementSummary } from './placeUtils'
 
 export type LabelAlignment = 'center' | 'left' | 'right'
@@ -272,4 +273,30 @@ export function stemIntersectsBox(
   const stemBottom = anchorY + stemHeight + 8
   if (stemBottom < box.top || stemTop > box.bottom) return false
   return markerX >= box.left - 3 && markerX <= box.right + 3
+}
+
+export const PLAQUE_LABEL_CLEARANCE_PX = 22
+
+/** Push an event anchor downward so its label clears a measured chapter plaque. */
+export function clampAnchorBelowPlaque(
+  event: FamilyEvent,
+  markerX: number,
+  anchorY: number,
+  viewportWidth: number,
+  plaque: MeasuredPlaqueAnchor,
+  alignment: LabelAlignment = 'center',
+  nudge = 0,
+  compact = false,
+): number {
+  const horizontalPad = plaque.width / 2 + 52
+  if (markerX < plaque.centerX - horizontalPad || markerX > plaque.centerX + horizontalPad) {
+    return anchorY
+  }
+
+  const footprint = measureDetailedFootprint(event, viewportWidth, compact)
+  const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, viewportWidth)
+  const minTop = plaque.bottomY + PLAQUE_LABEL_CLEARANCE_PX
+  if (bounds.top >= minTop) return anchorY
+
+  return anchorY + (minTop - bounds.top)
 }

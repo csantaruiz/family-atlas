@@ -2,11 +2,20 @@ import type { MapSubregion } from '../../utils/mapSubregions'
 import type { FamilyRegion } from '../../utils/mapRegions'
 import type { PlaceRecord } from '../../utils/placeIndex'
 import { getMapClusterPresentation } from '../../utils/mapClusterTitles'
+import { generateMapClusterSynopsis } from '../../utils/mapClusterSynopsis'
+import { generateMigrationRouteSynopsis, generateMigrationRouteTitle } from '../../utils/mapRoutes'
 import { useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
+import { MapUnresolvedDisclosure } from './MapUnresolvedDisclosure'
 
-export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[] }) {
+export function MapDetailPanel({
+  subregions = [],
+  unresolved = [],
+}: {
+  subregions?: MapSubregion[]
+  unresolved?: PlaceRecord[]
+}) {
   const { selection, level, clearSelection } = useMapExploration()
   const { openPerson, openFamilyEvent } = useTimeline()
   const { viewOnTimeline } = useAppNavigation()
@@ -34,20 +43,20 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
       handleClose()
     }
 
+    const routeSynopsis = generateMigrationRouteSynopsis(route)
+
     return (
       <aside className="place-detail-panel open map-detail-panel">
         <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
           ×
         </button>
-        <div className="eyebrow">Migration corridor</div>
-        <h3>
+        <div className="eyebrow map-inspector-kicker">Migration corridor</div>
+        <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
+        <p className="map-inspector-lede place-region">
           {route.fromName} → {route.toName}
-        </h3>
-        <p className="place-region">
-          {route.moveCount} documented migration{route.moveCount === 1 ? '' : 's'}
-          {route.confidence === 'documented' ? ' · verified moves' : ' · inferred routes'}
         </p>
-        <div className="place-detail-stats">
+        <p className="map-inspector-synopsis">{routeSynopsis}</p>
+        <div className="place-detail-stats map-inspector-meta">
           <div>
             <label>Year range</label>
             <span>{yearLabel}</span>
@@ -65,7 +74,7 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
             <span>{route.confidence}</span>
           </div>
         </div>
-        <div className="place-detail-section">
+        <div className="place-detail-section map-inspector-section">
           <div className="eyebrow">Travelers on this corridor</div>
           <ul className="place-detail-list">
             {route.people.slice(0, 12).map((p) => (
@@ -77,11 +86,35 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
             ))}
           </ul>
         </div>
-        <div className="place-detail-actions">
+        {route.segments.length > 0 && (
+          <div className="place-detail-section map-inspector-section map-inspector-secondary">
+            <div className="eyebrow">Documented moves</div>
+            <ul className="place-detail-list map-route-segment-list">
+              {[...route.segments]
+                .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
+                .slice(0, 16)
+                .map((segment) => (
+                  <li key={segment.id}>
+                    <button type="button" onClick={() => openPerson(segment.personId)}>
+                      <strong>{segment.year ?? '—'}</strong>
+                      <span>
+                        {segment.personName} · {segment.from.split(',')[0]} → {segment.to.split(',')[0]}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              {route.segments.length > 16 && (
+                <li className="muted">+{route.segments.length - 16} more moves on this corridor</li>
+              )}
+            </ul>
+          </div>
+        )}
+        <div className="place-detail-actions map-inspector-actions">
           <button type="button" className="pill" onClick={handleViewTimeline}>
             View on timeline
           </button>
         </div>
+        <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
   }
@@ -95,15 +128,25 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
           : `${sub.yearMin}–${sub.yearMax}`
         : 'Year range uncertain'
 
+    const subSynopsis = generateMapClusterSynopsis({
+      places: sub.places,
+      depth: 'subregion',
+      yearMin: sub.yearMin,
+      yearMax: sub.yearMax,
+      regionId: sub.parentRegionId,
+      subregionKey: sub.geoKey,
+    })
+
     return (
       <aside className="place-detail-panel open map-detail-panel">
         <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
           ×
         </button>
-        <div className="eyebrow">Regional chapter</div>
-        <h3>{sub.chapterTitle}</h3>
-        <p className="place-region">{sub.name}</p>
-        <div className="place-detail-stats">
+        <div className="eyebrow map-inspector-kicker">Regional chapter</div>
+        <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
+        <p className="map-inspector-lede place-region">{sub.name}</p>
+        <p className="map-inspector-synopsis">{subSynopsis}</p>
+        <div className="place-detail-stats map-inspector-meta">
           <div>
             <label>Year range</label>
             <span>{yearLabel}</span>
@@ -117,7 +160,7 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
             <span>{sub.peopleCount}</span>
           </div>
         </div>
-        <div className="place-detail-section">
+        <div className="place-detail-section map-inspector-section">
           <div className="eyebrow">Cities and towns</div>
           <ul className="place-detail-list">
             {sub.places.slice(0, 14).map((pl) => (
@@ -133,6 +176,7 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
             )}
           </ul>
         </div>
+        <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
   }
@@ -180,19 +224,30 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
   const panelEyebrow =
     selection.type === 'region'
       ? level === 'family'
-        ? 'Family region'
+        ? 'Family chapter'
         : 'Regional summary'
       : level === 'record'
         ? 'Individual records'
         : 'Place record'
+
+  const regionSynopsis =
+    selection.type === 'region'
+      ? generateMapClusterSynopsis({
+          places: selection.region.places,
+          depth: 'region',
+          yearMin: selection.region.yearMin,
+          yearMax: selection.region.yearMax,
+          regionId: selection.region.id,
+        })
+      : null
 
   return (
     <aside className="place-detail-panel open map-detail-panel">
       <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
         ×
       </button>
-      <div className="eyebrow">{panelEyebrow}</div>
-      <h3>
+      <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
+      <h3 className="map-inspector-title">
         {selection.type === 'region'
           ? selection.region.chapterTitle
           : selection.type === 'place'
@@ -200,7 +255,10 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
             : place.name}
       </h3>
       {selection.type === 'region' && (
-        <p className="place-region">{selection.region.name}</p>
+        <p className="map-inspector-lede place-region">{selection.region.name}</p>
+      )}
+      {selection.type === 'region' && regionSynopsis && (
+        <p className="map-inspector-synopsis">{regionSynopsis}</p>
       )}
       {selection.type === 'place' && !place.coordinate.resolved && (
         <p className="place-unresolved">Coordinates not resolved for this place.</p>
@@ -208,7 +266,7 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
       {selection.type === 'place' && place.coordinate.displayRegion && (
         <p className="place-region">{place.coordinate.displayRegion}</p>
       )}
-      <div className="place-detail-stats">
+      <div className="place-detail-stats map-inspector-meta">
         <div>
           <label>Year range</label>
           <span>{yearLabel}</span>
@@ -221,14 +279,16 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
           <label>{selection.type === 'region' ? 'Places' : 'Events'}</label>
           <span>{selection.type === 'region' ? selection.region.placeCount : place.eventCount}</span>
         </div>
-        <div>
-          <label>Branches</label>
-          <span>{place.branches.join(', ') || '—'}</span>
-        </div>
+        {selection.type !== 'region' && (
+          <div>
+            <label>Branches</label>
+            <span>{place.branches.join(', ') || '—'}</span>
+          </div>
+        )}
       </div>
 
       {selection.type === 'region' && level !== 'record' && (
-        <div className="place-detail-section">
+        <div className="place-detail-section map-inspector-section">
           <div className="eyebrow">Regional chapters</div>
           <ul className="place-detail-list">
             {selection.region.places.slice(0, 8).map((pl) => (
@@ -246,8 +306,15 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
         </div>
       )}
 
+      {selection.type === 'region' && selection.region.branches.length > 0 && (
+        <div className="place-detail-section map-inspector-section map-inspector-secondary">
+          <div className="eyebrow">Family branches</div>
+          <p className="map-inspector-detail-text">{selection.region.branches.join(', ')}</p>
+        </div>
+      )}
+
       {(level === 'local' || level === 'place' || level === 'record') && (
-        <div className="place-detail-section">
+        <div className="place-detail-section map-inspector-section">
           <div className="eyebrow">Connected people</div>
           <ul className="place-detail-list">
             {place.people.slice(0, 12).map((p) => (
@@ -264,7 +331,7 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
       )}
 
       {level === 'record' && place.events.length > 0 && (
-        <div className="place-detail-section">
+        <div className="place-detail-section map-inspector-section map-inspector-secondary">
           <div className="eyebrow">Individual events</div>
           <ul className="place-detail-list">
             {place.events.slice(0, 12).map((e, i) => (
@@ -278,11 +345,12 @@ export function MapDetailPanel({ subregions = [] }: { subregions?: MapSubregion[
         </div>
       )}
 
-      <div className="place-detail-actions">
+      <div className="place-detail-actions map-inspector-actions">
         <button type="button" className="pill" onClick={handleViewTimeline}>
           View on timeline
         </button>
       </div>
+      <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
     </aside>
   )
 }

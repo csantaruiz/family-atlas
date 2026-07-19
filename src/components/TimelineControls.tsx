@@ -3,22 +3,12 @@ import { useTimeline } from '../context/TimelineContext'
 import { TimelineFiltersControl } from './TimelineFiltersPanel'
 
 export function TimelineControls() {
-  const { zoomValue, historyEnabled, setHistoryEnabled, setZoom } = useTimeline()
+  const { zoomValue, setZoom } = useTimeline()
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   return (
     <div className="controls">
       <div className="controls-group">
-        <button
-          type="button"
-          id="historyToggle"
-          className={`pill layer-toggle ${historyEnabled ? '' : 'off'}`}
-          aria-pressed={historyEnabled}
-          onClick={() => setHistoryEnabled(!historyEnabled)}
-        >
-          <i aria-hidden="true" />
-          Historical context
-        </button>
         <TimelineFiltersControl
           open={filtersOpen}
           onToggle={() => setFiltersOpen((o) => !o)}

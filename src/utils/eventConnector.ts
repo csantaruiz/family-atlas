@@ -1,47 +1,26 @@
 import type { FamilyEvent } from '../types'
-import type { LabelAlignment } from './labelMeasure'
 
-export function labelWidthForEvent(event: FamilyEvent, compact: boolean): number {
-  if (compact) return 128
-  if (event.kind === 'move' || event.kind === 'service') return 220
-  return 178
-}
+/** Gap between stem end and the timeline axis (matches historical events). */
+export const TIMELINE_STEM_GAP_PX = 12
 
-/** Signed horizontal offset from marker center to the connector elbow (px). */
-export function connectorElbowX(
-  alignment: LabelAlignment,
-  nudge: number,
-  labelWidth: number,
-): number {
-  switch (alignment) {
-    case 'left':
-      return nudge
-    case 'right':
-      return -(nudge + labelWidth)
-    case 'center':
-    default:
-      return nudge
-  }
-}
+export const FAMILY_STEM_MIN_HEIGHT_PX = 18
 
-export function connectorNeedsElbow(elbowX: number): boolean {
-  return Math.abs(elbowX) > 2
+/** Vertical stem length from the event anchor down toward the timeline axis. */
+export function familyEventStemLength(anchorY: number, timelineAxisY: number): number {
+  return Math.max(FAMILY_STEM_MIN_HEIGHT_PX, timelineAxisY - anchorY - TIMELINE_STEM_GAP_PX)
 }
 
 export function connectorStemColor(kind: FamilyEvent['kind']): string {
   switch (kind) {
     case 'birth':
-      return 'rgba(225, 188, 103, 0.36)'
+      return 'rgba(225, 188, 103, 0.46)'
     case 'death':
-      return 'rgba(185, 181, 173, 0.36)'
+      return 'rgba(185, 181, 173, 0.46)'
     case 'move':
-      return 'rgba(197, 139, 120, 0.36)'
+      return 'rgba(197, 139, 120, 0.46)'
     case 'service':
-      return 'rgba(157, 179, 209, 0.36)'
+      return 'rgba(157, 179, 209, 0.46)'
     default:
-      return 'rgba(214, 181, 108, 0.38)'
+      return 'rgba(214, 181, 108, 0.48)'
   }
 }
-
-export const CONNECTOR_V_MARKER = 12
-export const CONNECTOR_V_LABEL = 8

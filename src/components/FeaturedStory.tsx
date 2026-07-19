@@ -98,6 +98,7 @@ export function FeaturedStory() {
         swipeStartX.current = null
       }}
     >
+      <div className="editorial-cloud-vapor editorial-cloud-vapor--warm" aria-hidden="true" />
       <div className="featured-story-panel">
         <div className="featured-story-header">
           <p className="featured-story-kicker">Featured Story</p>

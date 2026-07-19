@@ -22,7 +22,6 @@ export type ChapterPresentation = {
   yearRange: string
   summary: string | null
   hiddenCountLabel: string | null
-  ctaLabel: string
 }
 
 export type ChapterPresentationInput = {
@@ -116,22 +115,6 @@ export function neutralChapterTitle(yearStart: number, yearEnd: number): string 
   return `Family records, ${yearStart}–${yearEnd}`
 }
 
-function ctaForScopeAndZoom(scope: ScopeCategory, zoomMode: SemanticZoomMode): string {
-  if (scope === 'full_timeline' || zoomMode === 'far') {
-    return 'Explore the timeline'
-  }
-
-  if (scope === 'broad_era') {
-    return zoomMode === 'medium' ? 'Explore this era' : 'Reveal key chapters'
-  }
-
-  if (scope === 'local_chapter') {
-    return zoomMode === 'near' ? 'Reveal related lives' : 'Explore this chapter'
-  }
-
-  return zoomMode === 'near' ? 'View more events' : 'Reveal individual records'
-}
-
 /**
  * Detect when hidden-count line duplicates information already in the summary.
  * At far zoom every record is clustered; summary totals match hiddenCount.
@@ -158,6 +141,17 @@ export type CalloutLayoutProfile = {
   showCta: boolean
 }
 
+export const PLAQUE_MAX_WIDTH_PX = 520
+export const PLAQUE_MIN_WIDTH_PX = 320
+export const PLAQUE_WIDTH_VIEWPORT_RATIO = 0.58
+
+export function getPlaqueWidthPx(viewportWidth: number): number {
+  return Math.min(
+    PLAQUE_MAX_WIDTH_PX,
+    Math.max(PLAQUE_MIN_WIDTH_PX, viewportWidth * PLAQUE_WIDTH_VIEWPORT_RATIO),
+  )
+}
+
 /** Balance callout size against visible timeline density. */
 export function getCalloutLayoutProfile(input: {
   zoomMode: SemanticZoomMode
@@ -166,6 +160,7 @@ export function getCalloutLayoutProfile(input: {
   viewportWidth: number
 }): CalloutLayoutProfile {
   const { zoomMode, totalVisibleEvents, placedEventCount, viewportWidth } = input
+  const maxWidthPx = getPlaqueWidthPx(viewportWidth)
   const labelDensity: CalloutLayoutTier =
     placedEventCount >= 4 || (placedEventCount >= 2 && totalVisibleEvents >= 8)
       ? 'dense'
@@ -173,35 +168,19 @@ export function getCalloutLayoutProfile(input: {
         ? 'sparse'
         : 'balanced'
 
-  const widthCap = (ratio: number, max: number) =>
-    Math.min(max, Math.max(220, viewportWidth * ratio))
-
-  if (labelDensity === 'dense') {
-    return {
-      tier: 'dense',
-      maxWidthPx: widthCap(0.34, 300),
-      showNarrative: zoomMode === 'far' || zoomMode === 'medium',
-      showMeta: false,
-      showCta: zoomMode !== 'detail',
-    }
-  }
-
-  if (labelDensity === 'sparse') {
-    return {
-      tier: 'sparse',
-      maxWidthPx: widthCap(0.4, 360),
-      showNarrative: zoomMode !== 'detail',
-      showMeta: placedEventCount < totalVisibleEvents && zoomMode !== 'far',
-      showCta: zoomMode !== 'detail',
-    }
-  }
+  const showNarrative = zoomMode !== 'detail'
+  const showCta = zoomMode !== 'detail'
+  const showMeta =
+    showNarrative &&
+    placedEventCount < totalVisibleEvents &&
+    zoomMode !== 'far'
 
   return {
-    tier: 'balanced',
-    maxWidthPx: widthCap(0.37, 330),
-    showNarrative: zoomMode === 'far' || zoomMode === 'medium',
-    showMeta: placedEventCount < totalVisibleEvents,
-    showCta: zoomMode !== 'detail',
+    tier: labelDensity,
+    maxWidthPx,
+    showNarrative,
+    showMeta,
+    showCta,
   }
 }
 
@@ -214,12 +193,9 @@ export function getChapterPresentation(input: ChapterPresentationInput): Chapter
     summary,
     hiddenCount,
     totalCount,
-    totalTimelineStart,
-    totalTimelineEnd,
     zoomMode,
   } = input
 
-  const scope = chapterScope(yearStart, yearEnd, totalTimelineStart, totalTimelineEnd)
   const yearRange = yearStart === yearEnd ? String(yearStart) : `${yearStart}–${yearEnd}`
 
   const narrative = subtitle?.trim() || null
@@ -248,6 +224,5 @@ export function getChapterPresentation(input: ChapterPresentationInput): Chapter
     yearRange,
     summary: displaySummary,
     hiddenCountLabel,
-    ctaLabel: ctaForScopeAndZoom(scope, zoomMode),
   }
 }

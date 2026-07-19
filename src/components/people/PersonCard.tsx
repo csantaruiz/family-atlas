@@ -13,9 +13,16 @@ type PersonCardProps = {
   events: FamilyEvent[]
   onSelect: (id: string) => void
   onViewTimeline: (id: string) => void
+  onViewTree: (id: string) => void
 }
 
-export function PersonCard({ person, events, onSelect, onViewTimeline }: PersonCardProps) {
+export function PersonCard({
+  person,
+  events,
+  onSelect,
+  onViewTimeline,
+  onViewTree,
+}: PersonCardProps) {
   const life =
     person.birthYear != null
       ? `${person.birthDate || person.birthYear}${person.deathYear ? ` — ${person.deathDate || person.deathYear}` : ''}`
@@ -26,14 +33,17 @@ export function PersonCard({ person, events, onSelect, onViewTimeline }: PersonC
   const span = lifespanYears(person)
 
   return (
-    <article className="person-card">
-      <button type="button" className="card person-card-main" onClick={() => onSelect(person.id)}>
-        <div className="person-card-portrait portrait" aria-hidden="true">
+    <article className="person-card card">
+      <button type="button" className="person-card-main" onClick={() => onSelect(person.id)}>
+        <div className="person-card-portrait" aria-hidden="true">
           {initials(person.name)}
         </div>
         <div className="year">{person.birthYear ?? 'DATE UNKNOWN'}</div>
         <h3>{person.name}</h3>
-        <p className="person-card-life">{life}{span != null ? ` · ${span} years` : ''}</p>
+        <p className="person-card-life">
+          {life}
+          {span != null ? ` · ${span} years` : ''}
+        </p>
         {locations.length > 0 && (
           <p className="person-card-place">{locations.slice(0, 2).join(' · ')}</p>
         )}
@@ -44,16 +54,28 @@ export function PersonCard({ person, events, onSelect, onViewTimeline }: PersonC
         </div>
         <p className="person-card-summary">{eventSummaryForPerson(person, events)}</p>
       </button>
-      <button
-        type="button"
-        className="person-card-timeline pill"
-        onClick={(e) => {
-          e.stopPropagation()
-          onViewTimeline(person.id)
-        }}
-      >
-        View on timeline
-      </button>
+      <div className="person-card-actions">
+        <button
+          type="button"
+          className="person-card-action pill"
+          onClick={(e) => {
+            e.stopPropagation()
+            onViewTimeline(person.id)
+          }}
+        >
+          View on timeline
+        </button>
+        <button
+          type="button"
+          className="person-card-action pill"
+          onClick={(e) => {
+            e.stopPropagation()
+            onViewTree(person.id)
+          }}
+        >
+          View in tree
+        </button>
+      </div>
     </article>
   )
 }

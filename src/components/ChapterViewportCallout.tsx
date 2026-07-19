@@ -1,11 +1,12 @@
 import { useId, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   getChapterPresentation,
   type CalloutLayoutProfile,
 } from '../utils/chapterPresentation'
 import {
+  buildCalloutFrameBorderPath,
   buildConnectorSegmentPaths,
   buildEraBraceHalfPaths,
   computeEraBraceGeometry,
@@ -46,6 +47,64 @@ function snapPx(value: number): number {
   return Math.round(value * 2) / 2
 }
 
+type CalloutFrameBorderProps = {
+  frameRef: RefObject<HTMLDivElement | null>
+}
+
+function ChapterCalloutFrameBorder({ frameRef }: CalloutFrameBorderProps) {
+  const [border, setBorder] = useState<{
+    width: number
+    height: number
+    outer: string
+    inner: string
+  } | null>(null)
+
+  useLayoutEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+
+    const measure = () => {
+      const rect = frame.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) {
+        setBorder(null)
+        return
+      }
+
+      const width = snapPx(rect.width)
+      const height = snapPx(rect.height)
+      const bevel = Number.parseFloat(getComputedStyle(frame).getPropertyValue('--bevel')) || 12
+
+      setBorder({
+        width,
+        height,
+        outer: buildCalloutFrameBorderPath(width, height, 0.5, bevel),
+        inner: buildCalloutFrameBorderPath(width, height, 1.5, bevel),
+      })
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [frameRef])
+
+  if (!border) return null
+
+  return (
+    <svg
+      className="chapter-callout-frame-border"
+      aria-hidden="true"
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${border.width} ${border.height}`}
+      preserveAspectRatio="none"
+    >
+      <path className="chapter-callout-frame-border-outer" d={border.outer} vectorEffect="non-scaling-stroke" />
+      <path className="chapter-callout-frame-border-inner" d={border.inner} vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
 type PrimaryConnectorProps = {
   cardBottomY: number
   cluster: PlacedSpanCluster
@@ -61,6 +120,8 @@ function PrimaryChapterConnector({
   zoomMode,
   braceGradId,
 }: PrimaryConnectorProps) {
+  if (!isCalloutCenterDebugEnabled()) return null
+
   const {
     timelineAxisY: axisY,
     chapterCenterX,
@@ -246,10 +307,16 @@ type ChapterViewportCalloutProps = {
   viewportWidth: number
   layout: CalloutLayoutProfile
   verticalLayout: ChapterVerticalLayout
-  onZoom: (cluster: PlacedSpanCluster) => void
+  onZoomIn: (cluster: PlacedSpanCluster) => void
   onZoomOut: (cluster: PlacedSpanCluster) => void
   canZoomIn: boolean
   canZoomOut: boolean
+  isWideTimelineView: boolean
+  onScrollPrev: () => void
+  onScrollNext: () => void
+  canScrollPrev: boolean
+  canScrollNext: boolean
+  showScrollChevrons: boolean
   frameRef?: RefObject<HTMLDivElement | null>
 }
 
@@ -260,10 +327,16 @@ export function ChapterViewportCallout({
   totalTimelineEnd,
   layout,
   verticalLayout,
-  onZoom,
+  onZoomIn,
   onZoomOut,
   canZoomIn,
   canZoomOut,
+  isWideTimelineView,
+  onScrollPrev,
+  onScrollNext,
+  canScrollPrev,
+  canScrollNext,
+  showScrollChevrons,
   frameRef: externalFrameRef,
 }: ChapterViewportCalloutProps) {
   const localFrameRef = useRef<HTMLDivElement>(null)
@@ -271,16 +344,18 @@ export function ChapterViewportCallout({
   const layerRef = useRef<HTMLDivElement>(null)
   const { chapterCenterX } = verticalLayout
 
-  const handleZoomOut = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleScrollPrev = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     e.stopPropagation()
-    if (!canZoomOut) return
-    onZoomOut(cluster)
+    if (!canScrollPrev) return
+    onScrollPrev()
   }
 
-  const handleZoomIn = (e: MouseEvent<HTMLButtonElement>) => {
+  const handleScrollNext = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     e.stopPropagation()
-    if (!canZoomIn) return
-    onZoom(cluster)
+    if (!canScrollNext) return
+    onScrollNext()
   }
 
   const presentation = getChapterPresentation({
@@ -300,18 +375,24 @@ export function ChapterViewportCallout({
     ? `${presentation.title} · ${presentation.yearRange} · ${presentation.hiddenCountLabel}`
     : `${presentation.title} · ${presentation.yearRange}`
 
+  const handleZoomIn = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canZoomIn) return
+    onZoomIn(cluster)
+  }
+
+  const handleZoomOut = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!canZoomOut) return
+    onZoomOut(cluster)
+  }
+
+  const zoomInIconSize = isWideTimelineView ? 24 : 20
+
   const content = (
-    <button
-      type="button"
-      className="chapter-callout"
-      title={accessibleLabel}
-      aria-label={accessibleLabel}
-      onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.stopPropagation()
-        onZoom(cluster)
-      }}
-    >
+    <div className="chapter-callout" aria-label={accessibleLabel}>
       <span className="chapter-callout-title">{presentation.title}</span>
       <span className="chapter-callout-divider" aria-hidden="true">
         <span className="chapter-callout-divider-rule" />
@@ -325,11 +406,64 @@ export function ChapterViewportCallout({
         <span className="chapter-callout-meta">{presentation.hiddenCountLabel}</span>
       ) : null}
       {layout.showCta ? (
-        <span className="chapter-callout-cta">
-          <span className="chapter-callout-cta-text">{presentation.ctaLabel}</span>
-        </span>
+        <div
+          className={`chapter-callout-zoom-actions${isWideTimelineView ? ' chapter-callout-zoom-actions--wide' : ''}${showScrollChevrons ? ' chapter-callout-zoom-actions--scroll-ready' : ''}`}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {showScrollChevrons ? (
+            <button
+              type="button"
+              className="chapter-callout-nav chapter-callout-nav--prev"
+              aria-label="Scroll timeline earlier"
+              title="Scroll earlier"
+              disabled={!canScrollPrev}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={handleScrollPrev}
+            >
+              <ChevronLeft size={22} strokeWidth={2.15} aria-hidden="true" />
+            </button>
+          ) : null}
+          {!isWideTimelineView ? (
+            <button
+              type="button"
+              className="chapter-callout-zoom-btn chapter-callout-zoom-btn--out"
+              aria-label="Zoom out"
+              title="Zoom out"
+              disabled={!canZoomOut}
+              onClick={handleZoomOut}
+            >
+              <ZoomOut size={20} strokeWidth={2} aria-hidden="true" />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={`chapter-callout-zoom-btn chapter-callout-zoom-btn--in${isWideTimelineView ? ' chapter-callout-zoom-btn--wide' : ''}`}
+            aria-label={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
+            title={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
+            disabled={!canZoomIn}
+            onClick={handleZoomIn}
+          >
+            <ZoomIn size={zoomInIconSize} strokeWidth={2} aria-hidden="true" />
+            {isWideTimelineView ? (
+              <span className="chapter-callout-zoom-label">Zoom into timeline</span>
+            ) : null}
+          </button>
+          {showScrollChevrons ? (
+            <button
+              type="button"
+              className="chapter-callout-nav chapter-callout-nav--next"
+              aria-label="Scroll timeline later"
+              title="Scroll later"
+              disabled={!canScrollNext}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={handleScrollNext}
+            >
+              <ChevronRight size={22} strokeWidth={2.15} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
-    </button>
+    </div>
   )
 
   return (
@@ -339,36 +473,21 @@ export function ChapterViewportCallout({
       style={{
         top: verticalLayout.cardTop,
         left: chapterCenterX,
+        width: layout.maxWidthPx,
+        minWidth: layout.maxWidthPx,
         maxWidth: layout.maxWidthPx,
         transform: 'translateX(-50%)',
       }}
     >
       <div className="chapter-callout-halo" aria-hidden="true" />
-      <div ref={frameRef} className="chapter-callout-frame">
+      <div
+        ref={frameRef}
+        className="chapter-callout-frame"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <ChapterCalloutFrameBorder frameRef={frameRef} />
         <div className="chapter-callout-inner" style={{ opacity: cluster.dissolve }}>
-          <button
-            type="button"
-            className="chapter-callout-zoom chapter-callout-zoom--out"
-            aria-label="Zoom out timeline"
-            title="Zoom out"
-            disabled={!canZoomOut}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={handleZoomOut}
-          >
-            <ChevronLeft size={34} strokeWidth={2.15} aria-hidden="true" />
-          </button>
           {content}
-          <button
-            type="button"
-            className="chapter-callout-zoom chapter-callout-zoom--in"
-            aria-label="Zoom in timeline"
-            title="Zoom in"
-            disabled={!canZoomIn}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={handleZoomIn}
-          >
-            <ChevronRight size={34} strokeWidth={2.15} aria-hidden="true" />
-          </button>
         </div>
       </div>
       {isCalloutCenterDebugEnabled() ? (
@@ -464,10 +583,17 @@ export function ChapterCalloutPresence({
   viewportWidth,
   layout,
   motionEnabled,
-  onZoom,
+  onZoomIn,
   onZoomOut,
   canZoomIn,
   canZoomOut,
+  isWideTimelineView,
+  onScrollPrev,
+  onScrollNext,
+  canScrollPrev,
+  canScrollNext,
+  showScrollChevrons,
+  onPlaqueAnchorChange,
 }: {
   primary: PlacedSpanCluster | null
   clusters: PlacedSpanCluster[]
@@ -478,10 +604,17 @@ export function ChapterCalloutPresence({
   viewportWidth: number
   layout: CalloutLayoutProfile
   motionEnabled: boolean
-  onZoom: (cluster: PlacedSpanCluster) => void
+  onZoomIn: (cluster: PlacedSpanCluster) => void
   onZoomOut: (cluster: PlacedSpanCluster) => void
   canZoomIn: boolean
   canZoomOut: boolean
+  isWideTimelineView: boolean
+  onScrollPrev: () => void
+  onScrollNext: () => void
+  canScrollPrev: boolean
+  canScrollNext: boolean
+  showScrollChevrons: boolean
+  onPlaqueAnchorChange?: (anchor: CalloutLayoutAnchor | null) => void
 }) {
   const frameRef = useRef<HTMLDivElement>(null)
   const [cardAnchor, setCardAnchor] = useState<CalloutLayoutAnchor | null>(null)
@@ -492,18 +625,25 @@ export function ChapterCalloutPresence({
     const frame = frameRef.current
     if (!frame || !primary) {
       setCardAnchor(null)
+      onPlaqueAnchorChange?.(null)
       return
     }
 
     const measure = () => {
       const anchor = measureFrameAnchor(frame, verticalLayout.chapterCenterX)
-      if (anchor) setCardAnchor(anchor)
+      if (anchor) {
+        setCardAnchor(anchor)
+        onPlaqueAnchorChange?.(anchor)
+      }
     }
 
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(frame)
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      onPlaqueAnchorChange?.(null)
+    }
   }, [
     primary?.chapterId,
     viewportWidth,
@@ -514,6 +654,7 @@ export function ChapterCalloutPresence({
     layout.maxWidthPx,
     verticalLayout.cardTop,
     verticalLayout.chapterCenterX,
+    onPlaqueAnchorChange,
   ])
 
   if (!primary) return null
@@ -527,9 +668,9 @@ export function ChapterCalloutPresence({
       viewportWidth={viewportWidth}
       layout={layout}
       verticalLayout={verticalLayout}
-      onZoom={(c) => {
+      onZoomIn={(c) => {
         completeIntro()
-        onZoom(c)
+        onZoomIn(c)
       }}
       onZoomOut={(c) => {
         completeIntro()
@@ -537,6 +678,18 @@ export function ChapterCalloutPresence({
       }}
       canZoomIn={canZoomIn}
       canZoomOut={canZoomOut}
+      isWideTimelineView={isWideTimelineView}
+      onScrollPrev={() => {
+        completeIntro()
+        onScrollPrev()
+      }}
+      onScrollNext={() => {
+        completeIntro()
+        onScrollNext()
+      }}
+      canScrollPrev={canScrollPrev}
+      canScrollNext={canScrollNext}
+      showScrollChevrons={showScrollChevrons}
       frameRef={frameRef}
     />
   )

@@ -30,9 +30,9 @@ type TimelineContextValue = {
   center: number
   span: number
   zoomValue: number
-  historyEnabled: boolean
   isDragging: boolean
   isZooming: boolean
+  chapterScrollUnlocked: boolean
   detail: DetailContent
   highlightedStoryPersonId: string | null
   thinkingFocusRange: { start: number; end: number } | null
@@ -43,11 +43,12 @@ type TimelineContextValue = {
   filteredFamilyEvents: FamilyEvent[]
   timelineFilters: TimelineFilters
   generationCount: number
-  setHistoryEnabled: (enabled: boolean) => void
   setTimelineFilter: (key: TimelineFilterKey, enabled: boolean) => void
   setTimelineFilters: (patch: Partial<TimelineFilters>) => void
   setZoom: (value: number, anchorYear?: number) => void
   animateView: (targetCenter: number, targetSpan: number, duration?: number) => void
+  panTimelineBy: (direction: -1 | 1) => void
+  unlockChapterScroll: () => void
   returnToCraig: () => void
   openPerson: (id: string) => void
   openFamilyEvent: (event: FamilyEvent) => void
@@ -112,17 +113,18 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const [center, setCenter] = useState((minYear + maxYear) / 2)
   const [span, setSpan] = useState(fullSpan)
   const [zoomValue, setZoomValue] = useState(() => zoomValueFromSpan(fullSpan, fullSpan))
-  const [historyEnabled, setHistoryEnabled] = useState(true)
   const [detail, setDetail] = useState<DetailContent>(null)
   const [highlightedStoryPersonId, setHighlightedStoryPersonId] = useState<string | null>(null)
   const [thinkingFocusRange, setThinkingFocusRange] = useState<{ start: number; end: number } | null>(null)
   const [mapHighlightYears, setMapHighlightYears] = useState<{ start: number; end: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isZooming, setIsZooming] = useState(false)
+  const [chapterScrollUnlocked, setChapterScrollUnlocked] = useState(false)
 
   const dragXRef = useRef<number | null>(null)
   const dragStartXRef = useRef<number | null>(null)
   const zoomAnimationRef = useRef<number | null>(null)
+  const panAnimationRef = useRef<number | null>(null)
 
   const applyView = useCallback(
     (nextCenter: number, nextSpan: number) => {
@@ -139,7 +141,15 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(zoomAnimationRef.current)
       zoomAnimationRef.current = null
     }
+    if (panAnimationRef.current) {
+      cancelAnimationFrame(panAnimationRef.current)
+      panAnimationRef.current = null
+    }
     setIsZooming(false)
+  }, [])
+
+  const unlockChapterScroll = useCallback(() => {
+    setChapterScrollUnlocked(true)
   }, [])
 
   const animateView = useCallback(
@@ -172,11 +182,44 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     [cancelViewAnimation, center, span, fullSpan, minYear, maxYear, applyView],
   )
 
+  const panTimelineBy = useCallback(
+    (direction: -1 | 1) => {
+      cancelViewAnimation()
+      const fromCenter = center
+      const currentSpan = span
+      const half = currentSpan / 2
+      const panYears = currentSpan * 0.36
+      const targetC = Math.max(
+        minYear + half,
+        Math.min(maxYear - half, fromCenter + direction * panYears),
+      )
+      if (Math.abs(targetC - fromCenter) < 0.5) return
+
+      const duration = 520
+      const startTime = performance.now()
+
+      const frame = (now: number) => {
+        const t = Math.min(1, (now - startTime) / duration)
+        const eased = easeInOutCubic(t)
+        applyView(fromCenter + (targetC - fromCenter) * eased, currentSpan)
+        if (t < 1) {
+          panAnimationRef.current = requestAnimationFrame(frame)
+        } else {
+          panAnimationRef.current = null
+          applyView(targetC, currentSpan)
+        }
+      }
+      panAnimationRef.current = requestAnimationFrame(frame)
+    },
+    [cancelViewAnimation, center, span, minYear, maxYear, applyView],
+  )
+
   const setZoom = useCallback(
     (value: number, anchorYear = center) => {
+      if (value > 0) unlockChapterScroll()
       animateView(anchorYear, spanFromZoomValue(value, fullSpan), 480)
     },
-    [animateView, center, fullSpan],
+    [animateView, center, fullSpan, unlockChapterScroll],
   )
 
   const returnToCraig = useCallback(() => {
@@ -213,15 +256,19 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       const frac = clientX / stageWidth
       const anchor = start + frac * span
       const nextValue = Math.max(0, Math.min(100, zoomValue + (deltaY > 0 ? -7 : 7)))
+      if (nextValue > zoomValue) unlockChapterScroll()
       const targetSpan = spanFromZoomValue(nextValue, fullSpan)
       const targetCenter = anchor + (0.5 - frac) * targetSpan
       animateView(targetCenter, targetSpan, 560)
     },
-    [cancelViewAnimation, center, span, zoomValue, fullSpan, animateView],
+    [cancelViewAnimation, center, span, zoomValue, fullSpan, animateView, unlockChapterScroll],
   )
 
   const handlePointerDown = useCallback((clientX: number, target: EventTarget | null) => {
-    if (target instanceof Element && target.closest('button')) return false
+    if (target instanceof Element) {
+      if (target.closest('button, input, select, textarea, label')) return false
+      if (target.closest('.chapter-callout-frame, .chapter-callout-presence-stack')) return false
+    }
     cancelViewAnimation()
     dragXRef.current = clientX
     dragStartXRef.current = clientX
@@ -254,9 +301,9 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     center,
     span,
     zoomValue,
-    historyEnabled,
     isDragging,
     isZooming,
+    chapterScrollUnlocked,
     detail,
     highlightedStoryPersonId,
     thinkingFocusRange,
@@ -267,11 +314,12 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     filteredFamilyEvents,
     timelineFilters,
     generationCount,
-    setHistoryEnabled,
     setTimelineFilter,
     setTimelineFilters,
     setZoom,
     animateView,
+    panTimelineBy,
+    unlockChapterScroll,
     returnToCraig,
     openPerson,
     openFamilyEvent,

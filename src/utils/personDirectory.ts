@@ -221,6 +221,36 @@ export function computeNotableLives(people: Person[], events: FamilyEvent[]): No
   return notable
 }
 
+/** Plain-language intro for the Notable lives callout on the People page. */
+export function notableLivesIntro(notable: NotableLife[]): string {
+  const reasons: string[] = []
+
+  if (notable.some((entry) => entry.id === 'longest')) {
+    reasons.push('the longest verified lifespan')
+  }
+  if (notable.some((entry) => entry.id === 'earliest')) {
+    reasons.push('the earliest documented birth')
+  }
+  if (notable.some((entry) => entry.id === 'migration')) {
+    reasons.push('the farthest move between recorded places')
+  }
+  if (notable.some((entry) => entry.id.startsWith('service'))) {
+    reasons.push('military or service events preserved in the GEDCOM')
+  }
+  if (notable.some((entry) => entry.id === 'occupation')) {
+    reasons.push('occupations written into the source records')
+  }
+
+  if (!reasons.length) return ''
+
+  const joined =
+    reasons.length === 1
+      ? reasons[0]
+      : `${reasons.slice(0, -1).join(', ')}, and ${reasons[reasons.length - 1]}`
+
+  return `These names are chosen automatically from the archive—not hand-picked. Each card marks one person who holds ${joined}. The label on the card states the distinction; open it to read that life in full.`
+}
+
 export function branchOptions(surnames: [string, number][]): string[] {
   return surnames.map(([s]) => s)
 }

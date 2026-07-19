@@ -4,7 +4,7 @@
 
 /* Smooth zoom transitions V4.2 */
 .stage{--zoom-motion:1}
-.worldline,.year-label,.century,.node,.cluster,.history-event,.density-column,.present-edge{will-change:left,top,transform,opacity}
+.worldline,.year-label,.century,.node,.cluster,.history-event,.density-column{will-change:left,top,transform,opacity}
 .zoom-caption{transition:opacity .18s ease}
 .stage.zooming .zoom-caption{opacity:.62}
 
@@ -23,8 +23,7 @@
 .cluster:hover .cluster-orb{transform:scale(1.12);border-color:var(--ink);box-shadow:0 0 55px rgba(214,181,108,.28)}
 .cluster b{font:15px Georgia;display:block;margin-top:9px}.cluster small{color:var(--muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
 .zoom-caption{position:absolute;left:50%;top:18px;transform:translateX(-50%);z-index:4;color:var(--muted);font-size:10px;letter-spacing:.18em;text-transform:uppercase;pointer-events:none}
-.present-edge{position:absolute;top:12%;bottom:13%;width:1px;background:linear-gradient(transparent,rgba(214,181,108,.8),transparent);pointer-events:none}.present-edge:after{content:'Present';position:absolute;top:-2px;left:10px;color:var(--gold);font:14px Georgia;white-space:nowrap}
-.density{position:absolute;bottom:45%;height:55px;transform:translateX(-50%);border-radius:999px 999px 0 0;background:linear-gradient(to top,rgba(214,181,108,.16),rgba(214,181,108,.015));pointer-events:none}
+.density{position:absolute;bottom:45%;height:55px;transform:translateX(-50%);border-radius:999px 999px 0 0;background:linear-gradient(to top,rgba(102,183,199,.14),rgba(102,183,199,.015));pointer-events:none}
 @media(max-width:760px){.stage{inset:128px 0 0}.node-label{width:145px}.cluster b{font-size:12px}}
 
 /* Interaction and storytelling V3 */

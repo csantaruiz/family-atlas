@@ -5,6 +5,9 @@ import type { SemanticZoomMode } from './semanticZoom'
 /** Shared ratio for the primary timeline axis within the stage. */
 export const TIMELINE_AXIS_RATIO = 0.54
 
+/** Raise chapter plaque slightly above layout-derived anchor. */
+export const CHAPTER_PLAQUE_TOP_OFFSET_PX = 20
+
 /** Minimum top offset to preserve separation from upper story panels. */
 export const STORY_PANEL_SAFE_TOP = 20
 
@@ -175,14 +178,22 @@ export function chapterCenterX(stageWidth: number): number {
   return visibleTimelineViewport(stageWidth).centerX
 }
 
-/** Estimate rendered card frame height from layout profile (content-driven). */
+/** Generous height used only to keep the plaque clear of the timeline axis. */
+export const PLAQUE_LAYOUT_MAX_HEIGHT_PX = 280
+
+/** Estimate rendered card frame height from layout profile (hint fallback only). */
 export function estimateCardFrameHeight(layout: CalloutLayoutProfile): number {
-  let content = 58
-  if (layout.tier === 'sparse') content += 4
-  if (layout.showNarrative) content += 40
-  if (layout.showMeta) content += 20
-  if (layout.showCta) content += 28
-  return content + 26
+  let content = 104
+  if (layout.showNarrative) content += 52
+  if (layout.showMeta) content += 22
+  if (layout.showCta) content += 56
+  return content + 40
+}
+
+export type MeasuredPlaqueAnchor = {
+  centerX: number
+  bottomY: number
+  width: number
 }
 
 export function timelineAxisY(viewportHeight: number): number {
@@ -193,12 +204,11 @@ export function resolveChapterVerticalLayout(
   zoomMode: SemanticZoomMode,
   viewportWidth: number,
   viewportHeight: number,
-  layout: CalloutLayoutProfile,
+  _layout?: CalloutLayoutProfile,
 ): ChapterVerticalLayout {
   const spec = ZOOM_VERTICAL[zoomMode]
   const visibleTimeline = visibleTimelineViewport(viewportWidth)
   const axisY = timelineAxisY(viewportHeight)
-  const cardHeight = estimateCardFrameHeight(layout)
 
   const bracketOffset = snapPx(
     Math.max(
@@ -207,13 +217,9 @@ export function resolveChapterVerticalLayout(
     ),
   )
 
-  const targetGap = scaledValue(spec.cardBottomToAxisMin, spec.cardBottomToAxisTarget, viewportHeight)
-  const topFromGap = axisY - targetGap - cardHeight
-  let cardTop = storyLayerAlignTop(viewportWidth)
-  cardTop = Math.min(cardTop, topFromGap)
-  cardTop = Math.max(cardTop, STORY_PANEL_SAFE_TOP)
-
-  const maxTop = axisY - spec.cardBottomToAxisMin - cardHeight
+  const preferredTop = scaledValue(spec.cardTopFloor, spec.cardTopPreferred, viewportHeight)
+  let cardTop = Math.max(STORY_PANEL_SAFE_TOP, storyLayerAlignTop(viewportWidth), preferredTop)
+  const maxTop = axisY - spec.cardBottomToAxisMin - PLAQUE_LAYOUT_MAX_HEIGHT_PX
   cardTop = Math.min(cardTop, maxTop)
 
   const shortViewport = viewportHeight < 640
@@ -225,7 +231,7 @@ export function resolveChapterVerticalLayout(
     timelineAxisY: axisY,
     chapterCenterX: visibleTimeline.centerX,
     visibleTimeline,
-    cardTop: snapPx(cardTop),
+    cardTop: snapPx(Math.max(STORY_PANEL_SAFE_TOP, cardTop - CHAPTER_PLAQUE_TOP_OFFSET_PX)),
     rangeBracketAxisOffset: resolvedBracketOffset,
     minConnectorHeight: spec.minConnectorHeight,
     maxConnectorHeight: spec.maxConnectorHeight,
@@ -338,6 +344,33 @@ export function buildConnectorSegmentPaths(
     centerX: cx,
     bracketY: by,
   }
+}
+
+export function buildCalloutFrameBorderPath(
+  width: number,
+  height: number,
+  inset = 0,
+  bevel = 12,
+): string {
+  const left = inset
+  const top = inset
+  const right = width - inset
+  const bottom = height - inset
+  const chamfer = Math.max(0, bevel - inset)
+
+  if (right - left <= chamfer * 2 || bottom - top <= chamfer) {
+    return `M ${snapPx(left)} ${snapPx(top)} H ${snapPx(right)} V ${snapPx(bottom)} H ${snapPx(left)} Z`
+  }
+
+  return [
+    `M ${snapPx(left)} ${snapPx(top)}`,
+    `H ${snapPx(right)}`,
+    `V ${snapPx(bottom - chamfer)}`,
+    `L ${snapPx(right - chamfer)} ${snapPx(bottom)}`,
+    `H ${snapPx(left + chamfer)}`,
+    `L ${snapPx(left)} ${snapPx(bottom - chamfer)}`,
+    'Z',
+  ].join(' ')
 }
 
 export function isCalloutCenterDebugEnabled(): boolean {

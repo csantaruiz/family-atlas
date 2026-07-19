@@ -1,18 +1,21 @@
-import { useMemo, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ChapterCalloutPresence,
   ChapterConnectorLayer,
   pickPrimaryCluster,
+  type CalloutLayoutAnchor,
 } from './ChapterViewportCallout'
 import { getCalloutLayoutProfile } from '../utils/chapterPresentation'
-import { resolveChapterVerticalLayout } from '../utils/chapterCalloutLayout'
+import { estimateCardFrameHeight, resolveChapterVerticalLayout, timelineAxisY } from '../utils/chapterCalloutLayout'
 import { familyDatabase } from '../data/familyDatabase'
 import { assignEventsToChapters, buildStoryChaptersForViewport } from '../data/buildStoryChapters'
 import { useTimeline } from '../context/TimelineContext'
+import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
+import { TimelineHint } from './TimelineHint'
 import {
   buildBirthClusters,
   chooseFocus,
@@ -26,18 +29,11 @@ import {
 } from '../utils/clustering'
 import { movementSummary } from '../utils/placeUtils'
 import { eventAccessibleTitle } from '../utils/detailPlacement'
-import { categoryTypeLabel, displayName, measureDetailedFootprint } from '../utils/labelMeasure'
+import { categoryTypeLabel, clampAnchorBelowPlaque, displayName, measureDetailedFootprint, type LabelAlignment } from '../utils/labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents } from '../utils/canonicalEvent'
-import {
-  connectorElbowX,
-  connectorNeedsElbow,
-  connectorStemColor,
-  CONNECTOR_V_LABEL,
-  CONNECTOR_V_MARKER,
-} from '../utils/eventConnector'
-import { yearX, zoomMode } from '../utils/timelineMath'
+import { connectorStemColor, familyEventStemLength } from '../utils/eventConnector'
+import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import type { FamilyEvent } from '../types'
-import type { LabelAlignment } from '../utils/labelMeasure'
 
 type FamilyLayerProps = {
   start: number
@@ -47,6 +43,7 @@ type FamilyLayerProps = {
 }
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
+const detailMotionEase = [0.22, 0.8, 0.2, 1] as const
 
 const SunriseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -65,71 +62,22 @@ const CrossIcon = () => (
   </svg>
 )
 
-const detailMotionEase = [0.22, 0.8, 0.2, 1] as const
-const detailPlacementTransition = { duration: 0.2, ease: detailMotionEase }
-
 function eventIntroOpacity(eventsProgress: number, staggerDelayMs: number): number {
   const threshold = staggerDelayMs / 420
   if (eventsProgress <= threshold) return 0
   return Math.min(1, (eventsProgress - threshold) / 0.32)
 }
 
-function EventConnector({
-  elbowX,
-  kind,
-  animated,
-}: {
-  elbowX: number
-  kind: FamilyEvent['kind']
-  animated: boolean
-}) {
-  const color = connectorStemColor(kind)
-  const needsElbow = connectorNeedsElbow(elbowX)
-
-  if (!needsElbow) {
-    return <span className="event-stem" aria-hidden="true" />
-  }
-
-  const hWidth = Math.abs(elbowX)
-  const hLeft = elbowX < 0 ? elbowX : 0
-  const segmentClass = animated ? 'event-connector-segment placement-animated' : 'event-connector-segment'
-
+function EventStem({ stemLength, kind }: { stemLength: number; kind: FamilyEvent['kind'] }) {
   return (
-    <span className="event-connector" aria-hidden="true">
-      <span
-        className={segmentClass}
-        style={{
-          left: 0,
-          bottom: 0,
-          width: 1,
-          height: CONNECTOR_V_MARKER,
-          backgroundColor: color,
-          transform: 'translateX(-50%)',
-        }}
-      />
-      <span
-        className={segmentClass}
-        style={{
-          left: hLeft,
-          bottom: CONNECTOR_V_MARKER,
-          width: hWidth,
-          height: 1,
-          backgroundColor: color,
-          transform: 'none',
-        }}
-      />
-      <span
-        className={segmentClass}
-        style={{
-          left: elbowX,
-          bottom: CONNECTOR_V_MARKER,
-          width: 1,
-          height: CONNECTOR_V_LABEL,
-          backgroundColor: color,
-          transform: 'translateX(-50%)',
-        }}
-      />
-    </span>
+    <span
+      className="event-stem"
+      aria-hidden="true"
+      style={{
+        height: stemLength,
+        ['--stem-color' as string]: connectorStemColor(kind),
+      }}
+    />
   )
 }
 
@@ -155,6 +103,7 @@ function FamilyEventButton({
   alignment = 'center',
   nudge = 0,
   compact = false,
+  stemLength,
   motionEnabled = false,
 }: {
   event: FamilyEvent
@@ -167,6 +116,7 @@ function FamilyEventButton({
   alignment?: LabelAlignment
   nudge?: number
   compact?: boolean
+  stemLength: number
   motionEnabled?: boolean
 }) {
   let label: React.ReactNode
@@ -191,8 +141,6 @@ function FamilyEventButton({
   }
 
   const labelWidth = measureDetailedFootprint(event, viewportWidth, compact).width
-  const elbowX = connectorElbowX(alignment, nudge, labelWidth)
-  const hasElbow = connectorNeedsElbow(elbowX)
 
   const style = {
     left: Math.round(x),
@@ -206,17 +154,29 @@ function FamilyEventButton({
     event.kind,
     `align-${alignment}`,
     compact ? 'compact' : '',
-    hasElbow ? 'has-elbow' : '',
     motionEnabled ? 'placement-animated' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
+  const { pulse } = useTimelinePulse()
+  const eventKey = canonicalEventId(event)
+  const isAmbientResponse = pulse.familyEventIds.includes(eventKey)
+  const ambientResponseDelay = pulse.familyDelays[eventKey] ?? 0
+
+  const pulseClassName = isAmbientResponse ? ' is-ambient-response' : ''
+  const pulseStyle = isAmbientResponse
+    ? ({
+        ...style,
+        ['--ambient-response-delay' as string]: `${ambientResponseDelay}ms`,
+      } as React.CSSProperties)
+    : style
+
   return (
     <button
       type="button"
-      className={className}
-      style={style}
+      className={className + pulseClassName}
+      style={pulseStyle}
       title={accessibleTitle}
       aria-label={accessibleTitle}
       onPointerDown={(ev) => ev.stopPropagation()}
@@ -238,7 +198,7 @@ function FamilyEventButton({
         {sub ? <small>{sub}</small> : null}
       </span>
       <span className="event-anchor" />
-      <EventConnector elbowX={elbowX} kind={event.kind} animated={motionEnabled} />
+      <EventStem stemLength={stemLength} kind={event.kind} />
     </button>
   )
 }
@@ -246,12 +206,18 @@ function FamilyEventButton({
 export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   const {
     span,
+    minYear,
+    maxYear,
     presentYear,
     fullSpan,
     birthPeople,
     filteredFamilyEvents,
     timelineFilters,
     animateView,
+    panTimelineBy,
+    unlockChapterScroll,
+    chapterScrollUnlocked,
+    zoomValue,
     openPerson,
     openFamilyEvent,
     setThinkingFocusRange,
@@ -321,6 +287,50 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   const rootPersonId = familyDatabase.root
 
+  const [plaqueAnchor, setPlaqueAnchor] = useState<CalloutLayoutAnchor | null>(null)
+  const handlePlaqueAnchorChange = useCallback((anchor: CalloutLayoutAnchor | null) => {
+    setPlaqueAnchor(anchor)
+  }, [])
+
+  const visibleInViewport = useMemo(
+    () => filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end),
+    [filteredFamilyEvents, start, end],
+  )
+
+  const placementCalloutLayout = useMemo(
+    () =>
+      getCalloutLayoutProfile({
+        zoomMode: useBirthClusters ? 'far' : zoomSemantic,
+        totalVisibleEvents: visibleInViewport.length,
+        placedEventCount: visibleInViewport.length,
+        viewportWidth: width,
+      }),
+    [useBirthClusters, zoomSemantic, visibleInViewport.length, width],
+  )
+
+  const placementVerticalLayout = useMemo(
+    () =>
+      resolveChapterVerticalLayout(
+        useBirthClusters ? 'far' : zoomSemantic,
+        width,
+        height,
+        placementCalloutLayout,
+      ),
+    [useBirthClusters, zoomSemantic, width, height, placementCalloutLayout],
+  )
+
+  const estimatedPlaqueAnchor = useMemo((): CalloutLayoutAnchor | null => {
+    if (useBirthClusters || zoomSemantic === 'detail') return null
+    return {
+      centerX: placementVerticalLayout.chapterCenterX,
+      bottomY:
+        placementVerticalLayout.cardTop + estimateCardFrameHeight(placementCalloutLayout) + 16,
+      width: placementCalloutLayout.maxWidthPx,
+    }
+  }, [useBirthClusters, zoomSemantic, placementVerticalLayout, placementCalloutLayout])
+
+  const effectivePlaqueAnchor = plaqueAnchor ?? estimatedPlaqueAnchor
+
   const birthLayout = useMemo(() => {
     if (!useBirthClusters) return null
     const eventsInView = filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end)
@@ -336,8 +346,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       earliestYear,
       rootPersonId,
       presentYear,
+      effectivePlaqueAnchor,
     )
-  }, [useBirthClusters, birthClusters, filteredFamilyEvents, start, end, span, width, height, fullSpan, earliestYear, rootPersonId, presentYear])
+  }, [useBirthClusters, birthClusters, filteredFamilyEvents, start, end, span, width, height, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor])
 
   const familyLayout = useMemo(() => {
     if (useBirthClusters) return null
@@ -354,8 +365,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       earliestYear,
       rootPersonId,
       presentYear,
+      effectivePlaqueAnchor,
     )
-  }, [useBirthClusters, filteredFamilyEvents, start, end, span, width, height, mode, fullSpan, earliestYear, rootPersonId, presentYear])
+  }, [useBirthClusters, filteredFamilyEvents, start, end, span, width, height, mode, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor])
 
   const activeLayout = useBirthClusters ? birthLayout : familyLayout
 
@@ -365,10 +377,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     [activeClusters, start, span],
   )
 
-  const visibleInViewport = useMemo(
-    () => filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end),
-    [filteredFamilyEvents, start, end],
-  )
+  const canScrollTimelinePrev = start > minYear + 1
+  const canScrollTimelineNext = end < maxYear - 1
+  const isWideTimelineView = span >= fullSpan * 0.992 || zoomValue <= 0
+  const showChapterScrollChevrons =
+    chapterScrollUnlocked &&
+    !isWideTimelineView &&
+    (canScrollTimelinePrev || canScrollTimelineNext)
 
   const calloutLayout = useMemo(() => {
     return getCalloutLayoutProfile({
@@ -386,9 +401,14 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       height,
       calloutLayout,
     )
-  }, [useBirthClusters, zoomSemantic, width, height, calloutLayout])
+  }, [useBirthClusters, zoomSemantic, width, height])
 
   const calloutCenterX = chapterVerticalLayout.chapterCenterX
+
+  const plaqueHintTop =
+    effectivePlaqueAnchor != null
+      ? effectivePlaqueAnchor.bottomY + 12
+      : chapterVerticalLayout.cardTop + estimateCardFrameHeight(calloutLayout) + 12
 
   const introEventOrder = useMemo(() => {
     const list = activeLayout?.events ?? []
@@ -409,20 +429,18 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     const orderIndex = introEventOrder.get(eventKey) ?? 0
     const delay = eventIntroDelayMs(x, calloutCenterX, orderIndex)
     const opacity = eventIntroOpacity(introProgress.events, delay)
-    const offsetY = 5 * (1 - opacity)
 
     return (
       <div
-        className="family-event-wrap"
+        className="family-event-anchor"
         style={{
           left: Math.round(x),
           top: Math.round(y),
           opacity,
-          transform: `translateY(${offsetY}px)`,
-          transition: `opacity 0.28s ease-out, transform 0.28s ease-out`,
+          transition: 'opacity 0.28s ease-out',
         }}
       >
-        {content}
+        <div className="family-event-wrap">{content}</div>
       </div>
     )
   }
@@ -456,6 +474,8 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       .slice(0, Math.min(2, peopleBudgetForMode(mode)))
   }, [timelineFilters.births, useBirthClusters, zoomSemantic, activeLayout, occupiedSlots, birthPeople, start, end, span, width, height, mode])
 
+  const { registerFamilyPulseTargets } = useTimelinePulse()
+
   const renderEvents = useMemo(() => {
     const list = activeLayout?.events ?? []
     assertNoDuplicateEvents(
@@ -465,7 +485,60 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     return list
   }, [activeLayout])
 
+  registerFamilyPulseTargets(
+    useMemo(
+      () =>
+        renderEvents.map(({ event, x }) => ({
+          key: canonicalEventId(event),
+          year: event.year,
+          x: Math.round(x),
+        })),
+      [renderEvents],
+    ),
+  )
+
+  const frozenEventYRef = useRef<Map<string, number>>(new Map())
+
+  useLayoutEffect(() => {
+    if (!isZooming) {
+      frozenEventYRef.current.clear()
+    }
+  }, [isZooming])
+
+  const resolveEventY = (eventKey: string, computedY: number) => {
+    if (!isZooming) return computedY
+    const frozen = frozenEventYRef.current
+    const existing = frozen.get(eventKey)
+    if (existing != null) return existing
+    frozen.set(eventKey, computedY)
+    return computedY
+  }
+
+  const clampPlaqueY = (
+    event: FamilyEvent,
+    x: number,
+    y: number,
+    alignment: LabelAlignment = 'center',
+    nudge = 0,
+    compact = false,
+  ) => {
+    if (!effectivePlaqueAnchor) return y
+    return clampAnchorBelowPlaque(
+      event,
+      x,
+      y,
+      width,
+      effectivePlaqueAnchor,
+      alignment,
+      nudge,
+      compact,
+    )
+  }
+
+  const axisY = useMemo(() => timelineAxisY(height), [height])
+
   const zoomToCluster = (from: number, to: number) => {
+    unlockChapterScroll()
     const targetSpan = chapterZoomInSpan(from, to)
     if (targetSpan >= span * 0.98) return
     setThinkingFocusRange({ start: from, end: to })
@@ -473,15 +546,19 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   }
 
   const zoomOutFromCluster = (from: number, to: number) => {
-    const targetSpan = chapterZoomOutSpan()
-    if (targetSpan <= span * 1.02) return
-    setThinkingFocusRange(null)
-    animateView((from + to) / 2, targetSpan, 820)
+    const anchor = (from + to) / 2
+    const nextValue = Math.max(0, zoomValue - 7)
+    animateView(anchor, spanFromZoomValue(nextValue, fullSpan), 560)
   }
 
-  const canChapterZoomIn = (from: number, to: number) => chapterZoomInSpan(from, to) < span * 0.98
+  const canZoomInCluster = (from: number, to: number) => {
+    const targetSpan = chapterZoomInSpan(from, to)
+    return targetSpan < span * 0.98
+  }
 
-  const canChapterZoomOut = () => chapterZoomOutSpan() > span * 1.02
+  const scrollTimelineBy = (direction: -1 | 1) => {
+    panTimelineBy(direction)
+  }
 
   function chapterZoomInSpan(from: number, to: number) {
     if (useBirthClusters) {
@@ -494,18 +571,27 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     return Math.max(6, Math.min(naturalSpan, span * 0.55))
   }
 
-  function chapterZoomOutSpan() {
-    return Math.min(fullSpan, span / 0.55)
-  }
-
   const handleEventOpen = (event: FamilyEvent) => {
     completeIntro()
     if (event.kind === 'move' || event.kind === 'service') openFamilyEvent(event)
     else openPerson(event.person.id)
   }
 
-  const dissolveTransition = motionEnabled
-    ? { duration: isZooming ? 0.55 : 0.45, ease: motionEase }
+  const opacityFadeTransition = motionEnabled
+    ? {
+        opacity: {
+          duration: isZooming ? 0.55 : 0.45,
+          ease: motionEase,
+        },
+        default: { duration: 0 },
+      }
+    : { duration: 0.01 }
+
+  const detailOpacityTransition = motionEnabled
+    ? {
+        opacity: { duration: 0.2, ease: detailMotionEase },
+        default: { duration: 0 },
+      }
     : { duration: 0.01 }
 
   return (
@@ -536,10 +622,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           viewportWidth={width}
           layout={calloutLayout}
           motionEnabled={motionEnabled}
-          onZoom={(c) => zoomToCluster(c.from, c.to)}
+          onZoomIn={(c) => zoomToCluster(c.from, c.to)}
           onZoomOut={(c) => zoomOutFromCluster(c.from, c.to)}
-          canZoomIn={canChapterZoomIn(primaryCluster.from, primaryCluster.to)}
-          canZoomOut={canChapterZoomOut()}
+          canZoomIn={canZoomInCluster(primaryCluster.from, primaryCluster.to)}
+          canZoomOut={!isWideTimelineView}
+          isWideTimelineView={isWideTimelineView}
+          onScrollPrev={() => scrollTimelineBy(-1)}
+          onScrollNext={() => scrollTimelineBy(1)}
+          canScrollPrev={canScrollTimelinePrev}
+          canScrollNext={canScrollTimelineNext}
+          showScrollChevrons={showChapterScrollChevrons}
+          onPlaqueAnchorChange={handlePlaqueAnchorChange}
         />
       )}
 
@@ -554,10 +647,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           viewportWidth={width}
           layout={calloutLayout}
           motionEnabled={motionEnabled}
-          onZoom={(c) => zoomToCluster(c.from, c.to)}
+          onZoomIn={(c) => zoomToCluster(c.from, c.to)}
           onZoomOut={(c) => zoomOutFromCluster(c.from, c.to)}
-          canZoomIn={canChapterZoomIn(primaryCluster.from, primaryCluster.to)}
-          canZoomOut={canChapterZoomOut()}
+          canZoomIn={canZoomInCluster(primaryCluster.from, primaryCluster.to)}
+          canZoomOut={!isWideTimelineView}
+          isWideTimelineView={isWideTimelineView}
+          onScrollPrev={() => scrollTimelineBy(-1)}
+          onScrollNext={() => scrollTimelineBy(1)}
+          canScrollPrev={canScrollTimelinePrev}
+          canScrollNext={canScrollTimelineNext}
+          showScrollChevrons={showChapterScrollChevrons}
+          onPlaqueAnchorChange={handlePlaqueAnchorChange}
         />
       )}
 
@@ -570,11 +670,30 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         />
       )}
 
+      <div
+        className="timeline-plaque-hint"
+        style={{
+          top: plaqueHintTop,
+          left: chapterVerticalLayout.chapterCenterX,
+        }}
+      >
+        <TimelineHint />
+      </div>
+
       <div id="nodes">
         {useBirthClusters && (
-          <AnimatePresence mode="sync">
+          <AnimatePresence mode="sync" initial={false}>
             {birthLayout?.events.map(({ event, x, y, alignment, nudge, compact }) => {
               const eventKey = canonicalEventId(event)
+              const renderY = clampPlaqueY(
+                event,
+                x,
+                resolveEventY(eventKey, y),
+                alignment,
+                nudge,
+                compact,
+              )
+              const stemLength = familyEventStemLength(renderY, axisY)
               const button = (
                 <FamilyEventButton
                   event={event}
@@ -584,6 +703,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
+                  stemLength={stemLength}
                   motionEnabled={zoomSemantic === 'detail'}
                   onOpen={handleEventOpen}
                   onExplore={openPerson}
@@ -594,7 +714,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
               if (isIntroActive) {
                 return (
                   <div key={eventKey}>
-                    {renderIntroEvent(eventKey, x, y, button)}
+                    {renderIntroEvent(eventKey, x, renderY, button)}
                   </div>
                 )
               }
@@ -602,25 +722,27 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
               return motionEnabled ? (
                 <motion.div
                   key={eventKey}
-                  className="family-event-wrap"
-                  style={{ left: Math.round(x), top: Math.round(y) }}
-                  initial={{ opacity: 0, y: y + 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: y - 8 }}
-                  transition={dissolveTransition}
+                  className="family-event-anchor"
+                  style={{ left: Math.round(x), top: Math.round(renderY) }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={opacityFadeTransition}
+                  layout={false}
                 >
-                  {button}
+                  <div className="family-event-wrap">{button}</div>
                 </motion.div>
               ) : (
                 <FamilyEventButton
                   key={eventKey}
                   event={event}
                   x={x}
-                  y={y}
+                  y={renderY}
                   viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
+                  stemLength={stemLength}
                   onOpen={handleEventOpen}
                   onExplore={openPerson}
                   onViewTree={viewOnTree}
@@ -631,9 +753,18 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         )}
 
         {!useBirthClusters && (
-          <AnimatePresence mode="sync">
+          <AnimatePresence mode="sync" initial={false}>
             {renderEvents.map(({ event, x, y, alignment, nudge, compact }) => {
               const eventKey = canonicalEventId(event)
+              const renderY = clampPlaqueY(
+                event,
+                x,
+                resolveEventY(eventKey, y),
+                alignment,
+                nudge,
+                compact,
+              )
+              const stemLength = familyEventStemLength(renderY, axisY)
               const button = (
                 <FamilyEventButton
                   event={event}
@@ -643,6 +774,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
+                  stemLength={stemLength}
                   motionEnabled={zoomSemantic === 'detail'}
                   onOpen={handleEventOpen}
                   onExplore={openPerson}
@@ -653,7 +785,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
               if (isIntroActive) {
                 return (
                   <div key={eventKey}>
-                    {renderIntroEvent(eventKey, x, y, button)}
+                    {renderIntroEvent(eventKey, x, renderY, button)}
                   </div>
                 )
               }
@@ -661,25 +793,29 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
               return motionEnabled ? (
                 <motion.div
                   key={eventKey}
-                  className="family-event-wrap"
-                  style={{ left: Math.round(x), top: Math.round(y) }}
-                  initial={{ opacity: 0, y: y + 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: y - 8 }}
-                  transition={zoomSemantic === 'detail' ? detailPlacementTransition : dissolveTransition}
+                  className="family-event-anchor"
+                  style={{ left: Math.round(x), top: Math.round(renderY) }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={
+                    zoomSemantic === 'detail' ? detailOpacityTransition : opacityFadeTransition
+                  }
+                  layout={false}
                 >
-                  {button}
+                  <div className="family-event-wrap">{button}</div>
                 </motion.div>
               ) : (
                 <FamilyEventButton
                   key={eventKey}
                   event={event}
                   x={x}
-                  y={y}
+                  y={renderY}
                   viewportWidth={width}
                   alignment={alignment}
                   nudge={nudge}
                   compact={compact}
+                  stemLength={stemLength}
                   onOpen={handleEventOpen}
                   onExplore={openPerson}
                   onViewTree={viewOnTree}

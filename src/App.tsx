@@ -10,6 +10,7 @@ import { MapView } from './components/views/MapView'
 import { PeopleView } from './components/views/PeopleView'
 import { TreeView } from './components/views/TreeView'
 import { useAppNavigation } from './context/AppNavigationContext'
+import { usePreventBrowserZoom } from './hooks/usePreventBrowserZoom'
 import { useAtlasPageTransition } from './hooks/useAtlasPageTransition'
 import type { AppView } from './types/navigation'
 import type { CSSProperties, ReactNode } from 'react'
@@ -58,6 +59,7 @@ function AppViews() {
 
 function AppShell() {
   const { activeView } = useAppNavigation()
+  usePreventBrowserZoom()
 
   return (
     <div className={`app app--view-${activeView}`}>

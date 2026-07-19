@@ -1,6 +1,6 @@
 import type { FamilyRegion, FamilyRegionId } from './mapRegions'
 import { inferRegionId, type RegionEllipse } from './mapRegions'
-import { buildRegionGeometry, type MapBounds } from './mapRegionGeometry'
+import { boundsFromEllipse, buildRegionGeometry, fitFamilyRegionEllipse, type MapBounds } from './mapRegionGeometry'
 import type { PlaceRecord } from './placeIndex'
 import { generateClusterTitle } from './mapClusterTitles'
 
@@ -123,13 +123,27 @@ export function buildSubregions(
     const [parentRegionId, subKey] = key.split(':') as [FamilyRegionId, string]
     const coords = subPlaces.map((p) => ({ x: p.coordinate.x, y: p.coordinate.y }))
     const weights = subPlaces.map((p) => Math.max(1, p.people.length + p.eventCount * 0.25))
-    const geometry = buildRegionGeometry(
+    const fallback = buildRegionGeometry(
       coords,
       weights,
       SUBREGION_MIN_RX,
       SUBREGION_MIN_RY,
       SUBREGION_PADDING,
     )
+    const anchor = { x: fallback.anchorX, y: fallback.anchorY }
+    const fitted = fitFamilyRegionEllipse(
+      parentRegionId,
+      coords,
+      anchor,
+      SUBREGION_MIN_RX,
+      SUBREGION_MIN_RY,
+    )
+    const geometry = {
+      ...fitted,
+      anchorX: anchor.x,
+      anchorY: anchor.y,
+      bounds: boundsFromEllipse(fitted),
+    }
     const peopleIds = new Set<string>()
     let yearMin: number | null = null
     let yearMax: number | null = null

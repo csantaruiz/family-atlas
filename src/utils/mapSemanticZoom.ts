@@ -22,6 +22,29 @@ export const MAP_ZOOM_LEVELS: MapZoomLevel[] = [
 
 /** Extra framing scale so the map plate always covers the atlas frame at every zoom level. */
 export const MAP_FRAME_COVERAGE = 1.08
+/** Compensates for preserveAspectRatio="slice" letterboxing inside the plate. */
+export const MAP_PLATE_SLICE_BLEED = 1.045
+
+/**
+ * Minimum scale so a panned camera never reveals the frame backdrop.
+ * Derived from plate edges: left = 50 − cx × scale (with center transform origin).
+ */
+export function effectiveMapScale(camera: MapCamera): number {
+  const { cx, cy, scale } = camera
+
+  const horizontal =
+    cx <= 50 ? 50 / Math.max(cx, 1) : 50 / Math.max(100 - cx, 1)
+  const vertical =
+    cy <= 50 ? 50 / Math.max(cy, 1) : 50 / Math.max(100 - cy, 1)
+  const panCoverage = Math.max(horizontal, vertical, 1)
+
+  const zoomPadding = Math.min(Math.max(0, scale - 1) * 0.14, 0.05)
+  const baseCoverage = (MAP_FRAME_COVERAGE + zoomPadding) * MAP_PLATE_SLICE_BLEED
+  const panAwareCoverage = panCoverage * MAP_PLATE_SLICE_BLEED
+
+  // Tiny margin so eased transitions never flash the frame color.
+  return scale * Math.max(baseCoverage, panAwareCoverage) * 1.008
+}
 
 export const DEFAULT_CAMERA: MapCamera = { cx: 50, cy: 50, scale: 1 }
 
@@ -71,21 +94,53 @@ export function retreatLevel(level: MapZoomLevel): MapZoomLevel {
   return MAP_ZOOM_LEVELS[Math.max(idx - 1, 0)]
 }
 
+import { MAP_VIEW_BOX } from './mapProjection'
+
 /** Project atlas coordinate (0–100) to screen percentage with camera pan/zoom. */
 export function projectMapPoint(
   x: number,
   y: number,
   camera: MapCamera,
 ): { left: number; top: number } {
-  const scale = camera.scale * MAP_FRAME_COVERAGE
+  const scale = effectiveMapScale(camera)
   return {
     left: 50 + (x - camera.cx) * scale,
     top: 50 + (y - camera.cy) * scale,
   }
 }
 
+/**
+ * Map a viewBox point to container percentages matching SVG preserveAspectRatio="xMidYMid slice".
+ * Use for HTML overlays that share the same box as the map SVG.
+ */
+export function viewBoxPointToContainerPercent(
+  x: number,
+  y: number,
+  containerWidth: number,
+  containerHeight: number,
+  viewBoxWidth = MAP_VIEW_BOX.width,
+  viewBoxHeight = MAP_VIEW_BOX.height,
+): { left: number; top: number } {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return { left: x, top: y }
+  }
+
+  const scale = Math.max(containerWidth / viewBoxWidth, containerHeight / viewBoxHeight)
+  const renderedWidth = viewBoxWidth * scale
+  const renderedHeight = viewBoxHeight * scale
+  const offsetX = (containerWidth - renderedWidth) / 2
+  const offsetY = (containerHeight - renderedHeight) / 2
+  const px = x * scale + offsetX
+  const py = y * scale + offsetY
+
+  return {
+    left: (px / containerWidth) * 100,
+    top: (py / containerHeight) * 100,
+  }
+}
+
 export function cameraTransform(camera: MapCamera): string {
-  const scale = camera.scale * MAP_FRAME_COVERAGE
+  const scale = effectiveMapScale(camera)
   const tx = (50 - camera.cx) * scale
   const ty = (50 - camera.cy) * scale
   return `translate(${tx}%, ${ty}%) scale(${scale})`

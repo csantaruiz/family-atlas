@@ -247,3 +247,111 @@ export function curvedRoutePath(
 
   return `M ${from.x} ${from.y} Q ${cx} ${cy} ${to.x} ${to.y}`
 }
+
+function routeShortPlace(place: string): string {
+  return place.split(',')[0].trim() || place
+}
+
+function routeDominantPlace(values: string[]): string | null {
+  const counts = new Map<string, number>()
+  for (const value of values) {
+    const label = routeShortPlace(value)
+    if (!label) continue
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+
+  let best: string | null = null
+  let bestCount = 0
+  for (const [label, count] of counts) {
+    if (count > bestCount) {
+      best = label
+      bestCount = count
+    }
+  }
+  return best
+}
+
+const REGION_CORRIDOR_TITLES: Partial<Record<string, string>> = {
+  'britain_ireland->eastern_us': 'Crossing the Atlantic',
+  'britain_ireland->california': 'From Britain to California',
+  'britain_ireland->southwest_us': 'From Britain to the Southwest',
+  'eastern_us->california': 'Westward to California',
+  'mexico->southwest_us': 'Across the borderlands',
+  'mexico->california': 'From Mexico to California',
+  'mexico->eastern_us': 'From Mexico to the United States',
+  'southwest_us->california': 'Into California',
+}
+
+/** Narrative title for a migration corridor, derived from GEDCOM move records. */
+export function generateMigrationRouteTitle(route: RegionalRoute | SubregionRoute): string {
+  if ('fromRegionId' in route) {
+    const corridorKey = `${route.fromRegionId}->${route.toRegionId}`
+    const corridorTitle = REGION_CORRIDOR_TITLES[corridorKey]
+    if (corridorTitle) return corridorTitle
+  }
+
+  if (route.segments.length > 0) {
+    const from = routeDominantPlace(route.segments.map((segment) => segment.from))
+    const to = routeDominantPlace(route.segments.map((segment) => segment.to))
+    if (from && to && from.toLowerCase() !== to.toLowerCase()) {
+      return `${from} to ${to}`
+    }
+  }
+
+  return `${route.fromName} → ${route.toName}`
+}
+
+const ROUTE_SYNOPSIS: Partial<Record<string, string>> = {
+  'britain_ireland->eastern_us':
+    'Atlantic crossings appear to bring English and Irish branches into the mid-Atlantic colonies, where families consolidate in port and industrial towns rather than moving west immediately.',
+  'britain_ireland->california':
+    'Later crossings suggest a long corridor from Britain toward the Pacific coast, skipping intermediate settlement in favor of a western destination.',
+  'britain_ireland->southwest_us':
+    'Records suggest movement from Britain into the American Southwest, likely through intermediate ports before families push inland.',
+  'eastern_us->california':
+    'Westward moves suggest families leaving the eastern seaboard for California, treating the continent as a sequence of chapters rather than one permanent home.',
+  'mexico->southwest_us':
+    'Borderland records suggest families crossing from northern Mexico into the American Southwest as political boundaries shift around them.',
+  'mexico->california':
+    'Movement from Mexico toward California suggests a northward expansion as later generations leave older Chihuahua roots.',
+  'mexico->eastern_us':
+    'A less common corridor — when it appears, it suggests families bypassing the borderlands for direct resettlement in the eastern United States.',
+  'southwest_us->california':
+    'Short western corridors suggest families already near the border pushing into California as the final American chapter.',
+}
+
+/** Inferred narrative for a migration corridor before names and move lists. */
+export function generateMigrationRouteSynopsis(route: RegionalRoute | SubregionRoute): string {
+  const yearLead =
+    route.yearMin != null && route.yearMax != null
+      ? route.yearMin === route.yearMax
+        ? `In ${route.yearMin}, `
+        : `Between ${route.yearMin} and ${route.yearMax}, `
+      : ''
+
+  const confidenceLead =
+    route.confidence === 'documented'
+      ? 'Documented moves suggest '
+      : 'Inferred routes suggest '
+
+  if ('fromRegionId' in route) {
+    const corridorKey = `${route.fromRegionId}->${route.toRegionId}`
+    const corridorSynopsis = ROUTE_SYNOPSIS[corridorKey]
+    if (corridorSynopsis) {
+      return `${yearLead}${confidenceLead}${corridorSynopsis}`
+    }
+  }
+
+  const fromPlace = routeDominantPlace(route.segments.map((segment) => segment.from))
+  const toPlace = routeDominantPlace(route.segments.map((segment) => segment.to))
+
+  if (fromPlace && toPlace && fromPlace.toLowerCase() !== toPlace.toLowerCase()) {
+    const moveTail =
+      route.moveCount === 1 ? 'a single recorded move' : `${route.moveCount} recorded moves`
+    return `${yearLead}${confidenceLead}a corridor from ${fromPlace} toward ${toPlace} across ${moveTail}.`
+  }
+
+  const moveTail =
+    route.moveCount === 1 ? 'a single recorded move' : `${route.moveCount} recorded moves`
+  return `${yearLead}${confidenceLead}a corridor from ${route.fromName} toward ${route.toName} across ${moveTail}.`
+}

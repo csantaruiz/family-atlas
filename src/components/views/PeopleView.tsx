@@ -8,6 +8,7 @@ import {
   computeNotableLives,
   DEFAULT_PEOPLE_FILTERS,
   filterPeople,
+  notableLivesIntro,
   placeFilterOptions,
   sortPeople,
   type PersonSortKey,
@@ -21,13 +22,14 @@ type PeopleViewProps = {
 
 export function PeopleView({ active }: PeopleViewProps) {
   const { familyEvents, openPerson } = useTimeline()
-  const { viewOnTimeline } = useAppNavigation()
+  const { viewOnTimeline, viewOnTree } = useAppNavigation()
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<PersonSortKey>('birthYear')
   const [branch, setBranch] = useState('')
   const [place, setPlace] = useState('')
   const [century, setCentury] = useState('')
   const [directAncestorsOnly, setDirectAncestorsOnly] = useState(false)
+  const [notableLivesExplanationOpen, setNotableLivesExplanationOpen] = useState(false)
 
   const people = familyDatabase.people
   const branches = useMemo(() => branchOptions(familyDatabase.stats.surnames), [])
@@ -51,6 +53,10 @@ export function PeopleView({ active }: PeopleViewProps) {
   )
 
   const notableLives = useMemo(() => computeNotableLives(people, familyEvents), [people, familyEvents])
+  const notableLivesExplanation = useMemo(
+    () => notableLivesIntro(notableLives),
+    [notableLives],
+  )
 
   return (
     <section id="people" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
@@ -84,13 +90,45 @@ export function PeopleView({ active }: PeopleViewProps) {
         />
 
         {notableLives.length > 0 && (
-          <div className="notable-lives">
-            <div className="eyebrow">Notable lives</div>
-            <div className="notable-lives-grid">
+          <section className="notable-lives" aria-labelledby="notable-lives-heading">
+            <div className="notable-lives-header">
+              <div className="notable-lives-heading-block">
+                <div className="eyebrow" id="notable-lives-heading">
+                  Notable lives
+                </div>
+                <p className="notable-lives-lede">Highlights drawn from the archive</p>
+                {notableLivesExplanation && (
+                  <div
+                    className={`notable-lives-disclosure${notableLivesExplanationOpen ? ' is-expanded' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="notable-lives-disclosure-trigger"
+                      aria-expanded={notableLivesExplanationOpen}
+                      aria-controls="notable-lives-explanation-panel"
+                      onClick={() => setNotableLivesExplanationOpen((open) => !open)}
+                    >
+                      Why are these people notable?
+                    </button>
+                    <div
+                      id="notable-lives-explanation-panel"
+                      className="notable-lives-disclosure-panel"
+                      aria-hidden={!notableLivesExplanationOpen}
+                    >
+                      <div className="notable-lives-disclosure-inner">
+                        <p className="notable-lives-explanation">{notableLivesExplanation}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="notable-lives-grid" role="list">
               {notableLives.map((n) => (
                 <button
                   key={n.id}
                   type="button"
+                  role="listitem"
                   className="notable-life-card"
                   onClick={() => openPerson(n.person.id)}
                 >
@@ -100,7 +138,7 @@ export function PeopleView({ active }: PeopleViewProps) {
                 </button>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {filtered.length === 0 ? (
@@ -117,6 +155,7 @@ export function PeopleView({ active }: PeopleViewProps) {
                 events={familyEvents}
                 onSelect={openPerson}
                 onViewTimeline={viewOnTimeline}
+                onViewTree={viewOnTree}
               />
             ))}
           </div>

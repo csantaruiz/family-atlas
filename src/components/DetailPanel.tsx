@@ -1,4 +1,6 @@
 import { eventContext } from '../data'
+import { getHistoryEventHeroImage } from '../data/historyEventImagery'
+import { getHistoryEventWikipediaUrl } from '../data/historyEventWikipedia'
 import { ARCHIVAL_PORTRAIT_PLACEHOLDER } from '../data/portraitPlaceholder'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
@@ -34,6 +36,8 @@ export function DetailPanel() {
   } | null = null
   let portraitImage: PersonImage | null = null
   let useArchivalPlaceholder = false
+  let portraitVariant: 'portrait' | 'history-hero' = 'portrait'
+  let historyWikipediaUrl: string | null = null
   let personEvents: FamilyEvent[] = []
   let showReturnToTimeline = false
 
@@ -141,6 +145,9 @@ export function DetailPanel() {
       id: p.id,
       name: p.name,
     }))
+    portraitImage = getHistoryEventHeroImage(ev)
+    portraitVariant = portraitImage ? 'history-hero' : 'portrait'
+    historyWikipediaUrl = getHistoryEventWikipediaUrl(ev)
   } else if (detail?.type === 'thinking') {
     isThinking = true
     const thinking = detail.thinking
@@ -170,12 +177,14 @@ export function DetailPanel() {
       <button type="button" id="drawerClose" className="drawer-close" aria-label="Close panel" onClick={closeDetail}>
         ×
       </button>
+      <div className="drawer-content">
       {isOpen && (
         <>
           <DetailPortrait
             image={portraitImage}
             initials={initialsText}
             useArchivalPlaceholder={useArchivalPlaceholder}
+            variant={portraitVariant}
           />
           <div className="person-body">
             <div className="eyebrow" id="personGen">
@@ -186,9 +195,21 @@ export function DetailPanel() {
               {life}
             </div>
             {!isThinking && (
-              <p className="story" id="personStory">
-                {story}
-              </p>
+              <>
+                <p className="story" id="personStory">
+                  {story}
+                </p>
+                {detail?.type === 'history' && historyWikipediaUrl ? (
+                  <a
+                    className="history-wikipedia-link"
+                    href={historyWikipediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Read on Wikipedia ↗
+                  </a>
+                ) : null}
+              </>
             )}
             {isThinking && thinkingSections ? (
               <div className="thinking-detail-sections">
@@ -284,6 +305,7 @@ export function DetailPanel() {
           </div>
         </>
       )}
+      </div>
     </aside>
   )
 }

@@ -1,8 +1,13 @@
 import type { PlaceRecord } from './placeIndex'
+import { projectGeo } from './mapProjection'
 import { generateClusterTitle } from './mapClusterTitles'
 import {
+  boundsFromEllipse,
   buildRegionGeometry,
+  expandBounds,
+  fitFamilyRegionEllipse,
   type MapBounds,
+  type MapPoint,
   type RegionGeometry,
   verifyContainment,
 } from './mapRegionGeometry'
@@ -48,9 +53,23 @@ const REGION_META: Record<
   southwest_us: { name: 'Southwest United States', subtitle: 'borderland migrations' },
 }
 
-const MIN_RX = 8
-const MIN_RY = 7
-const PADDING = 6
+const MIN_RX = 4
+const MIN_RY = 4
+const PADDING = 2.5
+
+/** Geographic label anchors — keep major region names on correct landmasses. */
+const REGION_LABEL_GEO: Record<FamilyRegionId, { lon: number; lat: number }> = {
+  britain_ireland: { lon: -4.5, lat: 54.5 },
+  eastern_us: { lon: -75.0, lat: 40.5 },
+  california: { lon: -120.0, lat: 37.4 },
+  mexico: { lon: -106.1, lat: 28.6 },
+  southwest_us: { lon: -106.5, lat: 31.8 },
+}
+
+function regionLabelAnchor(id: FamilyRegionId): { x: number; y: number } {
+  const geo = REGION_LABEL_GEO[id]
+  return projectGeo(geo.lon, geo.lat)
+}
 
 export function inferRegionId(place: PlaceRecord): FamilyRegionId | null {
   if (!place.coordinate.resolved) return null
@@ -62,27 +81,27 @@ export function inferRegionId(place: PlaceRecord): FamilyRegionId | null {
   if (/britain|ireland|england|scotland/.test(display) || /england|scotland|ireland/.test(region)) {
     return 'britain_ireland'
   }
-  if (/california/.test(display) || (region === 'united states' && x < 25 && y >= 34 && y <= 44)) {
+  if (/california/.test(display) || (region === 'united states' && x < 22 && y >= 36 && y <= 42)) {
     return 'california'
   }
   if (/mexico/.test(display) || region === 'mexico') {
     return 'mexico'
   }
-  if (/southwest/.test(display) || (region === 'united states' && x >= 20 && x < 30 && y >= 38 && y <= 42)) {
+  if (/southwest/.test(display) || (region === 'united states' && x >= 20 && x < 28 && y >= 38 && y <= 43)) {
     return 'southwest_us'
   }
   if (
     /eastern|united states|pennsylvania|new jersey/.test(display) ||
-    (region === 'united states' && x >= 26 && x < 44)
+    (region === 'united states' && x >= 28 && x < 38)
   ) {
     return 'eastern_us'
   }
 
-  if (x > 44 && y < 40) return 'britain_ireland'
-  if (x < 25 && y >= 34 && y <= 44) return 'california'
-  if (y > 40.5 && x >= 18 && x < 30) return 'mexico'
-  if (x >= 20 && x < 30 && y >= 38 && y <= 41.5) return 'southwest_us'
-  if (x >= 26 && x < 44 && y >= 32 && y < 42) return 'eastern_us'
+  if (x >= 46 && y <= 36) return 'britain_ireland'
+  if (x < 22 && y >= 36 && y <= 42) return 'california'
+  if (y > 39.5 && x >= 20 && x < 28) return 'mexico'
+  if (x >= 20 && x < 28 && y >= 37 && y <= 41.5) return 'southwest_us'
+  if (x >= 28 && x < 38 && y >= 35 && y < 40) return 'eastern_us'
 
   return null
 }
@@ -99,23 +118,27 @@ export function computeRegionEllipse(
 
 export function computeRegionGeometry(
   places: PlaceRecord[],
+  regionId: FamilyRegionId,
   minRx = MIN_RX,
   minRy = MIN_RY,
-  padding = PADDING,
 ): RegionGeometry {
-  const coords = places
+  const coords: MapPoint[] = places
     .filter((p) => p.coordinate.resolved)
     .map((p) => ({ x: p.coordinate.x, y: p.coordinate.y }))
-  const weights = places
-    .filter((p) => p.coordinate.resolved)
-    .map((p) => Math.max(1, p.people.length + p.eventCount * 0.25))
 
-  const geometry = buildRegionGeometry(coords, weights, minRx, minRy, padding)
-  const check = verifyContainment(coords, geometry)
+  const anchor = regionLabelAnchor(regionId)
+  const ellipse = fitFamilyRegionEllipse(regionId, coords, anchor, minRx, minRy)
+  const check = verifyContainment(coords, ellipse)
   if (!check.contained && import.meta.env.DEV) {
-    console.debug('[mapRegions] anchor containment outliers', check.outliers.length)
+    console.debug('[mapRegions] halo containment outliers', regionId, check.outliers.length)
   }
-  return geometry
+
+  return {
+    ...ellipse,
+    anchorX: anchor.x,
+    anchorY: anchor.y,
+    bounds: expandBounds(boundsFromEllipse(ellipse), PADDING * 0.25),
+  }
 }
 
 export function buildFamilyRegions(places: PlaceRecord[]): FamilyRegion[] {
@@ -141,7 +164,7 @@ export function buildFamilyRegions(places: PlaceRecord[]): FamilyRegion[] {
     .filter((id) => groups.has(id))
     .map((id) => {
       const regionPlaces = groups.get(id)!
-      const geometry = computeRegionGeometry(regionPlaces)
+      const geometry = computeRegionGeometry(regionPlaces, id)
 
       const peopleIds = new Set<string>()
       const branches = new Set<string>()
@@ -176,7 +199,7 @@ export function buildFamilyRegions(places: PlaceRecord[]): FamilyRegion[] {
         yearMax,
         branches: [...branches],
         ellipse: { cx: geometry.cx, cy: geometry.cy, rx: geometry.rx, ry: geometry.ry },
-        anchor: { x: geometry.anchorX, y: geometry.anchorY },
+        anchor: regionLabelAnchor(id),
         bounds: geometry.bounds,
       }
     })
@@ -193,11 +216,11 @@ export function regionForCoordinate(
     const ny = (y - cy) / ry
     if (nx * nx + ny * ny <= 1.2) return region.id
   }
-  if (x > 44 && y < 40) return 'britain_ireland'
-  if (x < 25 && y >= 34 && y <= 44) return 'california'
-  if (y > 40.5 && x >= 18 && x < 30) return 'mexico'
-  if (x >= 20 && x < 30 && y >= 38 && y <= 41.5) return 'southwest_us'
-  if (x >= 26 && x < 44 && y >= 32 && y < 42) return 'eastern_us'
+  if (x >= 46 && y <= 36) return 'britain_ireland'
+  if (x < 22 && y >= 36 && y <= 42) return 'california'
+  if (y > 39.5 && x >= 20 && x < 28) return 'mexico'
+  if (x >= 20 && x < 28 && y >= 37 && y <= 41.5) return 'southwest_us'
+  if (x >= 28 && x < 38 && y >= 35 && y < 40) return 'eastern_us'
   return null
 }
 

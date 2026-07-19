@@ -15,10 +15,11 @@ import {
   DEFAULT_OVERVIEW_CAMERA,
   fitCameraForRegion,
   fitCameraToBounds,
+  fitOverviewCamera,
   MAP_CAMERA_TRANSITION_MS,
   type MapViewportLayout,
 } from '../utils/mapCamera'
-import { boundsFromEllipse } from '../utils/mapRegionGeometry'
+import { boundsFromEllipse, type MapBounds } from '../utils/mapRegionGeometry'
 import {
   advanceLevel,
   retreatLevel,
@@ -37,11 +38,12 @@ export type MapSelection =
 
 export type MapTimelineBridge = {
   routeId: string
-  yearStart: number
-  yearEnd: number
+  yearStart: number | null
+  yearEnd: number | null
   fromName: string
   toName: string
   moveCount: number
+  people: { id: string; name: string }[]
 } | null
 
 type MapExplorationContextValue = {
@@ -55,6 +57,8 @@ type MapExplorationContextValue = {
   isTransitioning: boolean
   viewportLayout: MapViewportLayout | null
   setViewportLayout: (layout: MapViewportLayout) => void
+  familyContentBounds: MapBounds | null
+  setFamilyContentBounds: (bounds: MapBounds | null) => void
   exploreRegion: (region: FamilyRegion) => void
   exploreSubregion: (sub: MapSubregion) => void
   explorePlace: (place: PlaceRecord) => void
@@ -66,6 +70,7 @@ type MapExplorationContextValue = {
   zoomOut: () => void
   resetExploration: () => void
   clearSelection: () => void
+  refitFilteredView: () => void
 }
 
 const MapExplorationContext = createContext<MapExplorationContextValue | null>(null)
@@ -74,10 +79,20 @@ function layoutWithPanel(layout: MapViewportLayout): MapViewportLayout {
   return { ...layout, panelOpen: true }
 }
 
+function overviewCamera(
+  layout: MapViewportLayout,
+  bounds: MapBounds | null,
+  panelOpen: boolean,
+): MapCamera {
+  if (!bounds) return DEFAULT_OVERVIEW_CAMERA
+  return fitOverviewCamera(bounds, { ...layout, panelOpen })
+}
+
 function cameraForSelection(
   selection: MapSelection,
   level: MapZoomLevel,
   layout: MapViewportLayout | null,
+  familyBounds: MapBounds | null,
 ): MapCamera {
   if (!layout || layout.frameWidthPx <= 0) {
     return DEFAULT_OVERVIEW_CAMERA
@@ -98,8 +113,11 @@ function cameraForSelection(
       level,
     )
   }
+  if (level === 'family' && familyBounds) {
+    return fitOverviewCamera(familyBounds, layout)
+  }
 
-  return DEFAULT_OVERVIEW_CAMERA
+  return familyBounds ? fitOverviewCamera(familyBounds, layout) : DEFAULT_OVERVIEW_CAMERA
 }
 
 export function MapExplorationProvider({ children }: { children: ReactNode }) {
@@ -113,6 +131,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
   const [timelineBridge, setTimelineBridge] = useState<MapTimelineBridge>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [viewportLayout, setViewportLayout] = useState<MapViewportLayout | null>(null)
+  const [familyContentBounds, setFamilyContentBounds] = useState<MapBounds | null>(null)
 
   const animateCamera = useCallback((next: MapCamera) => {
     setIsTransitioning(true)
@@ -122,10 +141,25 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (level === 'family' || !selection || !viewportLayout) return
-    animateCamera(cameraForSelection(selection, level, viewportLayout))
+    animateCamera(cameraForSelection(selection, level, viewportLayout, familyContentBounds))
     // Refit when viewport dimensions or panel visibility change — not on duplicate selection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    viewportLayout?.frameWidthPx,
+    viewportLayout?.frameHeightPx,
+    viewportLayout?.panelOpen,
+  ])
+
+  useEffect(() => {
+    if (level !== 'family' || !viewportLayout) return
+    animateCamera(
+      overviewCamera(viewportLayout, familyContentBounds, viewportLayout.panelOpen),
+    )
+    // Refit family overview when content bounds or chrome layout change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    level,
+    familyContentBounds,
     viewportLayout?.frameWidthPx,
     viewportLayout?.frameHeightPx,
     viewportLayout?.panelOpen,
@@ -183,15 +217,18 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       } else {
         setSelection({ type: 'subroute', route: route as SubregionRoute })
       }
+      if (route.yearMin != null && route.yearMax != null) {
+        setMapHighlightYears({ start: route.yearMin, end: route.yearMax })
+      }
     },
-    [],
+    [setMapHighlightYears],
   )
 
   const hoverRoute = useCallback(
     (bridge: MapTimelineBridge) => {
       setTimelineBridge(bridge)
       setHoveredRouteId(bridge?.routeId ?? null)
-      if (bridge) {
+      if (bridge?.yearStart != null && bridge.yearEnd != null) {
         setMapHighlightYears({ start: bridge.yearStart, end: bridge.yearEnd })
       }
     },
@@ -209,7 +246,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       const next = advanceLevel(prev)
       if (next === prev) return prev
       if (selection && viewportLayout) {
-        animateCamera(cameraForSelection(selection, next, viewportLayout))
+        animateCamera(cameraForSelection(selection, next, viewportLayout, familyContentBounds))
       }
       return next
     })
@@ -221,13 +258,17 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       if (next === 'family') {
         setFocusRegionId(null)
         setFocusSubregionId(null)
-        animateCamera(DEFAULT_OVERVIEW_CAMERA)
+        animateCamera(
+          viewportLayout
+            ? overviewCamera(viewportLayout, familyContentBounds, viewportLayout.panelOpen)
+            : DEFAULT_OVERVIEW_CAMERA,
+        )
       } else if (selection && viewportLayout) {
-        animateCamera(cameraForSelection(selection, next, viewportLayout))
+        animateCamera(cameraForSelection(selection, next, viewportLayout, familyContentBounds))
       }
       return next
     })
-  }, [selection, viewportLayout, animateCamera])
+  }, [selection, viewportLayout, familyContentBounds, animateCamera])
 
   const resetExploration = useCallback(() => {
     setLevel('family')
@@ -237,8 +278,27 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
     setTimelineBridge(null)
     setHoveredRouteId(null)
     setMapHighlightYears(null)
-    animateCamera(DEFAULT_OVERVIEW_CAMERA)
-  }, [animateCamera, setMapHighlightYears])
+    animateCamera(
+      viewportLayout
+        ? overviewCamera(viewportLayout, familyContentBounds, false)
+        : DEFAULT_OVERVIEW_CAMERA,
+    )
+  }, [animateCamera, setMapHighlightYears, viewportLayout, familyContentBounds])
+
+  const refitFilteredView = useCallback(() => {
+    if (!viewportLayout) return
+
+    if (level === 'family') {
+      animateCamera(
+        overviewCamera(viewportLayout, familyContentBounds, viewportLayout.panelOpen),
+      )
+      return
+    }
+
+    if (selection) {
+      animateCamera(cameraForSelection(selection, level, viewportLayout, familyContentBounds))
+    }
+  }, [viewportLayout, level, selection, familyContentBounds, animateCamera])
 
   const clearSelection = useCallback(() => {
     setSelection(null)
@@ -264,6 +324,8 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       isTransitioning,
       viewportLayout,
       setViewportLayout,
+      familyContentBounds,
+      setFamilyContentBounds,
       exploreRegion,
       exploreSubregion,
       explorePlace,
@@ -275,6 +337,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       zoomOut,
       resetExploration,
       clearSelection,
+      refitFilteredView,
     }),
     [
       level,
@@ -286,6 +349,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       timelineBridge,
       isTransitioning,
       viewportLayout,
+      familyContentBounds,
       exploreRegion,
       exploreSubregion,
       explorePlace,
@@ -296,6 +360,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       zoomOut,
       resetExploration,
       clearSelection,
+      refitFilteredView,
     ],
   )
 

@@ -75,13 +75,70 @@ function leadPerson(events: FamilyEvent[]): FamilyEvent | null {
   return sorted[0] ?? null
 }
 
-function placeBlob(places: PlaceRecord[], events: FamilyEvent[]): string {
-  return [
-    ...places.map((p) => p.name),
-    ...events.map((e) => `${e.detail} ${e.person.birthPlace ?? ''} ${e.person.deathPlace ?? ''}`),
-  ]
-    .join(' ')
-    .toLowerCase()
+/** Place names only — avoids matching migration destinations in unrelated regions. */
+function placeNamesBlob(places: PlaceRecord[]): string {
+  return places.map((p) => p.name).join(' ').toLowerCase()
+}
+
+function shortPlaceLabel(place: string): string {
+  return place.split(',')[0].trim() || place
+}
+
+function parseMoveEndpoints(detail: string): { from: string; to: string } | null {
+  const match = detail.match(/(?:from|in)\s+(.+?)\s+(?:to|into)\s+(.+)/i)
+  if (match) {
+    return { from: match[1].trim(), to: match[2].trim() }
+  }
+  const into = detail.split(/\s+into\s+/i)
+  if (into.length > 1) {
+    return { from: into[0].replace(/^moved?\s+/i, '').trim(), to: into[1].trim() }
+  }
+  return null
+}
+
+function movesOriginatingInRegion(
+  places: PlaceRecord[],
+  events: FamilyEvent[],
+): FamilyEvent[] {
+  const localTokens = new Set(
+    places.flatMap((place) => {
+      const short = shortPlaceLabel(place.name).toLowerCase()
+      return [place.name.toLowerCase(), short]
+    }),
+  )
+
+  return events.filter((event) => {
+    if (event.kind !== 'move') return false
+    const endpoints = parseMoveEndpoints(event.detail)
+    const haystack = `${event.detail} ${event.person.birthPlace ?? ''}`.toLowerCase()
+    if (endpoints) {
+      const from = endpoints.from.toLowerCase()
+      return [...localTokens].some((token) => token.length > 2 && from.includes(token))
+    }
+    return [...localTokens].some((token) => token.length > 2 && haystack.includes(token))
+  })
+}
+
+function dominantMoveDestination(moves: FamilyEvent[]): string | null {
+  const counts = new Map<string, number>()
+  for (const move of moves) {
+    const endpoints = parseMoveEndpoints(move.detail)
+    const raw = endpoints?.to ?? move.detail.split(/\s+to\s+/i).pop() ?? move.detail
+    const region = placeRegion(raw)
+    const label = region || shortPlaceLabel(raw)
+    if (!label) continue
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+
+  let best: string | null = null
+  let bestCount = 0
+  for (const [label, count] of counts) {
+    if (count > bestCount) {
+      best = label
+      bestCount = count
+    }
+  }
+  return best
 }
 
 function normalizeTitle(s: string): string {
@@ -142,10 +199,12 @@ function migrationTitles(
   const moves = events.filter((e) => e.kind === 'move')
   if (!moves.length) return []
 
-  const blob = placeBlob(places, events)
+  const localMoves = movesOriginatingInRegion(places, events)
+  const localNames = placeNamesBlob(places)
+  const primaryDestination = dominantMoveDestination(localMoves.length ? localMoves : moves)
   const candidates: TitleCandidate[] = []
 
-  if (regionId === 'mexico' || /chihuahua|coahuila|durango|sonora|mexico/.test(blob)) {
+  if (regionId === 'mexico') {
     if (depth === 'region') {
       candidates.push({ title: 'Arrival in Northern New Spain', priority: 100, minDepth: 'region' })
       candidates.push({ title: 'The frontier years', priority: 95, minDepth: 'region' })
@@ -162,17 +221,23 @@ function migrationTitles(
     }
   }
 
-  if (regionId === 'britain_ireland' || /england|scotland|ireland|cheshire/.test(blob)) {
+  if (regionId === 'britain_ireland') {
     if (depth === 'region') {
       candidates.push({ title: 'Crossing the Atlantic', priority: 96, minDepth: 'region' })
       candidates.push({ title: 'Early branches take shape', priority: 90, minDepth: 'region' })
+      if (/gawsworth|cheshire|gloucester|lancashire/.test(localNames)) {
+        candidates.push({ title: 'English branches before emigration', priority: 92, minDepth: 'region' })
+      }
     }
     if (depth === 'subregion' && subregionKey === 'england') {
       candidates.push({ title: 'The English branch emerges', priority: 94, minDepth: 'subregion' })
     }
+    if (primaryDestination === 'United States' && depth === 'region') {
+      candidates.push({ title: 'Departure for America', priority: 97, minDepth: 'region' })
+    }
   }
 
-  if (regionId === 'eastern_us' || /pennsylvania|new jersey|virginia/.test(blob)) {
+  if (regionId === 'eastern_us') {
     if (depth === 'region') {
       candidates.push({ title: 'Arrival in America', priority: 96, minDepth: 'region' })
       candidates.push({ title: 'The New Jersey chapter', priority: 88, minDepth: 'region' })
@@ -183,19 +248,39 @@ function migrationTitles(
     if (depth === 'subregion' && subregionKey === 'pennsylvania') {
       candidates.push({ title: 'Frontier and iron country', priority: 93, minDepth: 'subregion' })
     }
+    if (/pennsylvania|new jersey|virginia/.test(localNames) && depth === 'region') {
+      candidates.push({ title: 'Colonial and early American roots', priority: 91, minDepth: 'region' })
+    }
   }
 
-  if (regionId === 'california' || /california|san diego|los angeles/.test(blob)) {
+  if (regionId === 'california') {
     if (depth === 'region') {
       candidates.push({ title: 'Expansion into California', priority: 97, minDepth: 'region' })
     }
     if (depth === 'subregion' || depth === 'place') {
       candidates.push({ title: 'Crossing into California', priority: 91, minDepth: 'subregion' })
     }
+    if (/san diego|los angeles|san francisco|sacramento/.test(localNames) && depth === 'region') {
+      candidates.push({ title: 'California becomes home', priority: 95, minDepth: 'region' })
+    }
   }
 
-  if (moves.length >= 3 && depth === 'region') {
+  if (regionId === 'southwest_us') {
+    if (depth === 'region') {
+      candidates.push({ title: 'Borderland migrations', priority: 94, minDepth: 'region' })
+    }
+  }
+
+  if (localMoves.length >= 3 && depth === 'region') {
     candidates.push({ title: 'A sudden migration wave', priority: 86, minDepth: 'region' })
+  }
+
+  if (primaryDestination && depth === 'region') {
+    candidates.push({
+      title: `Toward ${primaryDestination}`,
+      priority: 84,
+      minDepth: 'region',
+    })
   }
 
   const dest = placeRegion(moves[0].detail.split('into ')[1] || moves[0].detail)
@@ -376,7 +461,6 @@ export function generateClusterTitle(input: MapClusterTitleInput): string {
   const events = clusterEvents(places)
   const surname = dominantSurname(events, places)
   const lead = leadPerson(events)
-  const blob = placeBlob(places, events)
 
   const candidates: TitleCandidate[] = []
 
@@ -390,10 +474,11 @@ export function generateClusterTitle(input: MapClusterTitleInput): string {
     if (era) {
       candidates.push({ title: era, priority: 85, minDepth: 'region' })
     }
-    if (/mexico|chihuahua/.test(blob) && yearMax < 1821) {
+    if (regionId === 'mexico' && yearMax < 1821) {
       candidates.push({ title: 'Life before Independence', priority: 87, minDepth: 'subregion' })
     }
-    if (/iron|pennsylvania|hendry/.test(blob)) {
+    const localNames = placeNamesBlob(places)
+    if (regionId === 'eastern_us' && /iron|pennsylvania|hendry/.test(localNames)) {
       candidates.push({ title: 'The ironworker generation', priority: 86, minDepth: 'subregion' })
     }
   }

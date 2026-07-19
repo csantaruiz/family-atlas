@@ -11,8 +11,7 @@ import {
 import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
   markerDiameterPx,
-  projectMapPoint,
-  type MapCamera,
+  viewBoxPointToContainerPercent,
   type MapLayerVisibility,
   type MapZoomLevel,
 } from '../../utils/mapSemanticZoom'
@@ -27,7 +26,6 @@ function placeShortName(name: string): string {
 type MapOverlayProps = {
   level: MapZoomLevel
   layers: MapLayerVisibility
-  camera: MapCamera
   frameWidth: number
   frameHeight: number
   regions: FamilyRegion[]
@@ -47,7 +45,6 @@ type MapOverlayProps = {
 export function MapOverlay({
   level,
   layers,
-  camera,
   frameWidth,
   frameHeight,
   regions,
@@ -115,7 +112,7 @@ export function MapOverlay({
       }
     }
 
-    return layoutMapLabels(candidates, camera, frameWidth, frameHeight, labelBudgetForLevel(level))
+    return layoutMapLabels(candidates, frameWidth, frameHeight, labelBudgetForLevel(level))
   }, [
     frameWidth,
     frameHeight,
@@ -125,7 +122,6 @@ export function MapOverlay({
     places,
     focusRegionId,
     level,
-    camera,
     topPlaceIds,
   ])
 
@@ -147,7 +143,12 @@ export function MapOverlay({
     if (layers.showMajorMarkers) {
       for (const region of regions) {
         if (level !== 'family') continue
-        const pos = projectMapPoint(region.anchor.x, region.anchor.y, camera)
+        const pos = viewBoxPointToContainerPercent(
+          region.anchor.x,
+          region.anchor.y,
+          frameWidth,
+          frameHeight,
+        )
         if (pos.left < -5 || pos.left > 105 || pos.top < -5 || pos.top > 105) continue
         items.push({
           id: `major-${region.id}`,
@@ -168,7 +169,12 @@ export function MapOverlay({
       for (const sub of subregions) {
         if (focusRegionId && sub.parentRegionId !== focusRegionId) continue
         if (level === 'local' && focusSubregionId && sub.id !== focusSubregionId) continue
-        const pos = projectMapPoint(sub.anchor.x, sub.anchor.y, camera)
+        const pos = viewBoxPointToContainerPercent(
+          sub.anchor.x,
+          sub.anchor.y,
+          frameWidth,
+          frameHeight,
+        )
         const dimmed = focusSubregionId != null && sub.id !== focusSubregionId
         items.push({
           id: `sub-${sub.id}`,
@@ -185,7 +191,12 @@ export function MapOverlay({
     if (layers.showPlaces) {
       for (const place of places) {
         if (!topPlaceIds.has(place.id)) continue
-        const pos = projectMapPoint(place.coordinate.x, place.coordinate.y, camera)
+        const pos = viewBoxPointToContainerPercent(
+          place.coordinate.x,
+          place.coordinate.y,
+          frameWidth,
+          frameHeight,
+        )
         items.push({
           id: `place-${place.id}`,
           left: pos.left,
@@ -208,7 +219,8 @@ export function MapOverlay({
     focusRegionId,
     focusSubregionId,
     level,
-    camera,
+    frameWidth,
+    frameHeight,
     topPlaceIds,
     hoveredRegionId,
     selectedPlaceId,
@@ -271,8 +283,8 @@ export function MapOverlay({
         <motion.div
           className="map-record-flyout"
           style={{
-            left: `${projectMapPoint(selectedPlace.coordinate.x, selectedPlace.coordinate.y, camera).left}%`,
-            top: `${projectMapPoint(selectedPlace.coordinate.x, selectedPlace.coordinate.y, camera).top}%`,
+            left: `${viewBoxPointToContainerPercent(selectedPlace.coordinate.x, selectedPlace.coordinate.y, frameWidth, frameHeight).left}%`,
+            top: `${viewBoxPointToContainerPercent(selectedPlace.coordinate.x, selectedPlace.coordinate.y, frameWidth, frameHeight).top}%`,
           }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { familyDatabase } from '../../data'
 import { MapExplorationProvider, useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
@@ -14,10 +14,13 @@ import {
   filterPlaces,
 } from '../../utils/placeIndex'
 import { buildFamilyRegions } from '../../utils/mapRegions'
+import { buildLineagePalette } from '../../utils/lineageColors'
 import { buildRegionalRoutes, buildSubregionRoutes } from '../../utils/mapRoutes'
 import { buildSubregions } from '../../utils/mapSubregions'
 import { FamilyMap } from '../map/FamilyMap'
 import { MapDetailPanel } from '../map/MapDetailPanel'
+import { MapLineageLegend } from '../map/MapLineageLegend'
+import { MapUnresolvedDisclosure } from '../map/MapUnresolvedDisclosure'
 
 type MapViewProps = {
   active: boolean
@@ -33,7 +36,7 @@ const EVENT_TYPES = [
 
 function MapViewContent({ active }: MapViewProps) {
   const { familyEvents } = useTimeline()
-  const { level } = useMapExploration()
+  const { level, selection, resetExploration, refitFilteredView } = useMapExploration()
   const people = familyDatabase.people
 
   const [branch, setBranch] = useState('')
@@ -79,8 +82,46 @@ function MapViewContent({ active }: MapViewProps) {
   const summary = useMemo(() => computeMapSummary(filteredPlaces, allMigrations), [filteredPlaces, allMigrations])
   const branches = useMemo(() => branchOptions(familyDatabase.stats.surnames), [])
   const centuries = useMemo(() => centuryOptions(people), [people])
+  const lineagePalette = useMemo(
+    () => buildLineagePalette(people, familyDatabase.root),
+    [people],
+  )
 
   const filterKey = `${branch}-${eventType}-${century}-${directAncestorsOnly}`
+
+  useEffect(() => {
+    if (!selection) return
+
+    const isValid =
+      selection.type === 'region'
+        ? regions.some((region) => region.id === selection.region.id)
+        : selection.type === 'subregion'
+          ? subregions.some((sub) => sub.id === selection.subregion.id)
+          : selection.type === 'place'
+            ? filteredPlaces.some((place) => place.id === selection.place.id)
+            : selection.type === 'route'
+              ? routes.some((route) => route.id === selection.route.id)
+              : subroutes.some((route) => route.id === selection.route.id)
+
+    if (!isValid) {
+      resetExploration()
+      return
+    }
+
+    if (selection) {
+      refitFilteredView()
+    }
+  }, [
+    filterKey,
+    selection,
+    regions,
+    subregions,
+    filteredPlaces,
+    routes,
+    subroutes,
+    resetExploration,
+    refitFilteredView,
+  ])
 
   return (
     <section id="map" className={`view atlas-page${active ? ' active' : ''}`} aria-hidden={!active}>
@@ -96,6 +137,8 @@ function MapViewContent({ active }: MapViewProps) {
             subroutes={subroutes}
             showRoutes={showRoutes}
             filterKey={filterKey}
+            lineagePalette={lineagePalette}
+            people={people}
           />
 
           <header className="map-page-intro map-title">
@@ -114,6 +157,7 @@ function MapViewContent({ active }: MapViewProps) {
                 </span>
               )}
             </div>
+            <MapLineageLegend palette={lineagePalette} visible={showRoutes} />
           </header>
 
           <div className="map-page-controls map-filters">
@@ -169,16 +213,13 @@ function MapViewContent({ active }: MapViewProps) {
                 </label>
               </div>
             </div>
+            {unresolved.length > 0 && level === 'family' && !selection && (
+              <MapUnresolvedDisclosure places={unresolved} variant="filters" />
+            )}
           </div>
 
-          <MapDetailPanel subregions={subregions} />
+          <MapDetailPanel subregions={subregions} unresolved={unresolved} />
           <div className="map-page-vignette" aria-hidden="true" />
-          {unresolved.length > 0 && level === 'family' && (
-            <div className="map-unresolved">
-              <div className="eyebrow">Unresolved places</div>
-              <p>{unresolved.length} records lack coordinates and are not mapped.</p>
-            </div>
-          )}
         </div>
       </div>
     </section>

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useMapExploration } from '../../context/MapExplorationContext'
+import { usePinchZoom } from '../../hooks/usePinchZoom'
+import type { Person } from '../../types'
+import type { LineagePalette } from '../../utils/lineageColors'
 import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
 import type { MapSubregion } from '../../utils/mapSubregions'
 import type { RegionalRoute, SubregionRoute } from '../../utils/mapRoutes'
-import { curvedRoutePath } from '../../utils/mapRoutes'
 import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
   cameraTransform,
@@ -13,7 +15,10 @@ import {
   subregionVisibleAtLevel,
   visibleLayers,
 } from '../../utils/mapSemanticZoom'
+import { boundsFromRegionAnchors } from '../../utils/mapRegionGeometry'
 import { MAP_VIEW_BOX } from '../../utils/mapProjection'
+import { formatRouteTravelers, formatRouteYearLabel } from '../../utils/mapMigrationMotion'
+import { MigrationRouteLayer, MigrationRouteTooltip } from './MigrationRouteLayer'
 import { MapDebugOverlay } from './MapDebugOverlay'
 import { MapOverlay } from './MapOverlay'
 import { WorldMapBackground } from './WorldMapBackground'
@@ -27,6 +32,8 @@ type FamilyMapProps = {
   subroutes: SubregionRoute[]
   showRoutes: boolean
   filterKey: string
+  lineagePalette: LineagePalette | null
+  people: Person[]
 }
 
 const VB = MAP_VIEW_BOX
@@ -47,6 +54,8 @@ export function FamilyMap({
   subroutes,
   showRoutes,
   filterKey,
+  lineagePalette,
+  people,
 }: FamilyMapProps) {
   const prefersReducedMotion = useReducedMotion()
   const frameRef = useRef<HTMLDivElement>(null)
@@ -59,9 +68,9 @@ export function FamilyMap({
     focusSubregionId,
     selection,
     hoveredRouteId,
-    timelineBridge,
     viewportLayout,
     setViewportLayout,
+    setFamilyContentBounds,
     exploreRegion,
     exploreSubregion,
     explorePlace,
@@ -75,11 +84,24 @@ export function FamilyMap({
   } = useMapExploration()
 
   const [hoveredRegionId, setHoveredRegionId] = useState<FamilyRegionId | null>(null)
+  const [routeTooltipPos, setRouteTooltipPos] = useState<{ x: number; y: number } | null>(null)
+  const [routeTooltipRoute, setRouteTooltipRoute] = useState<RegionalRoute | SubregionRoute | null>(
+    null,
+  )
   const layers = visibleLayers(level)
   const maxPlaceCount = useMemo(
     () => Math.max(1, ...regions.map((r) => r.placeCount)),
     [regions],
   )
+
+  const familyContentBounds = useMemo(
+    () => boundsFromRegionAnchors(regions),
+    [regions],
+  )
+
+  useEffect(() => {
+    setFamilyContentBounds(familyContentBounds)
+  }, [familyContentBounds, setFamilyContentBounds])
 
   useEffect(() => {
     const el = frameRef.current
@@ -135,12 +157,22 @@ export function FamilyMap({
     [zoomIn, zoomOut],
   )
 
+  const handleMapPinch = useCallback(
+    ({ delta }: { centerX: number; delta: number; width: number }) => {
+      if (delta > 0) zoomOut()
+      else zoomIn()
+    },
+    [zoomIn, zoomOut],
+  )
+
+  usePinchZoom(frameRef, true, handleMapPinch)
+
   const activeRoutes = layers.showMajorRoutes ? routes : layers.showLocalRoutes ? subroutes : []
   const routeKind = layers.showMajorRoutes ? 'route' : 'subroute'
 
   const handleRouteHover = useCallback(
     (route: RegionalRoute | SubregionRoute) => {
-      if (route.yearMin == null || route.yearMax == null) return
+      setRouteTooltipRoute(route)
       hoverRoute({
         routeId: route.id,
         yearStart: route.yearMin,
@@ -148,42 +180,46 @@ export function FamilyMap({
         fromName: route.fromName,
         toName: route.toName,
         moveCount: route.moveCount,
+        people: route.people,
       })
     },
     [hoverRoute],
   )
 
-  const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
+  const handleRouteMove = useCallback(
+    (route: RegionalRoute | SubregionRoute, position: { x: number; y: number }) => {
+      const frame = frameRef.current
+      if (!frame) return
+      const rect = frame.getBoundingClientRect()
+      setRouteTooltipRoute(route)
+      setRouteTooltipPos({
+        x: position.x - rect.left + 14,
+        y: position.y - rect.top + 14,
+      })
+    },
+    [],
+  )
 
-  const edgeBleedPercent = useMemo(
-    () => 4.5 + Math.min(camera.scale * 1.05, 10),
-    [camera.scale],
-  )
-  const svgPlateScale = useMemo(
-    () => 1.045 + Math.min(Math.max(0, camera.scale - 1) * 0.014, 0.05),
-    [camera.scale],
-  )
-  const zoomBleedStyle = useMemo(
-    () =>
-      ({
-        top: `-${edgeBleedPercent}%`,
-        bottom: `-${edgeBleedPercent}%`,
-        minHeight: `${100 + edgeBleedPercent * 2}%`,
-      }) as const,
-    [edgeBleedPercent],
-  )
+  const handleRouteLeave = useCallback(() => {
+    setRouteTooltipPos(null)
+    setRouteTooltipRoute(null)
+    clearHoverRoute()
+  }, [clearHoverRoute])
+
+  const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
 
   return (
     <div className="map-atlas-frame" ref={frameRef} onWheel={onWheel}>
-      {timelineBridge && (
-        <div className="map-timeline-bridge" aria-hidden="true">
-          <span className="map-timeline-bridge-label">
-            {timelineBridge.fromName} → {timelineBridge.toName}
-          </span>
-          <span className="map-timeline-bridge-years">
-            {timelineBridge.yearStart}–{timelineBridge.yearEnd}
-          </span>
-        </div>
+      {routeTooltipRoute && routeTooltipPos && (
+        <MigrationRouteTooltip
+          fromName={routeTooltipRoute.fromName}
+          toName={routeTooltipRoute.toName}
+          travelers={formatRouteTravelers(routeTooltipRoute)}
+          yearLabel={formatRouteYearLabel(routeTooltipRoute)}
+          moveCount={routeTooltipRoute.moveCount}
+          x={routeTooltipPos.x}
+          y={routeTooltipPos.y}
+        />
       )}
 
       {level !== 'family' && (
@@ -199,21 +235,17 @@ export function FamilyMap({
 
       <motion.div
         className="map-atlas-zoom"
-        style={zoomBleedStyle}
         animate={{ transform: cameraTransform(camera) }}
         transition={{ duration: transitionDuration, ease: motionEase }}
       >
-        <svg
-          className="map-atlas-svg"
-          viewBox={`0 0 ${VB.width} ${VB.height}`}
-          preserveAspectRatio="xMidYMid slice"
-          role="img"
-          aria-label="Interactive family migration map"
-          style={{
-            transform: `scale(${svgPlateScale})`,
-            transformOrigin: '50% 50%',
-          }}
-        >
+        <div className="map-atlas-plate">
+          <svg
+            className="map-atlas-svg"
+            viewBox={`0 0 ${VB.width} ${VB.height}`}
+            preserveAspectRatio="xMidYMid slice"
+            role="img"
+            aria-label="Interactive family migration map"
+          >
           <WorldMapBackground />
 
           <g className="map-heat-layer" aria-hidden="true">
@@ -243,85 +275,24 @@ export function FamilyMap({
           </g>
 
           {showRoutes && activeRoutes.length > 0 && (
-            <g className="map-routes-layer">
-              <AnimatePresence mode="sync">
-                {activeRoutes.map((route) => {
-                  const isSelected = selectedRouteId === route.id
-                  const isHovered = hoveredRouteId === route.id
-                  const dimmed =
-                    focusRegionId != null &&
-                    routeKind === 'route' &&
-                    (route as RegionalRoute).fromRegionId !== focusRegionId &&
-                    (route as RegionalRoute).toRegionId !== focusRegionId &&
-                    !isSelected
-
-                  if (routeKind === 'route' && focusRegionId) {
-                    const rr = route as RegionalRoute
-                    if (
-                      rr.fromRegionId !== focusRegionId &&
-                      rr.toRegionId !== focusRegionId &&
-                      !isSelected
-                    ) {
-                      return null
-                    }
-                  }
-
-                  return (
-                    <motion.g
-                      key={`${routeKind}-${route.id}-${filterKey}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: dimmed ? 0.2 : 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: transitionDuration, ease: motionEase }}
-                    >
-                      <path
-                        d={curvedRoutePath(route.from, route.to)}
-                        className="map-route-hit"
-                        fill="none"
-                        stroke="transparent"
-                        strokeWidth={2.8}
-                        vectorEffect="non-scaling-stroke"
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`Migration corridor ${route.fromName} to ${route.toName}, ${route.moveCount} documented moves`}
-                        onMouseEnter={() => handleRouteHover(route)}
-                        onMouseLeave={clearHoverRoute}
-                        onFocus={() => handleRouteHover(route)}
-                        onBlur={clearHoverRoute}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          selectRoute(route, routeKind)
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            selectRoute(route, routeKind)
-                          }
-                        }}
-                      />
-                      <path
-                        d={curvedRoutePath(route.from, route.to)}
-                        className={`map-route map-route--${route.confidence}${prefersReducedMotion ? '' : ' map-route--draw'}${isSelected ? ' map-route--selected' : ''}${isHovered ? ' map-route--hovered' : ''}`}
-                        fill="none"
-                        vectorEffect="non-scaling-stroke"
-                        pointerEvents="none"
-                        aria-hidden="true"
-                      />
-                      {isHovered && !prefersReducedMotion && (
-                        <path
-                          d={curvedRoutePath(route.from, route.to)}
-                          className="map-route-pulse"
-                          fill="none"
-                          vectorEffect="non-scaling-stroke"
-                          pointerEvents="none"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </motion.g>
-                  )
-                })}
-              </AnimatePresence>
-            </g>
+            <MigrationRouteLayer
+              routes={activeRoutes}
+              routeKind={routeKind}
+              filterKey={filterKey}
+              focusRegionId={focusRegionId}
+              selectedRouteId={selectedRouteId}
+              hoveredRouteId={hoveredRouteId}
+              transitionDuration={transitionDuration}
+              onRouteHover={handleRouteHover}
+              onRouteMove={handleRouteMove}
+              onRouteLeave={handleRouteLeave}
+              onRouteSelect={(route, kind) => {
+                handleRouteLeave()
+                selectRoute(route, kind)
+              }}
+              lineagePalette={lineagePalette}
+              people={people}
+            />
           )}
 
           {layers.showMajorHalos && (
@@ -387,27 +358,27 @@ export function FamilyMap({
             </g>
           )}
         </svg>
-      </motion.div>
 
-      <MapOverlay
-        level={level}
-        layers={layers}
-        camera={camera}
-        frameWidth={frameSize.width}
-        frameHeight={frameSize.height}
-        regions={regions}
-        subregions={subregions}
-        places={visiblePlaces}
-        focusRegionId={focusRegionId}
-        focusSubregionId={focusSubregionId}
-        selectedPlaceId={selectedPlaceId}
-        hoveredRegionId={hoveredRegionId}
-        filterKey={filterKey}
-        onRegionClick={exploreRegion}
-        onSubregionClick={exploreSubregion}
-        onPlaceClick={explorePlace}
-        onRegionHover={setHoveredRegionId}
-      />
+          <MapOverlay
+            level={level}
+            layers={layers}
+            frameWidth={frameSize.width}
+            frameHeight={frameSize.height}
+            regions={regions}
+            subregions={subregions}
+            places={visiblePlaces}
+            focusRegionId={focusRegionId}
+            focusSubregionId={focusSubregionId}
+            selectedPlaceId={selectedPlaceId}
+            hoveredRegionId={hoveredRegionId}
+            filterKey={filterKey}
+            onRegionClick={exploreRegion}
+            onSubregionClick={exploreSubregion}
+            onPlaceClick={explorePlace}
+            onRegionHover={setHoveredRegionId}
+          />
+        </div>
+      </motion.div>
 
       <MapDebugOverlay
         regions={regions}

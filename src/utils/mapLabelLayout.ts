@@ -1,5 +1,5 @@
 import type { MapZoomLevel } from './mapSemanticZoom'
-import { projectMapPoint, type MapCamera } from './mapSemanticZoom'
+import { viewBoxPointToContainerPercent } from './mapSemanticZoom'
 
 export type MapLabelCandidate = {
   id: string
@@ -54,7 +54,6 @@ function rectsOverlap(
  */
 export function layoutMapLabels(
   candidates: MapLabelCandidate[],
-  camera: MapCamera,
   frameWidthPx: number,
   frameHeightPx: number,
   maxLabels?: number,
@@ -66,7 +65,7 @@ export function layoutMapLabels(
   for (const cand of sorted) {
     if (maxLabels != null && placed.length >= maxLabels) break
 
-    const proj = projectMapPoint(cand.x, cand.y, camera)
+    const proj = viewBoxPointToContainerPercent(cand.x, cand.y, frameWidthPx, frameHeightPx)
     if (proj.left < 4 || proj.left > 96 || proj.top < 6 || proj.top > 94) continue
 
     const w = cand.widthPx ?? DEFAULT_WIDTH[cand.kind]

@@ -1,17 +1,21 @@
 import { useMemo } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { historyEvents } from '../data'
+import { historyEventHeroKey } from '../data/historyEventImagery'
+import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useTimeline } from '../context/TimelineContext'
 import { MIN_VIEWPORT_EVENTS } from '../utils/semanticZoom'
 import { activeCountriesAt } from '../utils/placeUtils'
 import { yearX } from '../utils/timelineMath'
 import type { HistoryEvent, Person, RenderedHistoryEvent } from '../types'
 
+const motionEase = [0.22, 0.8, 0.2, 1] as const
+
 type WorldHistoryLayerProps = {
   start: number
   end: number
   width: number
   height: number
-  enabled: boolean
 }
 
 function matchesCountryFilter(ev: HistoryEvent, birthPeople: Person[]): boolean {
@@ -64,48 +68,89 @@ function selectHistoricalEvents(
   return selected.sort((a, b) => a.year - b.year)
 }
 
-export function WorldHistoryLayer({ start, end, width, height, enabled }: WorldHistoryLayerProps) {
-  const { span, center, birthPeople, openHistory, timelineFilters } = useTimeline()
+export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLayerProps) {
+  const { span, center, birthPeople, openHistory, timelineFilters, isZooming } = useTimeline()
+  const { pulse, registerHistoryPulseTargets } = useTimelinePulse()
+  const prefersReducedMotion = useReducedMotion()
+  const historyVisible = timelineFilters.historicalEvents
 
   const events = useMemo(() => {
-    if (!enabled || !timelineFilters.historicalEvents) return []
+    if (!historyVisible) return []
     return selectHistoricalEvents(start, end, span, center, birthPeople)
-  }, [enabled, timelineFilters.historicalEvents, span, start, end, center, birthPeople])
+  }, [historyVisible, span, start, end, center, birthPeople])
 
   const placed = useMemo(
     () => placeHistoryEvents(events, start, span, width, height),
     [events, start, span, width, height],
   )
 
-  if (!enabled) return <div id="historyLayer" className="history-layer" style={{ display: 'none' }} />
+  registerHistoryPulseTargets(
+    useMemo(
+      () =>
+        placed.map(({ event, x }) => ({
+          key: historyEventHeroKey(event),
+          year: event.year,
+          x: Math.round(x),
+        })),
+      [placed],
+    ),
+  )
+
+  if (!historyVisible) return <div id="historyLayer" className="history-layer" style={{ display: 'none' }} />
+
+  const dissolveTransition = prefersReducedMotion
+    ? { duration: 0.01 }
+    : {
+        opacity: {
+          duration: isZooming ? 0.55 : 0.45,
+          ease: motionEase,
+        },
+        default: { duration: 0 },
+      }
 
   return (
     <div id="historyLayer" className="history-layer">
-      {placed.map(({ event, x, y, stemHeight }) => (
-        <button
-          key={`${event.year}-${event.title}`}
-          type="button"
-          className="history-event below"
-          style={{ left: Math.round(x), top: Math.round(y) }}
-          title={`${event.year} · ${event.title}`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            openHistory(event)
-          }}
-        >
-          <span
-            className="history-stem"
-            style={{ height: Math.max(18, stemHeight - 12), bottom: 12 }}
-          />
-          <span className="history-label">
-            <b>{event.title}</b>
-            <small>
-              {event.year} · {event.country}
-            </small>
-          </span>
-        </button>
-      ))}
+      <AnimatePresence mode="sync" initial={false}>
+        {placed.map(({ event, x, y, stemHeight }) => {
+          const eventKey = historyEventHeroKey(event)
+          const isAmbientPulse = pulse.historyKey === eventKey
+
+          return (
+          <motion.div
+            key={eventKey}
+            className={`history-event-anchor${isAmbientPulse ? ' is-ambient-pulse-anchor' : ''}`}
+            style={{ left: Math.round(x), top: Math.round(y) }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={dissolveTransition}
+            layout={false}
+          >
+            <button
+              type="button"
+              className={`history-event below${isAmbientPulse ? ' is-ambient-pulse' : ''}`}
+              title={`${event.year} · ${event.title}`}
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                openHistory(event)
+              }}
+            >
+              <span
+                className="history-stem"
+                style={{ height: Math.max(18, stemHeight - 12), bottom: 12 }}
+              />
+              <span className="history-label">
+                <b>{event.title}</b>
+                <small>
+                  {event.year} · {event.country}
+                </small>
+              </span>
+            </button>
+          </motion.div>
+          )
+        })}
+      </AnimatePresence>
     </div>
   )
 }
@@ -131,7 +176,7 @@ function placeHistoryEvents(
     }
 
     for (const ev of events) {
-      const key = `${ev.year}-${ev.title}`
+      const key = historyEventHeroKey(ev)
       if (placedIds.has(key)) continue
 
       const x = yearX(ev.year, start, span, width)

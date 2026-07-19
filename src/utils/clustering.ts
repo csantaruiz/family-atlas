@@ -14,8 +14,8 @@ import {
   eventRecordId,
 } from '../data/buildStoryChapters'
 import {
-  estimateCalloutObstacle,
   placeHybridLandmarks,
+  resolveCalloutObstacle,
   selectDistributedLandmarks,
   targetVisibleEventCount,
 } from './landmarkSelection'
@@ -27,6 +27,7 @@ import {
   measureEventLabelBox,
 } from './labelMeasure'
 import { placeDetailEvents } from './detailPlacement'
+import type { MeasuredPlaqueAnchor } from './chapterCalloutLayout'
 import type { LabelAlignment } from './labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents, dedupeFamilyEvents } from './canonicalEvent'
 import {
@@ -288,6 +289,7 @@ function layoutLocalChapters(
   earliestYear: number,
   presentYear: number,
   rootPersonId: string,
+  plaqueAnchor: MeasuredPlaqueAnchor | null = null,
 ): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
   const maxChapters = Math.max(ZOOM_THRESHOLDS.FAR_MAX_CHAPTERS, 12)
 
@@ -316,7 +318,25 @@ function layoutLocalChapters(
   if (mode === 'detail') {
     const scoreOf = (event: FamilyEvent) =>
       eventImportanceScore(event, chapters, earliestYear, rootPersonId)
-    const { placed } = placeDetailEvents(visible, start, span, width, height, scoreOf)
+    const calloutObstacle = resolveCalloutObstacle(
+      chapters,
+      start,
+      span,
+      width,
+      timelineAxisY(height),
+      mode,
+      height,
+      plaqueAnchor,
+    )
+    const { placed } = placeDetailEvents(
+      visible,
+      start,
+      span,
+      width,
+      height,
+      scoreOf,
+      calloutObstacle,
+    )
     const uniquePlaced: PlacedFamilyEvent[] = []
     const seen = new Set<string>()
     for (const p of placed) {
@@ -340,7 +360,16 @@ function layoutLocalChapters(
     eventImportanceScore(event, chapters, earliestYear, rootPersonId)
 
   const axisY = timelineAxisY(height)
-  const calloutObstacle = estimateCalloutObstacle(chapters, start, span, width, axisY, mode, height)
+  const calloutObstacle = resolveCalloutObstacle(
+    chapters,
+    start,
+    span,
+    width,
+    axisY,
+    mode,
+    height,
+    plaqueAnchor,
+  )
 
   const density = chapterDensity(visible, start, end)
   const limit = targetVisibleEventCount(density, mode, visible.length)
@@ -548,6 +577,7 @@ export function layoutBirthClustersProgressive(
   earliestYear: number,
   rootPersonId: string,
   presentYear: number,
+  plaqueAnchor: MeasuredPlaqueAnchor | null = null,
 ): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
   const visible = birthEvents.filter((e) => e.year >= start && e.year <= end)
   return layoutLocalChapters(
@@ -561,6 +591,7 @@ export function layoutBirthClustersProgressive(
     earliestYear,
     presentYear,
     rootPersonId,
+    plaqueAnchor,
   )
 }
 
@@ -597,6 +628,7 @@ export function layoutFamilyEventsProgressive(
   earliestYear: number,
   rootPersonId: string,
   presentYear: number,
+  plaqueAnchor: MeasuredPlaqueAnchor | null = null,
 ): { events: PlacedFamilyEvent[]; clusters: PlacedSpanCluster[] } {
   const visible = dedupeFamilyEvents(
     events.filter((e) => e.year >= start && e.year <= end),
@@ -614,6 +646,7 @@ export function layoutFamilyEventsProgressive(
     earliestYear,
     presentYear,
     rootPersonId,
+    plaqueAnchor,
   )
 }
 

@@ -46,22 +46,35 @@ function collectConnectedPeople(
     for (const parentId of person.parents ?? []) addAncestors(parentId, depth + 1)
   }
 
-  const addDescendants = (id: string, depth: number) => {
-    if (depth > MAX_DESCENDANT_DEPTH || included.has(id)) return
+  const addDescendants = (id: string, depth: number, visited: Set<string>) => {
+    if (depth > MAX_DESCENDANT_DEPTH || visited.has(id)) return
     const person = peopleById[id]
     if (!person) return
+    visited.add(id)
     included.add(id)
-    for (const childId of person.children ?? []) addDescendants(childId, depth + 1)
+    for (const childId of person.children ?? []) addDescendants(childId, depth + 1, visited)
   }
 
   addAncestors(rootId, 0)
-  addDescendants(rootId, 0)
+  addDescendants(rootId, 0, new Set())
+
+  // Spouses of everyone already included (root spouse, co-parents, etc.).
+  for (const id of [...included]) {
+    const person = peopleById[id]
+    if (!person) continue
+    for (const spouseId of person.spouses ?? []) {
+      if (peopleById[spouseId]) included.add(spouseId)
+    }
+  }
 
   for (const id of timelinePersonIds) {
     if (!peopleById[id]) continue
     included.add(id)
     for (const parentId of peopleById[id].parents ?? []) included.add(parentId)
     for (const childId of peopleById[id].children ?? []) included.add(childId)
+    for (const spouseId of peopleById[id].spouses ?? []) {
+      if (peopleById[spouseId]) included.add(spouseId)
+    }
   }
 
   return included
@@ -384,6 +397,32 @@ export function buildFamilyTreeLayout(
   layoutUp(rootId, rootCenterX, rootY, ids, peopleById, positions, connectors, upMemo, new Set())
   layoutDown(rootId, rootCenterX, rootY, ids, peopleById, positions, connectors, downMemo, new Set())
 
+  // Place root spouses beside the root (family tree couple rail).
+  const rootPerson = peopleById[rootId]
+  const rootPos = positions.get(rootId)
+  if (rootPerson && rootPos) {
+    const spouses = (rootPerson.spouses ?? [])
+      .map((id) => peopleById[id])
+      .filter((p): p is Person => Boolean(p && ids.has(p.id)))
+      .sort((a, b) => (a.birthYear ?? 9999) - (b.birthYear ?? 9999))
+
+    let spouseOffset = 1
+    for (const spouse of spouses) {
+      if (positions.has(spouse.id)) continue
+      const x = rootPos.x + spouseOffset * (TREE_CARD_WIDTH + TREE_H_GAP)
+      positions.set(spouse.id, { x, y: rootPos.y })
+      const rootCenter = nodeCenter(rootPos)
+      const spouseCenter = nodeCenter({ x, y: rootPos.y })
+      const railY = rootPos.y + TREE_CARD_HEIGHT * 0.38
+      connectors.push({
+        id: `couple-${rootId}-${spouse.id}`,
+        kind: 'couple',
+        path: `M ${rootCenter.x} ${railY} H ${spouseCenter.x}`,
+      })
+      spouseOffset += 1
+    }
+  }
+
   const extended = people
     .filter((p) => generationOf(p) >= 110 && !positions.has(p.id))
     .sort((a, b) => (a.birthYear ?? 9999) - (b.birthYear ?? 9999))
@@ -427,5 +466,8 @@ export function generationLabel(generation: number, rootName: string): string {
   if (generation === 110) return 'Extended family'
   if (generation === 1) return 'Parents'
   if (generation === 2) return 'Grandparents'
+  if (generation === -1) return 'Children'
+  if (generation === -2) return 'Grandchildren'
+  if (generation < 0) return `${-generation} generations after present`
   return `${generation} generations before present`
 }

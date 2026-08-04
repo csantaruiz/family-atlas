@@ -31,7 +31,7 @@ export function buildFamilyEvents(people: Person[]): FamilyEvent[] {
     const importance =
       (p.focus ? 5 : 0) +
       (featuredNames.has(p.name) ? 5 : 0) +
-      (p.generation != null ? Math.max(0, 4 - Math.min(4, p.generation)) : 0) +
+      (p.generation != null ? Math.max(0, 4 - Math.min(4, Math.abs(p.generation))) : 0) +
       (p.children?.length ? 1 : 0)
 
     events.push({

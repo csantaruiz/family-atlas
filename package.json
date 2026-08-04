@@ -11,6 +11,7 @@
     "transcribe:documentary": "python3 scripts/transcribe-documentary.py base",
     "build:camera-cues": "python3 scripts/build-camera-cues.py",
     "sync:documentary": "python3 scripts/transcribe-documentary.py base && python3 scripts/build-camera-cues.py",
+    "import:gedcom": "python3 scripts/import-gedcom.py",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -133,4 +133,45 @@ describe('near-generation family prioritization', () => {
       `placed=${placedAll.join(' | ')}`,
     ).toBe(true)
   })
+
+  it('scores spouse and children as near family', () => {
+    const spouseId = 'I18123023648'
+    const childId = 'I18128930147'
+    const events = buildFamilyEvents(familyDatabase.people)
+    const spouseBirth = events.find((e) => e.kind === 'birth' && e.person.id === spouseId)
+    const childBirth = events.find((e) => e.kind === 'birth' && e.person.id === childId)
+    const distant = events.find(
+      (e) => e.kind === 'death' && e.year === 1922 && e.person.name.includes('Hinojos'),
+    )
+    expect(spouseBirth).toBeTruthy()
+    expect(childBirth).toBeTruthy()
+    expect(distant).toBeTruthy()
+    expect(spouseBirth!.person.generation).toBe(0)
+    expect(childBirth!.person.generation).toBe(-1)
+
+    const earliest = familyDatabase.stats.earliestYear
+    const spouseScore = eventImportanceScore(spouseBirth!, [], earliest, rootId)
+    const childScore = eventImportanceScore(childBirth!, [], earliest, rootId)
+    const distantScore = eventImportanceScore(distant!, [], earliest, rootId)
+    expect(spouseScore).toBeGreaterThan(distantScore)
+    expect(childScore).toBeGreaterThan(distantScore)
+  })
+
+  it('keeps Leah and sons visible in a modern roomy viewport', () => {
+    const width = 1400
+    const start = 1965
+    const end = 2020
+    const span = end - start
+    const events = buildFamilyEvents(familyDatabase.people)
+    const visible = events.filter((e) => e.year >= start && e.year <= end)
+    const scoreOf = (event: (typeof events)[number]) =>
+      eventImportanceScore(event, [], familyDatabase.stats.earliestYear, familyDatabase.root)
+
+    const selected = selectDistributedLandmarks(visible, start, end, span, width, 'near', scoreOf)
+    const ids = new Set(selected.map((e) => e.person.id))
+    expect(ids.has('I18123023648'), `selected=${selected.map((e) => e.person.name).join(' | ')}`).toBe(
+      true,
+    )
+    expect(ids.has('I18128930147') || ids.has('I112802641930')).toBe(true)
+  })
 })

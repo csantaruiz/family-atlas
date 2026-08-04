@@ -60,6 +60,10 @@ export function personPassesBranchFilter(
   if (!filters.paternal && !filters.maternal) return false
   if (filters.paternal && filters.maternal) return true
 
+  const person = byId.get(personId)
+  // Root household (self, spouse, descendants) always stays visible on a single-branch filter.
+  if (person?.generation != null && person.generation <= 0) return true
+
   const sides = personLineageSides(personId, palette, byId)
   if (sides.size === 0) return false
   if (filters.paternal && sides.has('paternal')) return true

@@ -123,7 +123,11 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     setTimelineFiltersState((prev) => ({ ...prev, ...patch }))
   }, [])
   const generationCount = useMemo(
-    () => Math.max(...familyDatabase.people.map((p) => p.generation ?? 0)) + 1,
+    () =>
+      Math.max(
+        0,
+        ...familyDatabase.people.map((p) => (p.generation != null ? Math.abs(p.generation) : 0)),
+      ) + 1,
     [],
   )
 

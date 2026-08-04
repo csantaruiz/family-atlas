@@ -26,7 +26,8 @@ export const familyDatabase: FamilyDatabase = {
         "I18123023648"
       ],
       "children": [
-        "I18128930147"
+        "I18128930147",
+        "I112802641930"
       ],
       "generation": 0,
       "focus": true
@@ -274,8 +275,6 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Gloucester, New Jersey, USA",
       "places": [
         "Camden, Camden, New Jersey, USA",
-        "Gloucester, New Jersey, USA",
-        "Bellmawr, Camden, New Jersey, USA",
         "Gloucester City Ward 1, Camden, New Jersey",
         "Gloucester City, New Jersey, USA",
         "Gloucester, Camden, New Jersey",
@@ -284,6 +283,7 @@ export const familyDatabase: FamilyDatabase = {
         "Gloucester City, Camden, New Jersey, United States",
         "Gloucester, Camden, New Jersey, USA",
         "Camden, New Jersey",
+        "Gloucester, New Jersey, USA",
         "Not Stated, Camden, New Jersey"
       ],
       "occupation": [],
@@ -433,8 +433,7 @@ export const familyDatabase: FamilyDatabase = {
       "parents": [
         "I18123023802",
         "I18123023747",
-        "I18124468642",
-        "I18123023747"
+        "I18124468642"
       ],
       "spouses": [],
       "children": [],
@@ -783,8 +782,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "El Paso, El Paso, Texas",
       "places": [
         "Mexico",
-        "El Paso, El Paso, Texas",
-        "El Paso, El Paso, Texas, USA"
+        "El Paso, El Paso, Texas, USA",
+        "El Paso, El Paso, Texas"
       ],
       "occupation": [],
       "parents": [
@@ -1663,9 +1662,10 @@ export const familyDatabase: FamilyDatabase = {
         "I18123023582"
       ],
       "children": [
-        "I18128930147"
+        "I18128930147",
+        "I112802641930"
       ],
-      "generation": null,
+      "generation": 0,
       "focus": true
     },
     {
@@ -1932,17 +1932,17 @@ export const familyDatabase: FamilyDatabase = {
       "sex": "M",
       "birthDate": "20 Sep 1894",
       "birthYear": 1894,
-      "birthPlace": "Chihuahua, Chihuahua, M\u00e9xico",
+      "birthPlace": "Chihuahua, Chihuahua, México",
       "deathDate": "1967",
       "deathYear": 1967,
       "deathPlace": "Los Angeles, Los Angeles, California, USA",
       "places": [
-        "Chihuahua, Chihuahua, M\u00e9xico",
-        "Los Angeles, Los Angeles, California, USA",
+        "Chihuahua, Chihuahua, México",
         "El Paso Precinct 3, El Paso, Texas",
         "El Paso, El Paso, Texas",
         "Los Angeles, Los Angeles, California, United States",
-        "Los Angeles, California, USA"
+        "Los Angeles, California, USA",
+        "Los Angeles, Los Angeles, California, USA"
       ],
       "occupation": [],
       "parents": [
@@ -2224,10 +2224,10 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Folsom, California, USA",
       "places": [
         "Westminster, California, United States",
-        "Folsom, California, USA",
         "Westminster, Orange, California, USA",
         "Rosemead, CA",
-        "El Dorado Hills, California"
+        "El Dorado Hills, California",
+        "Folsom, California, USA"
       ],
       "occupation": [],
       "parents": [
@@ -2235,8 +2235,7 @@ export const familyDatabase: FamilyDatabase = {
         "I112185241263",
         "I18123023802",
         "I18123023747",
-        "I18124468642",
-        "I18123023747"
+        "I18124468642"
       ],
       "spouses": [
         "I18123023748",
@@ -2512,16 +2511,17 @@ export const familyDatabase: FamilyDatabase = {
     },
     {
       "id": "I18123023681",
-      "name": "Alfred Ruiz",
+      "name": "Alfred Victor Ruiz",
       "sex": "M",
-      "birthDate": "1944",
-      "birthYear": 1944,
-      "birthPlace": "San Antonio, TX, USA",
+      "birthDate": "14 Aug 1943",
+      "birthYear": 1943,
+      "birthPlace": "Bexar, Texas",
       "deathDate": "",
       "deathYear": null,
       "deathPlace": "",
       "places": [
         "San Antonio, TX, USA",
+        "Bexar, Texas",
         "Placerville, CA",
         "San Jose, CA"
       ],
@@ -2534,6 +2534,7 @@ export const familyDatabase: FamilyDatabase = {
         "I18123023741"
       ],
       "children": [
+        "I112802642294",
         "I18123023582"
       ],
       "generation": 1,
@@ -2610,8 +2611,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Stratford, Camden, New Jersey, United States of America",
       "places": [
         "New Jersey, USA",
-        "Stratford, Camden, New Jersey, United States of America",
-        "Gloucester, Camden, New Jersey, USA"
+        "Gloucester, Camden, New Jersey, USA",
+        "Stratford, Camden, New Jersey, United States of America"
       ],
       "occupation": [],
       "parents": [
@@ -2739,10 +2740,10 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Los Angeles, Los Angeles, California, USA",
       "places": [
         "Mexico",
-        "Los Angeles, Los Angeles, California, USA",
         "El Paso Precinct 3, El Paso, Texas",
         "El Paso, El Paso, Texas",
-        "Los Angeles, Los Angeles, California, United States"
+        "Los Angeles, Los Angeles, California, United States",
+        "Los Angeles, Los Angeles, California, USA"
       ],
       "occupation": [],
       "parents": [
@@ -2967,10 +2968,10 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Gloucester City, Camden, New Jersey, United States",
       "places": [
         "Gloucester, New Jersey, United States",
-        "Gloucester City, Camden, New Jersey, United States",
         "Gloucester City, Camden, New Jersey",
         "Camden, New Jersey",
-        "Not Stated, Camden, New Jersey"
+        "Not Stated, Camden, New Jersey",
+        "Gloucester City, Camden, New Jersey, United States"
       ],
       "occupation": [],
       "parents": [
@@ -3099,8 +3100,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Mehoopany, Wyoming, Pennsylvania, USA",
       "places": [
         "Jackson, Monroe, Pennsylvania, USA",
-        "Mehoopany, Wyoming, Pennsylvania, USA",
-        "Jackson, Monroe, Pennsylvania"
+        "Jackson, Monroe, Pennsylvania",
+        "Mehoopany, Wyoming, Pennsylvania, USA"
       ],
       "occupation": [],
       "parents": [
@@ -3327,8 +3328,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Anahiem, CA USA",
       "places": [
         "Anahiem, Ca USA",
-        "Anahiem, CA USA",
-        "Westminster, Orange, California, USA"
+        "Westminster, Orange, California, USA",
+        "Anahiem, CA USA"
       ],
       "occupation": [],
       "parents": [
@@ -3336,8 +3337,7 @@ export const familyDatabase: FamilyDatabase = {
         "I112185241263",
         "I18123023802",
         "I18123023747",
-        "I18124468642",
-        "I18123023747"
+        "I18124468642"
       ],
       "spouses": [],
       "children": [],
@@ -3764,13 +3764,13 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Stratford, Camden, New Jersey, United States of America",
       "places": [
         "Glou. City, N.j.",
-        "Stratford, Camden, New Jersey, United States of America",
         "Gloucester City, Camden, New Jersey",
         "Gloucester City, Camden, New Jersey, United States",
         "Gloucester, Camden, New Jersey, USA",
         "Camden, New Jersey",
         "MT Ephraim, New Jersey",
-        "New Jersey"
+        "New Jersey",
+        "Stratford, Camden, New Jersey, United States of America"
       ],
       "occupation": [],
       "parents": [
@@ -4026,6 +4026,7 @@ export const familyDatabase: FamilyDatabase = {
         "I18123023681"
       ],
       "children": [
+        "I112802642294",
         "I18123023582"
       ],
       "generation": 1,
@@ -4043,8 +4044,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "New Jersey, United States",
       "places": [
         "New Jersey",
-        "New Jersey, United States",
-        "Gloucester City, Camden, New Jersey"
+        "Gloucester City, Camden, New Jersey",
+        "New Jersey, United States"
       ],
       "occupation": [],
       "parents": [
@@ -4174,10 +4175,6 @@ export const familyDatabase: FamilyDatabase = {
         "I18123023664",
         "I18123023599",
         "I18123023787",
-        "I18123023799",
-        "I18123023711",
-        "I18123023671",
-        "I18123023599",
         "I18123023799"
       ],
       "generation": 3,
@@ -4195,11 +4192,11 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Monrovia, Los Angeles, California, United States of America",
       "places": [
         "El Paso, Texas, USA",
-        "Monrovia, Los Angeles, California, United States of America",
         "El Paso Precinct 3, El Paso, Texas",
         "El Paso, El Paso, Texas",
         "Los Angeles, California, USA",
-        "Texas"
+        "Texas",
+        "Monrovia, Los Angeles, California, United States of America"
       ],
       "occupation": [],
       "parents": [
@@ -4411,8 +4408,8 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "El Paso, El Paso, Texas",
       "places": [
         "Mexico",
-        "El Paso, El Paso, Texas",
-        "Justice Precinct 2, El Paso, Texas"
+        "Justice Precinct 2, El Paso, Texas",
+        "El Paso, El Paso, Texas"
       ],
       "occupation": [],
       "parents": [
@@ -4830,11 +4827,11 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "El Paso, Texas",
       "places": [
         "Ojinaga, Chihuahua, Mexico",
-        "El Paso, Texas",
         "Justice Precinct 2, El Paso, Texas",
         "El Paso, El Paso, Texas",
         "Chihuahua, Chihuahua",
-        "El Paso, Texas, USA"
+        "El Paso, Texas, USA",
+        "El Paso, Texas"
       ],
       "occupation": [],
       "parents": [
@@ -5482,8 +5479,7 @@ export const familyDatabase: FamilyDatabase = {
       "parents": [
         "I18123023802",
         "I18123023747",
-        "I18124468642",
-        "I18123023747"
+        "I18124468642"
       ],
       "spouses": [],
       "children": [],
@@ -5523,11 +5519,11 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "Not Located - Appears in 1871 Census",
       "places": [
         "Scotland",
-        "Not Located - Appears in 1871 Census",
         "Camden City, Camden, New Jersey",
         "Gloucester City Ward 1, Camden, New Jersey",
         "Gloucester, Camden, New Jersey",
-        "Gloucester City, Camden, New Jersey"
+        "Gloucester City, Camden, New Jersey",
+        "Not Located - Appears in 1871 Census"
       ],
       "occupation": [],
       "parents": [],
@@ -5797,12 +5793,12 @@ export const familyDatabase: FamilyDatabase = {
       "sex": "M",
       "birthDate": "1743",
       "birthYear": 1743,
-      "birthPlace": "Ci\u00e9nega, Chihuahua, Mexico",
+      "birthPlace": "Ciénega, Chihuahua, Mexico",
       "deathDate": "",
       "deathYear": null,
       "deathPlace": "",
       "places": [
-        "Ci\u00e9nega, Chihuahua, Mexico"
+        "Ciénega, Chihuahua, Mexico"
       ],
       "occupation": [],
       "parents": [
@@ -6748,7 +6744,7 @@ export const familyDatabase: FamilyDatabase = {
       ],
       "spouses": [],
       "children": [],
-      "generation": null,
+      "generation": -1,
       "focus": true
     },
     {
@@ -7018,7 +7014,6 @@ export const familyDatabase: FamilyDatabase = {
       "deathPlace": "",
       "places": [
         "Texas",
-        "Glendale, Los Angeles County, California, United States of America",
         "Justice Precinct 1, Ward, Texas, USA",
         "Brawley, Brawley, Imperial, California, USA"
       ],
@@ -7392,7 +7387,6 @@ export const familyDatabase: FamilyDatabase = {
         "I112089259652",
         "I112089259461",
         "I112089259462",
-        "I112089259513",
         "I112089259514"
       ],
       "spouses": [
@@ -7465,13 +7459,12 @@ export const familyDatabase: FamilyDatabase = {
       "occupation": [],
       "parents": [],
       "spouses": [
-        "I112089259652",
-        "I112089259514"
+        "I112089259514",
+        "I112089259652"
       ],
       "children": [
-        "I112483187808",
         "I112089258955",
-        "I112089258955"
+        "I112483187808"
       ],
       "generation": 7,
       "focus": true
@@ -7900,7 +7893,7 @@ export const familyDatabase: FamilyDatabase = {
     },
     {
       "id": "I112732305679",
-      "name": "Mar\u00eda Nicolasa Parra",
+      "name": "María Nicolasa Parra",
       "sex": "F",
       "birthDate": "",
       "birthYear": null,
@@ -7953,12 +7946,12 @@ export const familyDatabase: FamilyDatabase = {
       "sex": "M",
       "birthDate": "abt 1721",
       "birthYear": 1721,
-      "birthPlace": "Allende, Chihuahua, M\u00e9xico",
+      "birthPlace": "Allende, Chihuahua, México",
       "deathDate": "",
       "deathYear": null,
       "deathPlace": "",
       "places": [
-        "Allende, Chihuahua, M\u00e9xico"
+        "Allende, Chihuahua, México"
       ],
       "occupation": [],
       "parents": [
@@ -8022,7 +8015,7 @@ export const familyDatabase: FamilyDatabase = {
     },
     {
       "id": "I112732308681",
-      "name": "Joseph Jos\u00e9 Pinon",
+      "name": "Joseph José Pinon",
       "sex": "M",
       "birthDate": "1625",
       "birthYear": 1625,
@@ -8106,19 +8099,65 @@ export const familyDatabase: FamilyDatabase = {
       ],
       "generation": null,
       "focus": false
+    },
+    {
+      "id": "I112802641930",
+      "name": "Joaquin Diego Santa Ruiz",
+      "sex": "M",
+      "birthDate": "21 Jul 2014",
+      "birthYear": 2014,
+      "birthPlace": "San Diego County, California, USA",
+      "deathDate": "",
+      "deathYear": null,
+      "deathPlace": "",
+      "places": [
+        "San Diego County, California, USA"
+      ],
+      "occupation": [],
+      "parents": [
+        "I18123023582",
+        "I18123023648"
+      ],
+      "spouses": [],
+      "children": [],
+      "generation": -1,
+      "focus": true
+    },
+    {
+      "id": "I112802642294",
+      "name": "Carmel Ruiz",
+      "sex": "F",
+      "birthDate": "01 26 1970",
+      "birthYear": 1970,
+      "birthPlace": "Los Angeles County, California, USA",
+      "deathDate": "",
+      "deathYear": null,
+      "deathPlace": "",
+      "places": [
+        "Los Angeles County, California, USA"
+      ],
+      "occupation": [],
+      "parents": [
+        "I18123023681",
+        "I18123023741"
+      ],
+      "spouses": [],
+      "children": [],
+      "generation": null,
+      "focus": false
     }
   ],
   "root": "I18123023582",
   "stats": {
-    "people": 325,
+    "people": 327,
     "families": 80,
     "earliestYear": 1473,
-    "latestYear": 2011,
+    "latestYear": 2014,
     "earliestName": "William Lowndes",
     "places": [
       [
         "New Jersey",
-        103
+        102
       ],
       [
         "England",
@@ -8134,11 +8173,11 @@ export const familyDatabase: FamilyDatabase = {
       ],
       [
         "California",
-        38
+        39
       ],
       [
         "United States",
-        32
+        31
       ],
       [
         "Scotland",
@@ -8155,12 +8194,12 @@ export const familyDatabase: FamilyDatabase = {
         78
       ],
       [
-        "Doll",
+        "Ruiz",
         38
       ],
       [
-        "Ruiz",
-        36
+        "Doll",
+        38
       ],
       [
         "Hendry",

@@ -444,10 +444,11 @@
 
 #timeline .stage.stage--narrow .chapter-callout-frame {
   max-width: min(92vw, 320px);
+  --callout-inner-pad-x: 12px;
 }
 
 #timeline .stage.stage--narrow .chapter-callout-inner {
-  padding: 10px 12px 12px;
+  padding: 10px var(--callout-inner-pad-x) 12px;
 }
 
 #timeline .stage.stage--narrow .family-event .event-copy {
@@ -1185,10 +1186,10 @@
   text-align: center;
   overflow: visible;
   --callout-vivid: 1;
-  --callout-title-size: 22px;
-  --callout-years-size: 13px;
-  --callout-narrative-size: 11px;
-  --callout-meta-size: 10px;
+  --callout-title-size: 24px;
+  --callout-years-size: 14px;
+  --callout-narrative-size: 12px;
+  --callout-meta-size: 11px;
   --callout-cta-size: 11px;
   --callout-narrative-width: 500px;
 }
@@ -1196,23 +1197,23 @@
 .chapter-callout-layer--sparse,
 .chapter-callout-layer--dense,
 .chapter-callout-layer--balanced {
-  --callout-title-size: 23px;
-  --callout-years-size: 13px;
-  --callout-narrative-size: 11px;
+  --callout-title-size: 25px;
+  --callout-years-size: 14px;
+  --callout-narrative-size: 12px;
 }
 
 .chapter-callout-layer--near,
 .chapter-callout-layer--detail {
-  --callout-title-size: 19px;
-  --callout-years-size: 12px;
-  --callout-narrative-size: 10px;
-  --callout-meta-size: 10px;
+  --callout-title-size: 21px;
+  --callout-years-size: 13px;
+  --callout-narrative-size: 11px;
+  --callout-meta-size: 11px;
   --callout-cta-size: 10px;
 }
 
 .chapter-callout-layer--medium {
-  --callout-title-size: 21px;
-  --callout-years-size: 12px;
+  --callout-title-size: 23px;
+  --callout-years-size: 13px;
 }
 
 .chapter-callout-halo {
@@ -1222,7 +1223,9 @@
 .chapter-callout-frame {
   position: relative;
   box-sizing: border-box;
-  padding: 14px 26px 12px;
+  --callout-pad-x: 26px;
+  --callout-inner-pad-x: 0px;
+  padding: 14px var(--callout-pad-x) 12px;
   border-radius: 10px;
   pointer-events: auto;
   cursor: default;
@@ -1245,7 +1248,7 @@
     0 4px 22px rgba(0, 0, 0, calc(0.34 + 0.08 * var(--callout-vivid, 1))),
     0 14px 42px rgba(0, 0, 0, calc(0.2 + 0.06 * var(--callout-vivid, 1)));
   filter: none;
-  overflow: hidden;
+  overflow: visible;
   transition:
     background 0.55s cubic-bezier(0.22, 0.8, 0.2, 1),
     border-color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1),
@@ -1260,6 +1263,8 @@
   pointer-events: none;
   opacity: 0.04;
   mix-blend-mode: soft-light;
+  border-radius: inherit;
+  overflow: hidden;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.05' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 200px 200px;
 }
@@ -1278,6 +1283,7 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  border-radius: inherit;
 }
 
 .chapter-callout-scenery-img {
@@ -1315,14 +1321,14 @@
   background:
     linear-gradient(
       180deg,
-      rgba(40, 32, 24, calc(0.18 + 0.1 * (1 - var(--callout-vivid, 1)))) 0%,
-      rgba(28, 23, 18, calc(0.4 + 0.12 * (1 - var(--callout-vivid, 1)))) 52%,
-      rgba(16, 14, 12, 0.72) 100%
+      rgba(28, 22, 16, calc(0.42 + 0.12 * (1 - var(--callout-vivid, 1)))) 0%,
+      rgba(18, 15, 12, calc(0.58 + 0.1 * (1 - var(--callout-vivid, 1)))) 52%,
+      rgba(10, 9, 8, 0.82) 100%
     ),
     radial-gradient(
       ellipse 94% 74% at 50% 20%,
-      rgba(24, 20, 16, 0.1) 0%,
-      rgba(20, 17, 14, 0.38) 100%
+      rgba(16, 13, 10, 0.22) 0%,
+      rgba(12, 10, 8, 0.5) 100%
     );
 }
 
@@ -1333,6 +1339,8 @@
   z-index: 1;
   pointer-events: none;
   opacity: 0.6;
+  border-radius: inherit;
+  overflow: hidden;
   background: linear-gradient(
     180deg,
     rgba(255, 214, 150, calc(0.06 * var(--callout-vivid, 1))) 0%,
@@ -1366,6 +1374,7 @@
   gap: 0;
   pointer-events: auto;
   min-width: 0;
+  overflow: visible;
 }
 
 .chapter-callout-nav,
@@ -1435,19 +1444,67 @@
   touch-action: manipulation;
   width: 100%;
   min-width: 0;
+  overflow: visible;
 }
 
 .chapter-callout-title {
+  --callout-ribbon: #e8d9b8;
+  --callout-ribbon-overlap: 12px;
+  --callout-ribbon-wing: 34px;
   display: block;
-  font: 400 var(--callout-title-size) / 1.18 Georgia, 'Times New Roman', serif;
-  color: color-mix(
-    in srgb,
-    rgba(255, 255, 255, 0.96) calc(var(--callout-vivid, 1) * 100%),
-    rgba(156, 152, 144, 0.72)
+  position: relative;
+  z-index: 5;
+  box-sizing: border-box;
+  width: calc(
+    100% + 2 *
+      (var(--callout-pad-x, 26px) + var(--callout-inner-pad-x, 0px) + var(--callout-ribbon-overlap))
   );
+  max-width: none;
+  margin-inline: calc(
+    -1 * (var(--callout-pad-x, 26px) + var(--callout-inner-pad-x, 0px) + var(--callout-ribbon-overlap))
+  );
+  margin-block: 6px 14px;
+  padding: 8px 28px 9px;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  font: 400 var(--callout-title-size) / 1.18 Georgia, 'Times New Roman', serif;
   letter-spacing: 0.006em;
-  max-width: 100%;
-  transition: color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+  color: #100e0c;
+  background-color: var(--callout-ribbon);
+  background-image: none;
+  opacity: 1;
+  isolation: isolate;
+  box-shadow: none;
+  clip-path: none;
+  transition:
+    color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1),
+    background-color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+}
+
+/* Classic folded ribbon wings — same fill, dropped, swallowtail notches. */
+.chapter-callout-title::before,
+.chapter-callout-title::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: -11px;
+  width: var(--callout-ribbon-wing);
+  background-color: var(--callout-ribbon);
+  opacity: 1;
+  z-index: -1;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+.chapter-callout-title::before {
+  left: calc(-1 * var(--callout-ribbon-wing) + 6px);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%, 48% 50%, 0 0);
+}
+
+.chapter-callout-title::after {
+  right: calc(-1 * var(--callout-ribbon-wing) + 6px);
+  clip-path: polygon(0 0, 100% 0, 52% 50%, 100% 100%, 0 100%);
 }
 
 .chapter-callout-divider {
@@ -1466,33 +1523,38 @@
 
 .chapter-callout-years {
   display: block;
-  margin-top: 0;
-  font: 400 var(--callout-years-size) / 1.15 Georgia, 'Times New Roman', serif;
-  color: color-mix(
-    in srgb,
-    rgba(197, 160, 89, 0.94) calc(var(--callout-vivid, 1) * 100%),
-    rgba(132, 128, 120, 0.62)
-  );
+  position: relative;
+  z-index: 3;
+  margin-top: 9px;
+  font: 500 var(--callout-years-size) / 1.15 Georgia, 'Times New Roman', serif;
+  color: #f3e2b0;
   letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   transition: color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 
 .chapter-callout-narrative {
   display: block;
-  margin-top: 7px;
+  position: relative;
+  z-index: 3;
+  margin-top: 8px;
   margin-inline: auto;
   max-width: 100%;
-  font: 400 var(--callout-narrative-size) / 1.4 Inter, system-ui, sans-serif;
-  color: rgba(168, 168, 168, 0.74);
+  font: 500 var(--callout-narrative-size) / 1.45 Inter, system-ui, sans-serif;
+  color: #f4f1ea;
   letter-spacing: 0.006em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .chapter-callout-meta {
   display: block;
-  margin-top: 5px;
+  position: relative;
+  z-index: 3;
+  margin-top: 6px;
   font: 400 var(--callout-meta-size) / 1.3 Inter, system-ui, sans-serif;
   letter-spacing: 0.012em;
-  color: rgba(150, 150, 150, 0.58);
+  color: rgba(236, 228, 212, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .chapter-callout-zoom-actions {
@@ -1711,14 +1773,15 @@
 
 @media (max-width: 900px) {
   .chapter-callout-layer {
-    --callout-title-size: 19px;
-    --callout-years-size: 12px;
-    --callout-narrative-size: 10px;
+    --callout-title-size: 21px;
+    --callout-years-size: 13px;
+    --callout-narrative-size: 11px;
     --callout-narrative-width: 400px;
   }
 
   .chapter-callout-frame {
-    padding: 12px 18px 10px;
+    --callout-pad-x: 18px;
+    padding: 12px var(--callout-pad-x) 10px;
     border-radius: 9px;
   }
 
@@ -1737,7 +1800,7 @@
   }
 
   .chapter-callout-meta {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .chapter-callout-zoom-actions {

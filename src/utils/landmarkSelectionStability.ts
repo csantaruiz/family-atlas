@@ -1,6 +1,6 @@
 import type { FamilyEvent } from '../types'
 import { canonicalEventId } from './canonicalEvent'
-import { isNearGeneration } from './familyPriority'
+import { isNearGeneration, generationDistance } from './familyPriority'
 import type { LabelAlignment } from './labelMeasure'
 import type { SemanticZoomMode } from './semanticZoom'
 
@@ -168,8 +168,8 @@ function balanceLandmarkSelection(
           zoneForYear(event.year, start, end) === zone && !mergedIds.has(canonicalEventId(event)),
       )
       .sort((a, b) => {
-        const ga = a.person.generation ?? 99
-        const gb = b.person.generation ?? 99
+        const ga = generationDistance(a.person)
+        const gb = generationDistance(b.person)
         if (ga !== gb) return ga - gb
         const nearA = isNearGeneration(a.person) ? 0 : 1
         const nearB = isNearGeneration(b.person) ? 0 : 1
@@ -188,7 +188,7 @@ function balanceLandmarkSelection(
       (event) =>
         isNearGeneration(event.person, 1) && !mergedIds.has(canonicalEventId(event)),
     )
-    .sort((a, b) => (a.person.generation ?? 99) - (b.person.generation ?? 99))
+    .sort((a, b) => generationDistance(a.person) - generationDistance(b.person))
 
   for (const candidate of missingNear) {
     if (merged.length < limit) {
@@ -202,7 +202,7 @@ function balanceLandmarkSelection(
     for (let i = 0; i < merged.length; i++) {
       const event = merged[i]
       if (isNearGeneration(event.person, 1)) continue
-      const g = event.person.generation ?? 99
+      const g = generationDistance(event.person)
       if (zoneForYear(event.year, start, end) === zone && g > victimGen) {
         victimGen = g
         victimIndex = i
@@ -211,7 +211,7 @@ function balanceLandmarkSelection(
     if (victimIndex < 0) {
       for (let i = 0; i < merged.length; i++) {
         const event = merged[i]
-        const g = event.person.generation ?? 99
+        const g = generationDistance(event.person)
         if (isNearGeneration(event.person, 1)) continue
         if (g > victimGen) {
           victimGen = g
@@ -221,7 +221,7 @@ function balanceLandmarkSelection(
     }
     if (victimIndex < 0) continue
     const victim = merged[victimIndex]
-    if ((victim.person.generation ?? 99) <= (candidate.person.generation ?? 99)) continue
+    if (generationDistance(victim.person) <= generationDistance(candidate.person)) continue
     mergedIds.delete(canonicalEventId(victim))
     merged[victimIndex] = candidate
     mergedIds.add(canonicalEventId(candidate))
@@ -334,7 +334,7 @@ function enforceNearGenerationSeats(
         isNearGeneration(event.person, 1) &&
         !ids.has(canonicalEventId(event)),
     )
-    .sort((a, b) => (a.person.generation ?? 99) - (b.person.generation ?? 99))
+    .sort((a, b) => generationDistance(a.person) - generationDistance(b.person))
 
   for (const candidate of missing) {
     if (result.length < limit) {
@@ -348,14 +348,14 @@ function enforceNearGenerationSeats(
     for (let i = 0; i < result.length; i++) {
       const event = result[i]
       if (isNearGeneration(event.person, 1)) continue
-      const g = event.person.generation ?? 99
+      const g = generationDistance(event.person)
       if (g > victimGen) {
         victimGen = g
         victimIndex = i
       }
     }
     if (victimIndex < 0) continue
-    if (victimGen <= (candidate.person.generation ?? 99)) continue
+    if (victimGen <= generationDistance(candidate.person)) continue
     ids.delete(canonicalEventId(result[victimIndex]))
     result[victimIndex] = candidate
     ids.add(canonicalEventId(candidate))

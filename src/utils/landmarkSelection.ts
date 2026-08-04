@@ -27,7 +27,7 @@ import {
   isNarrowStage,
   stageLayoutProfile,
 } from './stageBreakpoints'
-import { isNearGeneration } from './familyPriority'
+import { isNearGeneration, generationDistance } from './familyPriority'
 import {
   chapterCenterX,
   computeEraBraceGeometry,
@@ -118,7 +118,7 @@ function familyEventStaggerScore(event: FamilyEvent): number {
           ? 10
           : 0
   const genBoost =
-    event.person.generation != null ? Math.max(0, 50 - event.person.generation * 12) : 0
+    event.person.generation != null ? Math.max(0, 50 - Math.abs(event.person.generation) * 12) : 0
   return (
     (event.importance ?? 0) * 12 +
     kindBoost +
@@ -782,8 +782,17 @@ function tryAddNearGenerationCandidate(
   const cx = yearX(candidate.year, start, span, width)
   for (const p of picked) {
     const px = yearX(p.year, start, span, width)
-    // Only block when labels would visibly collide.
-    if (Math.abs(px - cx) < 52 && Math.abs(p.year - candidate.year) < 3) return false
+    const yearGap = Math.abs(p.year - candidate.year)
+    const pxGap = Math.abs(px - cx)
+    // Close household births (spouse/children near the root year) need tighter
+    // spatial blocking only — a 2–3 year gap is normal for a family cluster.
+    const bothNear = isNearGeneration(p.person, 1) && isNearGeneration(candidate.person, 1)
+    if (bothNear) {
+      if (pxGap < 28 && yearGap < 1) return false
+      if (pxGap < 18) return false
+      continue
+    }
+    if (pxGap < 52 && yearGap < 3) return false
   }
 
   pickedIds.add(id)
@@ -815,12 +824,12 @@ function pickNearGenerationSeats(
   const roomy = pxPerYear >= 12
   const target = Math.min(
     inView.length,
-    roomy ? Math.max(3, Math.min(5, Math.ceil(limit * 0.6))) : Math.min(2, limit),
+    roomy ? Math.max(4, Math.min(6, Math.ceil(limit * 0.7))) : Math.min(3, limit),
   )
 
   const ranked = [...inView].sort((a, b) => {
-    const ga = a.person.generation ?? 99
-    const gb = b.person.generation ?? 99
+    const ga = generationDistance(a.person)
+    const gb = generationDistance(b.person)
     if (ga !== gb) return ga - gb
     const kindRank = (k: FamilyEvent['kind']) =>
       k === 'birth' ? 0 : k === 'move' ? 1 : k === 'death' ? 2 : 3
@@ -1427,7 +1436,7 @@ export function placeHybridLandmarks(
       .map((entry) => entry.item)
       .sort(
         (a, b) =>
-          (a.event.person.generation ?? 99) - (b.event.person.generation ?? 99) ||
+          generationDistance(a.event.person) - generationDistance(b.event.person) ||
           _scoreOf(b.event) - _scoreOf(a.event) ||
           a.event.year - b.event.year ||
           a.event.person.name.localeCompare(b.event.person.name),
@@ -1444,8 +1453,8 @@ export function placeHybridLandmarks(
   }
 
   placementPlan.sort((a, b) => {
-    const ga = a.event.person.generation ?? 99
-    const gb = b.event.person.generation ?? 99
+    const ga = generationDistance(a.event.person)
+    const gb = generationDistance(b.event.person)
     if (ga !== gb) return ga - gb
     const nearA = isNearGeneration(a.event.person) ? 0 : 1
     const nearB = isNearGeneration(b.event.person) ? 0 : 1
@@ -1519,14 +1528,14 @@ export function placeHybridLandmarks(
   // Recover near-generation landmarks that lost a lane — displace a farther relative first.
   for (const failed of [...unplaced]) {
     if (!isNearGeneration(failed.person, 1)) continue
-    const failedGen = failed.person.generation ?? 99
+    const failedGen = generationDistance(failed.person)
 
     const victims = placed
       .map((entry, index) => ({ entry, index }))
-      .filter(({ entry }) => (entry.event.person.generation ?? 99) > failedGen)
+      .filter(({ entry }) => generationDistance(entry.event.person) > failedGen)
       .sort(
         (a, b) =>
-          (b.entry.event.person.generation ?? 99) - (a.entry.event.person.generation ?? 99) ||
+          generationDistance(b.entry.event.person) - generationDistance(a.entry.event.person) ||
           _scoreOf(a.entry.event) - _scoreOf(b.entry.event),
       )
 
@@ -1574,7 +1583,7 @@ export function placeHybridLandmarks(
 
   for (const failed of [...unplaced]) {
     const zone = zoneForYear(failed.year, start, end)
-    const failedGen = failed.person.generation ?? 99
+    const failedGen = generationDistance(failed.person)
     const replacements = alternates
       .filter(
         (event) =>
@@ -1582,11 +1591,11 @@ export function placeHybridLandmarks(
           !placedIds.has(canonicalEventId(event)) &&
           canonicalEventId(event) !== canonicalEventId(failed) &&
           // Never replace a nearer person with a more distant relative.
-          !(isNearGeneration(failed.person, 1) && (event.person.generation ?? 99) > failedGen),
+          !(isNearGeneration(failed.person, 1) && generationDistance(event.person) > failedGen),
       )
       .sort(
         (a, b) =>
-          (a.person.generation ?? 99) - (b.person.generation ?? 99) ||
+          generationDistance(a.person) - generationDistance(b.person) ||
           selectionPlacabilityScore(b, probeContext, _scoreOf) -
             selectionPlacabilityScore(a, probeContext, _scoreOf) ||
           _scoreOf(b) - _scoreOf(a),

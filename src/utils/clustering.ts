@@ -101,7 +101,7 @@ export function eventKindPriority(kind: FamilyEventKind): number {
 }
 
 function isDirectAncestor(person: Person): boolean {
-  return person.generation != null && person.generation <= 5
+  return person.generation != null && person.generation > 0 && person.generation <= 5
 }
 
 function isCollateral(person: Person): boolean {
@@ -137,9 +137,9 @@ export function eventImportanceScore(
     return 940 + (event.kind === 'birth' ? 20 : event.kind === 'death' ? 10 : 0)
   }
 
-  // Near-generation floor so parents (gen 1) beat distant migrations/cousins when in view.
+  // Near-family floor so spouse/children/parents beat distant migrations when in view.
   if (isNearGeneration(event.person, 2)) {
-    const gen = event.person.generation ?? 2
+    const gen = Math.abs(event.person.generation ?? 2)
     let score = 900 - gen * 70
     if (event.kind === 'birth') score += 35
     else if (event.kind === 'death') score += 15
@@ -535,7 +535,7 @@ export function chooseFocus(people: Person[], max: number): Person[] {
     .map((p) => {
       let score = 0
       if (p.focus) score += 100
-      if (p.generation != null) score += Math.max(0, 30 - p.generation)
+      if (p.generation != null) score += Math.max(0, 30 - Math.abs(p.generation))
       score += Math.min(15, (p.children?.length ?? 0) * 3)
       if (p.spouses?.length) score += 4
       if (p.birthPlace) score += 2

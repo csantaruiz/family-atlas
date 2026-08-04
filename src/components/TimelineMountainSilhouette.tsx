@@ -4,6 +4,7 @@ import {
   buildMountainSilhouettePath,
   mountainSilhouetteMaxHeight,
 } from '../utils/timelineMountainSilhouette'
+import { useTimeline } from '../context/TimelineContext'
 
 type TimelineMountainSilhouetteProps = {
   start: number
@@ -20,7 +21,9 @@ export function TimelineMountainSilhouette({
   width,
   height,
 }: TimelineMountainSilhouetteProps) {
-  const axisY = useMemo(() => timelineAxisY(height), [height])
+  const { isZooming } = useTimeline()
+  const interactionLocked = isZooming
+  const axisY = useMemo(() => timelineAxisY(height, width), [height, width])
   const maxHeight = useMemo(() => mountainSilhouetteMaxHeight(height), [height])
 
   const path = useMemo(
@@ -32,8 +35,10 @@ export function TimelineMountainSilhouette({
         width,
         axisY,
         maxHeight,
+        // Coarser sampling while zooming keeps animation responsive.
+        stepPxScale: interactionLocked ? 2.4 : 1,
       }),
-    [start, end, span, width, axisY, maxHeight],
+    [start, end, span, width, axisY, maxHeight, interactionLocked],
   )
 
   if (width <= 0 || height <= 0 || !path) return null

@@ -1,18 +1,20 @@
 import { eventContext } from '../data'
 import { getHistoryEventHeroImage } from '../data/historyEventImagery'
 import { getHistoryEventWikipediaUrl } from '../data/historyEventWikipedia'
-import { ARCHIVAL_PORTRAIT_PLACEHOLDER } from '../data/portraitPlaceholder'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
+import { usePersonPortraits } from '../hooks/usePersonPortraits'
 import { initials } from '../utils/format'
 import { eventSummaryForPerson, primaryLocations } from '../utils/personDirectory'
 import { movementSummary, peopleRelevantToEvent } from '../utils/placeUtils'
+import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
 import type { FamilyEvent, PersonImage } from '../types'
 
 export function DetailPanel() {
   const { detail, peopleById, birthPeople, familyEvents, closeDetail, openPerson } = useTimeline()
   const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
+  const uploadedPortraits = usePersonPortraits()
 
   const isOpen = detail !== null
 
@@ -40,6 +42,8 @@ export function DetailPanel() {
   let historyWikipediaUrl: string | null = null
   let personEvents: FamilyEvent[] = []
   let showReturnToTimeline = false
+  let portraitPersonId: string | undefined
+  let portraitPersonName: string | undefined
 
   if (detail?.type === 'person') {
     const p = peopleById[detail.personId]
@@ -91,8 +95,11 @@ export function DetailPanel() {
         ...(p.spouses ?? []).map((id) => ({ kind: 'Spouse', id, name: peopleById[id]?.name ?? '' })),
         ...(p.children ?? []).map((id) => ({ kind: 'Child', id, name: peopleById[id]?.name ?? '' })),
       ].filter((r) => r.name)
-      portraitImage = p.image ?? ARCHIVAL_PORTRAIT_PLACEHOLDER
-      useArchivalPlaceholder = !p.image
+      const resolved = resolvePersonPortrait(p, uploadedPortraits[p.id])
+      portraitImage = resolved.image
+      useArchivalPlaceholder = resolved.isUnavailablePlaceholder
+      portraitPersonId = p.id
+      portraitPersonName = p.name
     }
   } else if (detail?.type === 'familyEvent') {
     isFamilyEvent = true
@@ -185,6 +192,8 @@ export function DetailPanel() {
             initials={initialsText}
             useArchivalPlaceholder={useArchivalPlaceholder}
             variant={portraitVariant}
+            personId={portraitPersonId}
+            personName={portraitPersonName}
           />
           <div className="person-body">
             <div className="eyebrow" id="personGen">

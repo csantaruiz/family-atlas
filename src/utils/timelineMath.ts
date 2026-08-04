@@ -1,6 +1,8 @@
 import type { ZoomMode, Viewport } from '../types'
+import { DESKTOP_PLOT_EDGE, plotEdgeForWidth } from './stageBreakpoints'
 
-export const PLOT_EDGE = 72
+/** Desktop plot edge. Prefer `plotEdgeForWidth(width)` for layout math. */
+export const PLOT_EDGE = DESKTOP_PLOT_EDGE
 
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
@@ -24,8 +26,9 @@ export function viewport(center: number, span: number): Viewport {
 }
 
 export function yearX(year: number, start: number, span: number, width: number): number {
-  const usable = Math.max(1, width - PLOT_EDGE * 2)
-  return PLOT_EDGE + ((year - start) / span) * usable
+  const edge = plotEdgeForWidth(width)
+  const usable = Math.max(1, width - edge * 2)
+  return edge + ((year - start) / span) * usable
 }
 
 export function tickStep(span: number): number {

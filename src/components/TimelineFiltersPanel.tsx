@@ -1,14 +1,17 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTimeline } from '../context/TimelineContext'
+import { familyDatabase } from '../data/familyDatabase'
 import {
   DEFAULT_TIMELINE_FILTERS,
   TIMELINE_FILTER_GROUPS,
   TIMELINE_FILTER_LABELS,
   type TimelineFilterKey,
 } from '../types/timelineFilters'
+import { buildLineagePalette } from '../utils/lineageColors'
 
 const ALL_FILTER_KEYS = Object.keys(DEFAULT_TIMELINE_FILTERS) as TimelineFilterKey[]
+const BRANCH_FILTER_KEYS = new Set<TimelineFilterKey>(['paternal', 'maternal'])
 
 const panelEase = [0.22, 0.8, 0.2, 1] as const
 
@@ -109,6 +112,25 @@ function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
   const { timelineFilters, setTimelineFilter, setTimelineFilters } = useTimeline()
   const masterCheckboxRef = useRef<HTMLInputElement>(null)
 
+  const lineagePalette = useMemo(
+    () => buildLineagePalette(familyDatabase.people, familyDatabase.root),
+    [],
+  )
+
+  const branchMeta: Partial<Record<TimelineFilterKey, { surname: string; color: string }>> = useMemo(
+    () => ({
+      paternal: {
+        surname: lineagePalette.paternal.label,
+        color: lineagePalette.paternal.color,
+      },
+      maternal: {
+        surname: lineagePalette.maternal.label,
+        color: lineagePalette.maternal.color,
+      },
+    }),
+    [lineagePalette],
+  )
+
   const allSelected = useMemo(
     () => ALL_FILTER_KEYS.every((key) => timelineFilters[key]),
     [timelineFilters],
@@ -155,19 +177,36 @@ function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
         <section key={group.title} className="timeline-filters-group">
           <h3 className="timeline-filters-group-title">{group.title}</h3>
           <ul className="timeline-filters-list">
-            {group.keys.map((key) => (
-              <li key={key}>
-                <label className="timeline-filter-option">
-                  <input
-                    type="checkbox"
-                    checked={timelineFilters[key]}
-                    onChange={(e) => handleChange(key, e.target.checked)}
-                  />
-                  <span className="timeline-filter-check" aria-hidden="true" />
-                  <span>{TIMELINE_FILTER_LABELS[key]}</span>
-                </label>
-              </li>
-            ))}
+            {group.keys.map((key) => {
+              const meta = BRANCH_FILTER_KEYS.has(key) ? branchMeta[key] : undefined
+              return (
+                <li key={key}>
+                  <label className="timeline-filter-option">
+                    <input
+                      type="checkbox"
+                      checked={timelineFilters[key]}
+                      onChange={(e) => handleChange(key, e.target.checked)}
+                    />
+                    <span className="timeline-filter-check" aria-hidden="true" />
+                    {meta ? (
+                      <span className="timeline-filter-branch-label">
+                        <span
+                          className="timeline-filter-branch-swatch"
+                          style={{ backgroundColor: meta.color }}
+                          aria-hidden="true"
+                        />
+                        <span className="timeline-filter-branch-text">
+                          <span>{TIMELINE_FILTER_LABELS[key]}</span>
+                          <span className="timeline-filter-branch-surname">{meta.surname}</span>
+                        </span>
+                      </span>
+                    ) : (
+                      <span>{TIMELINE_FILTER_LABELS[key]}</span>
+                    )}
+                  </label>
+                </li>
+              )
+            })}
           </ul>
         </section>
       ))}

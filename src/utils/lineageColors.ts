@@ -141,20 +141,34 @@ export function buildLineagePalette(people: Person[], rootId: string): LineagePa
   }
 }
 
+/** All branch sides a person belongs to (root descendants may be on both). */
+export function personLineageSides(
+  personId: string,
+  palette: LineagePalette,
+  byId: Map<string, Person>,
+): Set<LineageSide> {
+  const sides = new Set<LineageSide>()
+  if (palette.paternal.personIds.has(personId)) sides.add('paternal')
+  if (palette.maternal.personIds.has(personId)) sides.add('maternal')
+  if (sides.size > 0) return sides
+
+  const person = byId.get(personId)
+  if (!person) return sides
+
+  const surname = surnameOf(person.name)
+  if (surname && surname === palette.paternal.label) sides.add('paternal')
+  if (surname && surname === palette.maternal.label) sides.add('maternal')
+  return sides
+}
+
 export function classifyPersonLineage(
   personId: string,
   palette: LineagePalette,
   byId: Map<string, Person>,
 ): LineageSide | 'other' {
-  if (palette.paternal.personIds.has(personId)) return 'paternal'
-  if (palette.maternal.personIds.has(personId)) return 'maternal'
-
-  const person = byId.get(personId)
-  if (!person) return 'other'
-
-  const surname = surnameOf(person.name)
-  if (surname && surname === palette.paternal.label) return 'paternal'
-  if (surname && surname === palette.maternal.label) return 'maternal'
+  const sides = personLineageSides(personId, palette, byId)
+  if (sides.has('paternal')) return 'paternal'
+  if (sides.has('maternal')) return 'maternal'
   return 'other'
 }
 

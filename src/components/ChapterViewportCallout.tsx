@@ -1,6 +1,7 @@
-import { useId, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useId, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { resolveChapterPlaqueBackground } from '../data/chapterPlaqueImagery'
 import {
   getChapterPresentation,
   type CalloutLayoutProfile,
@@ -16,6 +17,7 @@ import {
 import type { PlacedSpanCluster, SemanticZoomMode } from '../utils/clustering'
 import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
+import { TimelineHint } from './TimelineHint'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
 const CALLOUT_CROSSFADE_S = 0.58
@@ -371,6 +373,15 @@ export function ChapterViewportCallout({
     zoomMode,
   })
 
+  const plaqueBackground = useMemo(
+    () =>
+      resolveChapterPlaqueBackground({
+        title: presentation.title,
+        summary: presentation.summary,
+      }),
+    [presentation.title, presentation.summary],
+  )
+
   const accessibleLabel = presentation.hiddenCountLabel
     ? `${presentation.title} · ${presentation.yearRange} · ${presentation.hiddenCountLabel}`
     : `${presentation.title} · ${presentation.yearRange}`
@@ -485,10 +496,24 @@ export function ChapterViewportCallout({
         className="chapter-callout-frame"
         onPointerDown={(e) => e.stopPropagation()}
       >
+        <div className="chapter-callout-scenery" aria-hidden="true">
+          <img
+            key={plaqueBackground.key}
+            className="chapter-callout-scenery-img"
+            src={plaqueBackground.src}
+            alt=""
+            draggable={false}
+            decoding="async"
+            style={{ objectPosition: plaqueBackground.position ?? 'center center' }}
+          />
+        </div>
         <ChapterCalloutFrameBorder frameRef={frameRef} />
         <div className="chapter-callout-inner" style={{ opacity: cluster.dissolve }}>
           {content}
         </div>
+      </div>
+      <div className="timeline-plaque-hint">
+        <TimelineHint />
       </div>
       {isCalloutCenterDebugEnabled() ? (
         <div

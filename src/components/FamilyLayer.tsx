@@ -15,7 +15,6 @@ import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
-import { TimelineHint } from './TimelineHint'
 import {
   buildBirthClusters,
   chooseFocus,
@@ -31,6 +30,8 @@ import { movementSummary } from '../utils/placeUtils'
 import { eventAccessibleTitle } from '../utils/detailPlacement'
 import { categoryTypeLabel, clampAnchorBelowPlaque, displayName, measureDetailedFootprint, type LabelAlignment } from '../utils/labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents } from '../utils/canonicalEvent'
+import { freezeLandmarkStability, unfreezeLandmarkStability } from '../utils/landmarkSelectionStability'
+import { admitPersistentMarkers, maxFamilyEventsForSpan, staggerFamilyEventLanes } from '../utils/landmarkSelection'
 import { connectorStemColor, familyEventStemLength } from '../utils/eventConnector'
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import type { FamilyEvent } from '../types'
@@ -210,7 +211,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     maxYear,
     presentYear,
     fullSpan,
-    birthPeople,
+    filteredBirthPeople,
     filteredFamilyEvents,
     timelineFilters,
     animateView,
@@ -225,11 +226,19 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
 
-  const mode = zoomMode(span)
+  const modeLive = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
   const totalTimelineEnd = presentYear
+  const interactionLocked = isZooming
+  const zoomSemanticRef = useRef(semanticZoomMode(span, fullSpan))
+  const useBirthClustersRef = useRef(showBirthPeriodClusters(span) && timelineFilters.births)
+  const modeRef = useRef(modeLive)
+  const frozenFamilyLayoutRef = useRef<ReturnType<typeof layoutFamilyEventsProgressive> | null>(null)
+  const frozenBirthLayoutRef = useRef<ReturnType<typeof layoutBirthClustersProgressive> | null>(null)
+  const frozenBirthClustersRef = useRef<ReturnType<typeof buildBirthClusters> | null>(null)
 
-  const zoomSemantic = useMemo(() => {
+  const zoomSemanticLive = useMemo(() => {
+    if (interactionLocked) return zoomSemanticRef.current
     const visible = filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end)
     const chapters = buildStoryChaptersForViewport(
       visible,
@@ -250,11 +259,54 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       chapters,
       chapterMap,
     })
-  }, [filteredFamilyEvents, start, end, span, fullSpan, width, earliestYear, presentYear])
+  }, [filteredFamilyEvents, start, end, span, fullSpan, width, earliestYear, presentYear, interactionLocked])
 
-  const useBirthClusters = showBirthPeriodClusters(span) && timelineFilters.births
+  const useBirthClustersLive = showBirthPeriodClusters(span) && timelineFilters.births
+
+  if (!interactionLocked) {
+    zoomSemanticRef.current = zoomSemanticLive
+    useBirthClustersRef.current = useBirthClustersLive
+    modeRef.current = modeLive
+    frozenFamilyLayoutRef.current = null
+    frozenBirthLayoutRef.current = null
+    frozenBirthClustersRef.current = null
+  }
+
+  const zoomSemantic = interactionLocked ? zoomSemanticRef.current : zoomSemanticLive
+  const useBirthClusters = interactionLocked ? useBirthClustersRef.current : useBirthClustersLive
+  const mode = interactionLocked ? modeRef.current : modeLive
   const prefersReducedMotion = useReducedMotion()
   const motionEnabled = !prefersReducedMotion
+  // Freeze marker selection/layout during drag+zoom; only X is recomputed from yearX.
+  const persistEventMarkers = interactionLocked
+  const eventFadeEnabled = motionEnabled && !persistEventMarkers
+  const frozenEventsRef = useRef<
+    Array<{
+      event: FamilyEvent
+      x: number
+      y: number
+      alignment?: LabelAlignment
+      nudge?: number
+      compact?: boolean
+      lane?: number
+    }> | null
+  >(null)
+  const persistSnapshotRef = useRef(false)
+  const frozenEventYRef = useRef<Map<string, number>>(new Map())
+  // Span-stable pins: once shown at a zoom level, prefer keeping them while still in view.
+  const pinnedSpanBucketRef = useRef<number | null>(null)
+  const previousRenderedIdsRef = useRef<string[]>([])
+  const pinnedEventsRef = useRef<
+    Array<{
+      event: FamilyEvent
+      x: number
+      y: number
+      alignment?: LabelAlignment
+      nudge?: number
+      compact?: boolean
+      lane?: number
+    }>
+  >([])
   const {
     isIntroActive,
     introProgress,
@@ -262,12 +314,28 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     completeIntro,
   } = useJourneyIntro()
 
+  useLayoutEffect(() => {
+    if (interactionLocked) {
+      freezeLandmarkStability(useBirthClusters ? 'far' : zoomSemantic, span)
+      return
+    }
+    frozenEventsRef.current = null
+    persistSnapshotRef.current = false
+    unfreezeLandmarkStability()
+  }, [interactionLocked, span, useBirthClusters, zoomSemantic])
+
+  useLayoutEffect(() => {
+    if (!isZooming) {
+      frozenEventYRef.current.clear()
+    }
+  }, [isZooming])
+
   const densityBars = useMemo(() => {
-    if (!timelineFilters.births || span < 120) return []
+    if (interactionLocked || !timelineFilters.births || span < 120) return []
     const bin = span > 350 ? 50 : 25
     const bars: { x: number; width: number; opacity: number; height: number }[] = []
     for (let y = Math.floor(start / bin) * bin; y <= end; y += bin) {
-      const count = birthPeople.filter((p) => p.birthYear && p.birthYear >= y && p.birthYear < y + bin).length
+      const count = filteredBirthPeople.filter((p) => p.birthYear && p.birthYear >= y && p.birthYear < y + bin).length
       if (!count) continue
       const x = yearX(y + bin / 2, start, span, width)
       bars.push({
@@ -278,12 +346,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       })
     }
     return bars
-  }, [span, start, end, birthPeople, width, timelineFilters.births])
+  }, [span, start, end, filteredBirthPeople, width, timelineFilters.births, interactionLocked])
 
   const birthClusters = useMemo(() => {
     if (!useBirthClusters) return []
-    return buildBirthClusters(birthPeople, start, end, span, width, height, presentYear)
-  }, [useBirthClusters, birthPeople, start, end, span, width, height, presentYear])
+    if (interactionLocked && frozenBirthClustersRef.current) {
+      return frozenBirthClustersRef.current
+    }
+    const clusters = buildBirthClusters(filteredBirthPeople, start, end, span, width, height, presentYear)
+    if (interactionLocked) frozenBirthClustersRef.current = clusters
+    return clusters
+  }, [useBirthClusters, filteredBirthPeople, start, end, span, width, height, presentYear, interactionLocked])
 
   const rootPersonId = familyDatabase.root
 
@@ -333,8 +406,11 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   const birthLayout = useMemo(() => {
     if (!useBirthClusters) return null
+    if (interactionLocked && frozenBirthLayoutRef.current) {
+      return frozenBirthLayoutRef.current
+    }
     const eventsInView = filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end)
-    return layoutBirthClustersProgressive(
+    const layout = layoutBirthClustersProgressive(
       birthClusters,
       eventsInView,
       start,
@@ -348,12 +424,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       presentYear,
       effectivePlaqueAnchor,
     )
-  }, [useBirthClusters, birthClusters, filteredFamilyEvents, start, end, span, width, height, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor])
+    if (interactionLocked) frozenBirthLayoutRef.current = layout
+    return layout
+  }, [useBirthClusters, birthClusters, filteredFamilyEvents, start, end, span, width, height, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor, interactionLocked])
 
   const familyLayout = useMemo(() => {
     if (useBirthClusters) return null
+    if (interactionLocked && frozenFamilyLayoutRef.current) {
+      return frozenFamilyLayoutRef.current
+    }
     const events = filteredFamilyEvents.filter((e) => e.year >= start && e.year <= end)
-    return layoutFamilyEventsProgressive(
+    const layout = layoutFamilyEventsProgressive(
       events,
       start,
       end,
@@ -367,7 +448,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       presentYear,
       effectivePlaqueAnchor,
     )
-  }, [useBirthClusters, filteredFamilyEvents, start, end, span, width, height, mode, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor])
+    if (interactionLocked) frozenFamilyLayoutRef.current = layout
+    return layout
+  }, [useBirthClusters, filteredFamilyEvents, start, end, span, width, height, mode, fullSpan, earliestYear, rootPersonId, presentYear, effectivePlaqueAnchor, interactionLocked])
 
   const activeLayout = useBirthClusters ? birthLayout : familyLayout
 
@@ -404,11 +487,6 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   }, [useBirthClusters, zoomSemantic, width, height])
 
   const calloutCenterX = chapterVerticalLayout.chapterCenterX
-
-  const plaqueHintTop =
-    effectivePlaqueAnchor != null
-      ? effectivePlaqueAnchor.bottomY + 12
-      : chapterVerticalLayout.cardTop + estimateCardFrameHeight(calloutLayout) + 12
 
   const introEventOrder = useMemo(() => {
     const list = activeLayout?.events ?? []
@@ -466,24 +544,142 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     if ((activeLayout?.events.length ?? 0) > 0) return []
 
     const visible = chooseFocus(
-      birthPeople.filter((p) => p.birthYear && p.birthYear >= start && p.birthYear <= end),
+      filteredBirthPeople.filter((p) => p.birthYear && p.birthYear >= start && p.birthYear <= end),
       Math.min(3, peopleBudgetForMode(mode)),
     )
     return placeLabels(visible, start, span, width, height, occupiedSlots)
       .filter((o) => o.show)
       .slice(0, Math.min(2, peopleBudgetForMode(mode)))
-  }, [timelineFilters.births, useBirthClusters, zoomSemantic, activeLayout, occupiedSlots, birthPeople, start, end, span, width, height, mode])
+  }, [timelineFilters.births, useBirthClusters, zoomSemantic, activeLayout, occupiedSlots, filteredBirthPeople, start, end, span, width, height, mode])
 
   const { registerFamilyPulseTargets } = useTimelinePulse()
 
+  const spanBucket = Math.round(span)
+
+  useLayoutEffect(() => {
+    if (isZooming) {
+      pinnedSpanBucketRef.current = null
+      pinnedEventsRef.current = []
+      previousRenderedIdsRef.current = []
+      return
+    }
+    const layoutEvents = activeLayout?.events
+    if (!layoutEvents?.length && pinnedEventsRef.current.length === 0) return
+
+    if (pinnedSpanBucketRef.current !== spanBucket) {
+      pinnedSpanBucketRef.current = spanBucket
+      pinnedEventsRef.current = (layoutEvents ?? []).map((entry) => ({ ...entry }))
+      previousRenderedIdsRef.current = (layoutEvents ?? []).map((entry) =>
+        canonicalEventId(entry.event),
+      )
+      return
+    }
+
+    // Same zoom: refresh placement for events layout still proposes; keep prior pins
+    // only while their year remains in (or just outside) the viewport.
+    const byId = new Map(
+      pinnedEventsRef.current.map((entry) => [canonicalEventId(entry.event), entry] as const),
+    )
+    for (const entry of layoutEvents ?? []) {
+      byId.set(canonicalEventId(entry.event), { ...entry })
+    }
+    const edgePad = Math.max(1, span * 0.01)
+    pinnedEventsRef.current = [...byId.values()].filter(
+      (entry) => entry.event.year >= start - edgePad && entry.event.year <= end + edgePad,
+    )
+  }, [isZooming, spanBucket, activeLayout?.events, start, end, span])
+
   const renderEvents = useMemo(() => {
-    const list = activeLayout?.events ?? []
+    const zoomFrozen =
+      persistEventMarkers && frozenEventsRef.current?.length ? frozenEventsRef.current : null
+    if (zoomFrozen) {
+      return zoomFrozen
+        .filter(({ event }) => event.year >= start && event.year <= end)
+        .map((entry) => ({
+          ...entry,
+          x: yearX(entry.event.year, start, span, width),
+          nudge: 0,
+          alignment: 'center' as const,
+        }))
+    }
+
+    const byId = new Map<string, (typeof pinnedEventsRef.current)[number]>()
+    if (
+      !isZooming &&
+      pinnedSpanBucketRef.current === spanBucket &&
+      pinnedEventsRef.current.length > 0
+    ) {
+      for (const entry of pinnedEventsRef.current) {
+        byId.set(canonicalEventId(entry.event), entry)
+      }
+    }
+    for (const entry of activeLayout?.events ?? []) {
+      byId.set(canonicalEventId(entry.event), entry)
+    }
+
+    const candidates = [...byId.values()]
+      .filter(({ event }) => event.year >= start && event.year <= end)
+      .map((entry) => ({
+        ...entry,
+        x: yearX(entry.event.year, start, span, width),
+      }))
+
+    const limit = maxFamilyEventsForSpan(span, width)
+    const stickyIds = previousRenderedIdsRef.current.filter((id) =>
+      candidates.some((entry) => canonicalEventId(entry.event) === id),
+    )
+    const admitted = admitPersistentMarkers(
+      candidates,
+      stickyIds,
+      (entry) => canonicalEventId(entry.event),
+      (entry) =>
+        (entry.event.importance ?? 0) * 12 +
+        (entry.event.kind === 'move' || entry.event.kind === 'service'
+          ? 40
+          : entry.event.kind === 'birth'
+            ? 20
+            : entry.event.kind === 'death'
+              ? 10
+              : 0) +
+        (entry.event.person.focus ? 30 : 0),
+      limit,
+    )
+
+    const mustKeep = new Set(stickyIds.filter((id) => admitted.some((e) => canonicalEventId(e.event) === id)))
+    const staggered = staggerFamilyEventLanes(admitted, height, span, width, mustKeep)
+
     assertNoDuplicateEvents(
-      list.map((p) => p.event),
+      staggered.map((p) => p.event),
       'FamilyLayer.renderEvents',
     )
-    return list
-  }, [activeLayout])
+    return staggered
+  }, [activeLayout, persistEventMarkers, isZooming, spanBucket, start, end, span, width, height])
+
+  useLayoutEffect(() => {
+    if (isZooming) return
+    previousRenderedIdsRef.current = renderEvents.map((entry) => canonicalEventId(entry.event))
+    // Pin what is actually on screen so pan refreshes keep geometry stable.
+    const byId = new Map(
+      pinnedEventsRef.current.map((entry) => [canonicalEventId(entry.event), entry] as const),
+    )
+    for (const entry of renderEvents) {
+      byId.set(canonicalEventId(entry.event), { ...entry })
+    }
+    pinnedEventsRef.current = [...byId.values()].filter(
+      (entry) => entry.event.year >= start && entry.event.year <= end,
+    )
+    if (pinnedSpanBucketRef.current !== spanBucket) {
+      pinnedSpanBucketRef.current = spanBucket
+    }
+  }, [renderEvents, isZooming, start, end, spanBucket])
+
+  useLayoutEffect(() => {
+    if (!persistEventMarkers || !activeLayout?.events?.length) return
+    if (!persistSnapshotRef.current) {
+      frozenEventsRef.current = activeLayout.events.map((entry) => ({ ...entry }))
+      persistSnapshotRef.current = true
+    }
+  }, [persistEventMarkers, activeLayout?.events])
 
   registerFamilyPulseTargets(
     useMemo(
@@ -496,14 +692,6 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       [renderEvents],
     ),
   )
-
-  const frozenEventYRef = useRef<Map<string, number>>(new Map())
-
-  useLayoutEffect(() => {
-    if (!isZooming) {
-      frozenEventYRef.current.clear()
-    }
-  }, [isZooming])
 
   const resolveEventY = (eventKey: string, computedY: number) => {
     if (!isZooming) return computedY
@@ -535,7 +723,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     )
   }
 
-  const axisY = useMemo(() => timelineAxisY(height), [height])
+  const axisY = useMemo(() => timelineAxisY(height, width), [height, width])
 
   const zoomToCluster = (from: number, to: number) => {
     unlockChapterScroll()
@@ -593,6 +781,76 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         default: { duration: 0 },
       }
     : { duration: 0.01 }
+
+  const renderPlacedFamilyEvent = (
+    eventKey: string,
+    x: number,
+    renderY: number,
+    button: ReactNode,
+    detailMotion = false,
+  ) => {
+    if (isIntroActive) {
+      return <div key={eventKey}>{renderIntroEvent(eventKey, x, renderY, button)}</div>
+    }
+
+    if (persistEventMarkers || !eventFadeEnabled) {
+      return (
+        <div
+          key={eventKey}
+          className="family-event-anchor"
+          style={{ left: Math.round(x), top: Math.round(renderY) }}
+        >
+          <div className="family-event-wrap">{button}</div>
+        </div>
+      )
+    }
+
+    return (
+      <motion.div
+        key={eventKey}
+        className="family-event-anchor"
+        style={{ left: Math.round(x), top: Math.round(renderY) }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={detailMotion ? detailOpacityTransition : opacityFadeTransition}
+        layout={false}
+      >
+        <div className="family-event-wrap">{button}</div>
+      </motion.div>
+    )
+  }
+
+  const placedFamilyEvents = renderEvents.map(({ event, x, y, alignment, nudge, compact }) => {
+    const eventKey = canonicalEventId(event)
+    const renderY = clampPlaqueY(
+      event,
+      x,
+      resolveEventY(eventKey, y),
+      alignment,
+      nudge,
+      compact,
+    )
+    const stemLength = familyEventStemLength(renderY, axisY)
+    const button = (
+      <FamilyEventButton
+        event={event}
+        x={0}
+        y={0}
+        viewportWidth={width}
+        alignment={alignment}
+        nudge={nudge}
+        compact={compact}
+        stemLength={stemLength}
+        motionEnabled={zoomSemantic === 'detail'}
+        onOpen={handleEventOpen}
+        onExplore={openPerson}
+        onViewTree={viewOnTree}
+      />
+    )
+
+    return renderPlacedFamilyEvent(eventKey, x, renderY, button, zoomSemantic === 'detail')
+  })
 
   return (
     <>
@@ -670,159 +928,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         />
       )}
 
-      <div
-        className="timeline-plaque-hint"
-        style={{
-          top: plaqueHintTop,
-          left: chapterVerticalLayout.chapterCenterX,
-        }}
-      >
-        <TimelineHint />
-      </div>
-
       <div id="nodes">
-        {useBirthClusters && (
-          <AnimatePresence mode="sync" initial={false}>
-            {birthLayout?.events.map(({ event, x, y, alignment, nudge, compact }) => {
-              const eventKey = canonicalEventId(event)
-              const renderY = clampPlaqueY(
-                event,
-                x,
-                resolveEventY(eventKey, y),
-                alignment,
-                nudge,
-                compact,
-              )
-              const stemLength = familyEventStemLength(renderY, axisY)
-              const button = (
-                <FamilyEventButton
-                  event={event}
-                  x={0}
-                  y={0}
-                  viewportWidth={width}
-                  alignment={alignment}
-                  nudge={nudge}
-                  compact={compact}
-                  stemLength={stemLength}
-                  motionEnabled={zoomSemantic === 'detail'}
-                  onOpen={handleEventOpen}
-                  onExplore={openPerson}
-                  onViewTree={viewOnTree}
-                />
-              )
-
-              if (isIntroActive) {
-                return (
-                  <div key={eventKey}>
-                    {renderIntroEvent(eventKey, x, renderY, button)}
-                  </div>
-                )
-              }
-
-              return motionEnabled ? (
-                <motion.div
-                  key={eventKey}
-                  className="family-event-anchor"
-                  style={{ left: Math.round(x), top: Math.round(renderY) }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={opacityFadeTransition}
-                  layout={false}
-                >
-                  <div className="family-event-wrap">{button}</div>
-                </motion.div>
-              ) : (
-                <FamilyEventButton
-                  key={eventKey}
-                  event={event}
-                  x={x}
-                  y={renderY}
-                  viewportWidth={width}
-                  alignment={alignment}
-                  nudge={nudge}
-                  compact={compact}
-                  stemLength={stemLength}
-                  onOpen={handleEventOpen}
-                  onExplore={openPerson}
-                  onViewTree={viewOnTree}
-                />
-              )
-            })}
+        {eventFadeEnabled ? (
+          <AnimatePresence mode="sync">
+            {placedFamilyEvents}
           </AnimatePresence>
-        )}
-
-        {!useBirthClusters && (
-          <AnimatePresence mode="sync" initial={false}>
-            {renderEvents.map(({ event, x, y, alignment, nudge, compact }) => {
-              const eventKey = canonicalEventId(event)
-              const renderY = clampPlaqueY(
-                event,
-                x,
-                resolveEventY(eventKey, y),
-                alignment,
-                nudge,
-                compact,
-              )
-              const stemLength = familyEventStemLength(renderY, axisY)
-              const button = (
-                <FamilyEventButton
-                  event={event}
-                  x={0}
-                  y={0}
-                  viewportWidth={width}
-                  alignment={alignment}
-                  nudge={nudge}
-                  compact={compact}
-                  stemLength={stemLength}
-                  motionEnabled={zoomSemantic === 'detail'}
-                  onOpen={handleEventOpen}
-                  onExplore={openPerson}
-                  onViewTree={viewOnTree}
-                />
-              )
-
-              if (isIntroActive) {
-                return (
-                  <div key={eventKey}>
-                    {renderIntroEvent(eventKey, x, renderY, button)}
-                  </div>
-                )
-              }
-
-              return motionEnabled ? (
-                <motion.div
-                  key={eventKey}
-                  className="family-event-anchor"
-                  style={{ left: Math.round(x), top: Math.round(renderY) }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={
-                    zoomSemantic === 'detail' ? detailOpacityTransition : opacityFadeTransition
-                  }
-                  layout={false}
-                >
-                  <div className="family-event-wrap">{button}</div>
-                </motion.div>
-              ) : (
-                <FamilyEventButton
-                  key={eventKey}
-                  event={event}
-                  x={x}
-                  y={renderY}
-                  viewportWidth={width}
-                  alignment={alignment}
-                  nudge={nudge}
-                  compact={compact}
-                  stemLength={stemLength}
-                  onOpen={handleEventOpen}
-                  onExplore={openPerson}
-                  onViewTree={viewOnTree}
-                />
-              )
-            })}
-          </AnimatePresence>
+        ) : (
+          placedFamilyEvents
         )}
 
         {representativeNodes.map(({ person: p, x, y }) => (

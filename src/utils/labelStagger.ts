@@ -1,7 +1,7 @@
 import type { LabelAlignment } from './labelMeasure'
 
 /** Minimum horizontal marker gap before labels are treated as independent. */
-export const LABEL_STAGGER_GAP_PX = 22
+export const LABEL_STAGGER_GAP_PX = 56
 
 export type MarkerPosition<T> = {
   item: T
@@ -38,8 +38,14 @@ export function groupByLabelProximity<T>(
   return groups
 }
 
-export function minLaneForGroupIndex(groupIndex: number, maxLanes: number): number {
-  return Math.min(Math.max(0, groupIndex), maxLanes - 1)
+export function minLaneForGroupIndex(
+  groupIndex: number,
+  maxLanes: number,
+  groupSize = 1,
+): number {
+  // Stride of 2+ keeps stacked labels from sharing vertical space when markers are close.
+  const stride = groupSize > 1 ? 2 : 1
+  return Math.min(Math.max(0, groupIndex * stride), maxLanes - 1)
 }
 
 export function staggerAlignmentForIndex(index: number): LabelAlignment {

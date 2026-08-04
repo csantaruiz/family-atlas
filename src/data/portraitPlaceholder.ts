@@ -1,18 +1,45 @@
 import type { PersonImage } from '../types'
-import archivalPlaceholder from '../assets/portraits/archival-placeholder.jpg'
+import silhouetteFemale from '../assets/portraits/silhouette-female.png'
+import silhouetteMale from '../assets/portraits/silhouette-male.png'
+import silhouetteNeutral from '../assets/portraits/silhouette-neutral.png'
 
-/**
- * Archival portrait used for layout evaluation only.
- * Source: Wikimedia Commons — "Portrait ca 1856-1900" (SFF-88110 055)
- * Photographer: Unknown. Tintype, ca. 1880.
- * Fylkesarkivet i Sogn og Fjordane via Flickr Commons.
- * License: No known copyright restrictions (public domain).
- * @see https://commons.wikimedia.org/wiki/File:Portrait_ca_1856-1900._(4732552500).jpg
- */
-export const ARCHIVAL_PORTRAIT_PLACEHOLDER: PersonImage = {
-  src: archivalPlaceholder,
-  alt: 'Black-and-white archival portrait used as a layout example',
-  caption: 'Archival portrait placeholder',
-  credit: 'Unknown photographer, ca. 1880. Fylkesarkivet i Sogn og Fjordane / Wikimedia Commons (public domain).',
+export type PortraitSex = 'M' | 'F' | 'unknown'
+
+function normalizePortraitSex(sex?: string | null): PortraitSex {
+  const value = sex?.trim().toUpperCase()
+  if (value === 'M' || value === 'MALE') return 'M'
+  if (value === 'F' || value === 'FEMALE') return 'F'
+  return 'unknown'
+}
+
+const MALE_SILHOUETTE_PLACEHOLDER: PersonImage = {
+  src: silhouetteMale,
+  alt: 'Vintage male portrait silhouette placeholder',
+  caption: 'Portrait unavailable',
   isPlaceholder: true,
 }
+
+const FEMALE_SILHOUETTE_PLACEHOLDER: PersonImage = {
+  src: silhouetteFemale,
+  alt: 'Vintage female portrait silhouette placeholder',
+  caption: 'Portrait unavailable',
+  isPlaceholder: true,
+}
+
+const NEUTRAL_SILHOUETTE_PLACEHOLDER: PersonImage = {
+  src: silhouetteNeutral,
+  alt: 'Vintage portrait silhouette placeholder',
+  caption: 'Portrait unavailable',
+  isPlaceholder: true,
+}
+
+/** Gendered vintage portrait placeholders when a person has no photograph. */
+export function portraitPlaceholderForSex(sex?: string | null): PersonImage {
+  const side = normalizePortraitSex(sex)
+  if (side === 'M') return MALE_SILHOUETTE_PLACEHOLDER
+  if (side === 'F') return FEMALE_SILHOUETTE_PLACEHOLDER
+  return NEUTRAL_SILHOUETTE_PLACEHOLDER
+}
+
+/** @deprecated Prefer `portraitPlaceholderForSex` — kept for documentary fallbacks. */
+export const ARCHIVAL_PORTRAIT_PLACEHOLDER = NEUTRAL_SILHOUETTE_PLACEHOLDER

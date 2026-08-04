@@ -17,6 +17,7 @@ import {
   staggerAlignmentForIndex,
 } from './labelStagger'
 import { movementSummary } from './placeUtils'
+import { timelineAxisY } from './chapterCalloutLayout'
 import type { CalloutObstacles, CollisionObstacle } from './landmarkSelection'
 import { MIN_VIEWPORT_EVENTS } from './semanticZoom'
 import { yearX } from './timelineMath'
@@ -58,9 +59,9 @@ type PlacementCandidate = {
   bounds: ReturnType<typeof footprintBounds>
 }
 
-function laneY(height: number, lane: number): number {
-  const axis = height * 0.54
-  const minAnchorY = 64
+function laneY(height: number, lane: number, width = 1200): number {
+  const axis = timelineAxisY(height, width)
+  const minAnchorY = width <= 760 ? 48 : 64
   const offset = DETAIL_LANE_OFFSETS[Math.min(lane, DETAIL_MAX_LANES - 1)]
   return Math.max(minAnchorY, axis - offset)
 }
@@ -167,7 +168,7 @@ function tryPlacement(
   compact: boolean,
   obstacles?: CalloutObstacles | CollisionObstacle | null,
 ): PlacementCandidate | null {
-  const anchorY = laneY(height, lane)
+  const anchorY = laneY(height, lane, viewportWidth)
   const footprint = measureDetailedFootprint(event, viewportWidth, compact)
   const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, viewportWidth)
 
@@ -372,7 +373,7 @@ export function placeDetailEvents(
         return
       }
 
-      const anchorY = laneY(height, result.lane)
+      const anchorY = laneY(height, result.lane, width)
       placedRects.push({
         left: result.bounds.left,
         right: result.bounds.right,
@@ -386,7 +387,7 @@ export function placeDetailEvents(
       placed.push({
         event: item.event,
         x: item.markerX,
-        y: laneY(height, result.lane),
+        y: laneY(height, result.lane, width),
         alignment: result.alignment,
         nudge: effectiveLabelNudge(
           item.markerX,
@@ -418,7 +419,7 @@ export function placeDetailEvents(
       }
       if (!result) continue
 
-      const anchorY = laneY(height, result.lane)
+      const anchorY = laneY(height, result.lane, width)
       placedRects.push({
         left: result.bounds.left,
         right: result.bounds.right,

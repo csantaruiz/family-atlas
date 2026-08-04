@@ -3,6 +3,7 @@ import { useReducedMotion } from 'framer-motion'
 import type { DetailContent } from '../types'
 import type { TimelineFilters } from '../types/timelineFilters'
 import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
+import { readDocumentarySeen } from '../constants/documentarySession'
 import { viewFromPath } from '../types/navigation'
 
 export const JOURNEY_INTRO_SESSION_KEY = 'family-atlas-journey-intro-seen'
@@ -143,6 +144,7 @@ export function useJourneyIntroAnimation({
 
   const shouldAnimateIntro = useMemo(() => {
     if (!isJourneyActive) return false
+    if (!readDocumentarySeen()) return false
     if (!initialViewWasJourney()) return false
     if (readSessionSeen()) return false
     if (introPlaybackCommitted) return false

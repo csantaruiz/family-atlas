@@ -12,7 +12,8 @@ import { familyDatabase } from '../data/familyDatabase'
 import type { AtlasThinking, DetailContent, FamilyEvent, HistoryEvent } from '../types'
 import type { TimelineFilterKey, TimelineFilters } from '../types/timelineFilters'
 import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
-import { applyFamilyEventFilters } from '../utils/timelineFilters'
+import { applyFamilyEventFilters, personPassesBranchFilter } from '../utils/timelineFilters'
+import { buildLineagePalette } from '../utils/lineageColors'
 import { assertNoDuplicateEvents, dedupeFamilyEvents } from '../utils/canonicalEvent'
 import {
   clampView,
@@ -39,6 +40,7 @@ type TimelineContextValue = {
   mapHighlightYears: { start: number; end: number } | null
   peopleById: Record<string, (typeof familyDatabase.people)[number]>
   birthPeople: (typeof familyDatabase.people)[number][]
+  filteredBirthPeople: (typeof familyDatabase.people)[number][]
   familyEvents: FamilyEvent[]
   filteredFamilyEvents: FamilyEvent[]
   timelineFilters: TimelineFilters
@@ -75,6 +77,14 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
         .sort((a, b) => (a.birthYear ?? 0) - (b.birthYear ?? 0)),
     [],
   )
+  const lineagePalette = useMemo(
+    () => buildLineagePalette(familyDatabase.people, familyDatabase.root),
+    [],
+  )
+  const peopleIdMap = useMemo(
+    () => new Map(familyDatabase.people.map((person) => [person.id, person])),
+    [],
+  )
   const minYear = useMemo(
     () => Math.min(...birthPeople.map((p) => p.birthYear ?? presentYear)),
     [birthPeople, presentYear],
@@ -94,8 +104,15 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const [timelineFilters, setTimelineFiltersState] = useState<TimelineFilters>(DEFAULT_TIMELINE_FILTERS)
 
   const filteredFamilyEvents = useMemo(
-    () => applyFamilyEventFilters(familyEvents, timelineFilters),
-    [familyEvents, timelineFilters],
+    () => applyFamilyEventFilters(familyEvents, timelineFilters, lineagePalette, peopleIdMap),
+    [familyEvents, timelineFilters, lineagePalette, peopleIdMap],
+  )
+  const filteredBirthPeople = useMemo(
+    () =>
+      birthPeople.filter((person) =>
+        personPassesBranchFilter(person.id, timelineFilters, lineagePalette, peopleIdMap),
+      ),
+    [birthPeople, timelineFilters, lineagePalette, peopleIdMap],
   )
 
   const setTimelineFilter = useCallback((key: TimelineFilterKey, enabled: boolean) => {
@@ -247,7 +264,10 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     setDetail({ type: 'thinking', thinking })
   }, [])
 
-  const closeDetail = useCallback(() => setDetail(null), [])
+  const closeDetail = useCallback(() => {
+    setDetail(null)
+    setMapHighlightYears(null)
+  }, [])
 
   const handleWheel = useCallback(
     (clientX: number, deltaY: number, stageWidth: number) => {
@@ -310,6 +330,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     mapHighlightYears,
     peopleById,
     birthPeople,
+    filteredBirthPeople,
     familyEvents,
     filteredFamilyEvents,
     timelineFilters,

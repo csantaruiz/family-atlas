@@ -70,6 +70,9 @@ export function displayName(event: FamilyEvent, compact = false): string {
 }
 
 export function detailMaxLabelWidth(viewportWidth: number): number {
+  if (viewportWidth <= 760) {
+    return Math.round(Math.min(150, Math.max(118, viewportWidth * 0.34)))
+  }
   return Math.round(Math.min(190, Math.max(150, viewportWidth * 0.19)))
 }
 
@@ -275,7 +278,7 @@ export function stemIntersectsBox(
   return markerX >= box.left - 3 && markerX <= box.right + 3
 }
 
-export const PLAQUE_LABEL_CLEARANCE_PX = 22
+export const PLAQUE_LABEL_CLEARANCE_PX = 36
 
 /** Push an event anchor downward so its label clears a measured chapter plaque. */
 export function clampAnchorBelowPlaque(

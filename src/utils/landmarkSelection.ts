@@ -23,12 +23,21 @@ import {
 } from './landmarkSelectionStability'
 import { yearX } from './timelineMath'
 import {
+  familyLabelFloorY,
+  isNarrowStage,
+  stageLayoutProfile,
+} from './stageBreakpoints'
+import { isNearGeneration } from './familyPriority'
+import {
   chapterCenterX,
   computeEraBraceGeometry,
   estimateCardFrameHeight,
   type MeasuredPlaqueAnchor,
   resolveChapterVerticalLayout,
+  timelineAxisY,
   visibleTimelineViewport,
+  estimateEditorialSidenoteObstacles,
+  type EditorialObstacle,
 } from './chapterCalloutLayout'
 import { getCalloutLayoutProfile } from './chapterPresentation'
 import {
@@ -63,10 +72,209 @@ export type HybridPlacedEvent = {
   lane: number
 }
 
-const HYBRID_LANE_OFFSETS = [48, 92, 136, 180]
-const HYBRID_MAX_LANES = 4
-const HYBRID_H_GAP = 22
-const HYBRID_V_GAP = 12
+const HYBRID_LANE_OFFSETS_DESKTOP = [52, 110, 168, 226, 284, 342, 400]
+const HYBRID_LANE_OFFSETS_NARROW = [44, 92, 140, 188]
+const HYBRID_H_GAP = 44
+const HYBRID_V_GAP = 28
+const PLACEMENT_PROBE_GAP = 32
+
+function hybridLaneOffsets(viewportWidth: number): number[] {
+  return isNarrowStage(viewportWidth) ? HYBRID_LANE_OFFSETS_NARROW : HYBRID_LANE_OFFSETS_DESKTOP
+}
+
+function hybridMaxLanes(viewportWidth: number): number {
+  return stageLayoutProfile(viewportWidth, 800).maxHybridLanes
+}
+
+/** Vertical stem offsets for family labels — mirrors history-event lane staggering. */
+function familyLaneOffsets(span: number, viewportWidth = 1200): number[] {
+  if (isNarrowStage(viewportWidth)) {
+    if (span > 320) return [60, 118, 176]
+    if (span > 180) return [54, 108, 162]
+    if (span > 90) return [48, 96, 144, 192]
+    return [44, 88, 132, 176]
+  }
+  if (span > 320) return [72, 148, 224, 300]
+  if (span > 180) return [64, 132, 200, 268]
+  if (span > 90) return [58, 120, 182, 244, 306]
+  return [54, 112, 170, 228, 286, 344]
+}
+
+/** Padding between label boxes on the same lane. */
+function familyLanePad(span: number): number {
+  if (span > 320) return 36
+  if (span > 180) return 28
+  if (span > 90) return 24
+  return 20
+}
+
+function familyEventStaggerScore(event: FamilyEvent): number {
+  const kindBoost =
+    event.kind === 'move' || event.kind === 'service'
+      ? 40
+      : event.kind === 'birth'
+        ? 20
+        : event.kind === 'death'
+          ? 10
+          : 0
+  const genBoost =
+    event.person.generation != null ? Math.max(0, 50 - event.person.generation * 12) : 0
+  return (
+    (event.importance ?? 0) * 12 +
+    kindBoost +
+    genBoost +
+    (event.person.focus ? 30 : 0) +
+    (isNearGeneration(event.person) ? 40 : 0)
+  )
+}
+
+/** Hard cap on how many family labels may appear in one viewport. */
+export function maxFamilyEventsForSpan(span: number, viewportWidth = 1200): number {
+  let cap = 8
+  if (span > 320) cap = 5
+  else if (span > 180) cap = 6
+  else if (span > 90) cap = 7
+  else if (span > 40) cap = 8
+  else cap = 9
+
+  // Roomy mid-century views: more markers when years are wide on screen.
+  const pxPerYear = viewportWidth / Math.max(1, span)
+  if (pxPerYear >= 16 && span <= 120) cap += 1
+  if (pxPerYear >= 22 && span <= 90) cap += 1
+
+  return stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
+}
+
+/**
+ * Keep markers that were already on-screen, then fill remaining slots by score.
+ * Enforces a hard concurrent visible limit so pan-persistence cannot overcrowd.
+ */
+export function admitPersistentMarkers<T>(
+  candidates: T[],
+  previousIds: readonly string[],
+  getId: (item: T) => string,
+  scoreOf: (item: T) => number,
+  limit: number,
+): T[] {
+  if (limit <= 0 || candidates.length === 0) return []
+
+  const byId = new Map(candidates.map((item) => [getId(item), item] as const))
+  const selected: T[] = []
+  const selectedIds = new Set<string>()
+
+  for (const id of previousIds) {
+    if (selected.length >= limit) break
+    const item = byId.get(id)
+    if (!item || selectedIds.has(id)) continue
+    selected.push(item)
+    selectedIds.add(id)
+  }
+
+  const ranked = [...candidates].sort(
+    (a, b) => scoreOf(b) - scoreOf(a) || getId(a).localeCompare(getId(b)),
+  )
+  for (const item of ranked) {
+    if (selected.length >= limit) break
+    const id = getId(item)
+    if (selectedIds.has(id)) continue
+    selected.push(item)
+    selectedIds.add(id)
+  }
+
+  return selected
+}
+
+/**
+ * Greedy vertical lane assignment by year-X (same idea as WorldHistoryLayer).
+ * Uses label half-widths so boxes cannot overlap; extras are dropped.
+ *
+ * `mustKeepIds` get first claim on lanes (so sticky markers are not swapped out
+ * for higher-scoring newcomers). The caller must already enforce the quantity cap.
+ */
+export function staggerFamilyEventLanes<
+  T extends {
+    event: FamilyEvent
+    x: number
+    y: number
+    alignment?: LabelAlignment
+    nudge?: number
+    compact?: boolean
+    lane?: number
+  },
+>(
+  placed: T[],
+  height: number,
+  span: number,
+  viewportWidth = 1200,
+  mustKeepIds?: ReadonlySet<string>,
+): T[] {
+  if (placed.length <= 1) return placed
+
+  const offsets = familyLaneOffsets(span, viewportWidth)
+  const pad = familyLanePad(span)
+  const maxKeep = maxFamilyEventsForSpan(span, viewportWidth)
+  const compact = span > 90 || isNarrowStage(viewportWidth)
+  const axisY = timelineAxisY(height, viewportWidth)
+  const floorY = familyLabelFloorY(viewportWidth, height)
+
+  const assigned = new Map<string, T>()
+  const lastRight = offsets.map(() => -1e9)
+
+  const placeEntry = (entry: T, force: boolean): boolean => {
+    const id = canonicalEventId(entry.event)
+    if (assigned.has(id)) return true
+    if (!force && assigned.size >= maxKeep) return false
+
+    const half = measureDetailedFootprint(entry.event, viewportWidth, compact).width / 2
+    const left = entry.x - half
+    const right = entry.x + half
+
+    let laneIndex = -1
+    for (let i = 0; i < offsets.length; i++) {
+      if (left >= lastRight[i] + pad) {
+        laneIndex = i
+        break
+      }
+    }
+
+    // Never force-overlap: sticky keep cannot violate zero-overlap.
+    if (laneIndex < 0) return false
+
+    lastRight[laneIndex] = Math.max(lastRight[laneIndex], right)
+    assigned.set(id, {
+      ...entry,
+      lane: laneIndex,
+      y: Math.max(floorY, axisY - offsets[laneIndex]),
+      nudge: 0,
+      compact,
+    })
+    return true
+  }
+
+  const ranked = [...placed].sort(
+    (a, b) =>
+      familyEventStaggerScore(b.event) - familyEventStaggerScore(a.event) ||
+      a.x - b.x ||
+      a.event.year - b.event.year,
+  )
+
+  if (mustKeepIds?.size) {
+    for (const entry of ranked) {
+      if (!mustKeepIds.has(canonicalEventId(entry.event))) continue
+      if (assigned.size >= maxKeep) break
+      placeEntry(entry, true)
+    }
+  }
+
+  for (const entry of ranked) {
+    const id = canonicalEventId(entry.event)
+    if (assigned.has(id)) continue
+    if (assigned.size >= maxKeep) break
+    placeEntry(entry, false)
+  }
+
+  return [...assigned.values()].sort((a, b) => a.x - b.x || a.event.year - b.event.year)
+}
 
 const DIVERSITY_KIND_ORDER: FamilyEvent['kind'][] = ['service', 'move', 'birth', 'death']
 
@@ -98,17 +306,33 @@ export function targetVisibleEventCount(
   density: ChapterDensity,
   mode: SemanticZoomMode,
   available: number,
+  viewportWidth = 1200,
+  span = 100,
 ): number {
   const caps: Record<ChapterDensity, { far: number; medium: number; near: number }> = {
-    sparse: { far: 4, medium: 6, near: 6 },
-    moderate: { far: 4, medium: 7, near: 8 },
+    sparse: { far: 5, medium: 6, near: 7 },
+    moderate: { far: 4, medium: 6, near: 7 },
     dense: { far: 4, medium: 5, near: 6 },
-    very_dense: { far: 4, medium: 4, near: 5 },
+    very_dense: { far: 3, medium: 4, near: 5 },
   }
 
-  if (mode === 'detail') return available
-  const limit = caps[density][mode]
-  return Math.min(available, Math.max(MIN_VIEWPORT_EVENTS, limit))
+  let limit = mode === 'detail' ? Math.min(available, 8) : Math.min(available, caps[density][mode])
+
+  // When nowhere near present density and the axis has room, show more of the near family.
+  const pxPerYear = viewportWidth / Math.max(1, span)
+  if (pxPerYear >= 14 && (density === 'sparse' || density === 'moderate')) {
+    limit += 2
+  } else if (pxPerYear >= 18) {
+    limit += 1
+  }
+  if (pxPerYear >= 24 && mode !== 'far') {
+    limit += 1
+  }
+
+  if (isNarrowStage(viewportWidth)) {
+    limit = Math.min(available, Math.max(2, Math.round(limit * 0.75)))
+  }
+  return Math.min(available, limit)
 }
 
 export function normalizedViewportPosition(year: number, start: number, end: number): number {
@@ -167,6 +391,10 @@ function combinedSelectionScore(
 ): number {
   let score = scoreOf(candidate)
 
+  // Near-generation events outrank temporal-spread preferences when both compete.
+  if (isNearGeneration(candidate.person, 1)) score += 120
+  else if (isNearGeneration(candidate.person, 2)) score += 70
+
   const kinds = new Set(picked.map((e) => e.kind))
   if (!kinds.has(candidate.kind)) score += 45
 
@@ -181,11 +409,19 @@ function combinedSelectionScore(
     score += 90 - zoneCounts[zone] * 22
   }
 
+  // Default zoom often under-represents colonial/industrial and modern family arcs.
+  if (candidate.year >= 1550 && candidate.year <= 1850) score += 55
+  if (candidate.year >= 1900) score += 70
+
   for (const p of picked) {
     const yearDist = Math.abs(p.year - candidate.year)
     const pxDist = Math.abs(yearX(p.year, start, span, width) - yearX(candidate.year, start, span, width))
-    if (yearDist < 8 && pxDist < 90) score -= 70
-    else if (yearDist < 14 && pxDist < 130) score -= 35
+    // Near-generation pairs (e.g. both parents' births) tolerate closer years when spaced on screen.
+    const nearPair = isNearGeneration(candidate.person) && isNearGeneration(p.person)
+    const yearSoft = nearPair ? 5 : 8
+    const pxSoft = nearPair ? 70 : 90
+    if (yearDist < yearSoft && pxDist < pxSoft) score -= nearPair ? 35 : 70
+    else if (yearDist < 14 && pxDist < 130) score -= nearPair ? 12 : 35
     else if (yearDist < 22 && pxDist < 180) score -= 15
   }
 
@@ -217,12 +453,33 @@ function passesTemporalDiversity(
 ): boolean {
   if (!picked.length) return true
   const cx = yearX(candidate.year, start, span, width)
-  const minPx = density === 'sparse' ? 64 : density === 'moderate' ? 88 : 100
-  const minYears = density === 'sparse' ? 5 : density === 'dense' || density === 'very_dense' ? 8 : 6
+  const near = isNearGeneration(candidate.person)
+  const minPx = near
+    ? density === 'sparse'
+      ? 56
+      : 64
+    : density === 'sparse'
+      ? 72
+      : density === 'moderate'
+        ? 88
+        : density === 'dense' || density === 'very_dense'
+          ? 84
+          : 80
+  const minYears = near
+    ? 3
+    : density === 'sparse'
+      ? 5
+      : density === 'dense' || density === 'very_dense'
+        ? 6
+        : 7
 
   for (const p of picked) {
     const px = yearX(p.year, start, span, width)
     if (Math.abs(px - cx) < minPx && Math.abs(p.year - candidate.year) < minYears) {
+      // Two near-generation births (both parents) may share a decade if labels clear.
+      if (near && isNearGeneration(p.person) && candidate.kind === 'birth' && p.kind === 'birth') {
+        if (Math.abs(px - cx) >= 48) continue
+      }
       if (candidate.kind === p.kind) return false
     }
   }
@@ -233,14 +490,34 @@ function passesTypeDiversity(
   candidate: FamilyEvent,
   picked: FamilyEvent[],
   density: ChapterDensity,
+  start: number,
+  end: number,
 ): boolean {
   if (!picked.length) return true
   const kinds = new Set(picked.map((e) => e.kind))
   const birthCount = picked.filter((e) => e.kind === 'birth').length
   const deathCount = picked.filter((e) => e.kind === 'death').length
+  const nearBirthCount = picked.filter(
+    (e) => e.kind === 'birth' && isNearGeneration(e.person),
+  ).length
 
   if (candidate.kind === 'birth' && birthCount >= 1) {
-    if (density === 'very_dense' || density === 'dense') return false
+    // Parents/self/children: allow several births when the viewport still has room.
+    if (isNearGeneration(candidate.person)) {
+      if (density === 'very_dense' && nearBirthCount >= 3) return false
+      if (nearBirthCount >= 4) return false
+      return true
+    }
+
+    if (density === 'very_dense' || density === 'dense') {
+      const zone = zoneForYear(candidate.year, start, end)
+      const birthZones = new Set(
+        picked.filter((e) => e.kind === 'birth').map((e) => zoneForYear(e.year, start, end)),
+      )
+      if (birthZones.has(zone)) return false
+      if (birthCount >= 2) return false
+      return true
+    }
     if (density === 'moderate' && birthCount >= 2) return false
     if (density === 'sparse' && birthCount >= 2 && !kinds.has('move') && !kinds.has('service')) {
       return false
@@ -283,7 +560,7 @@ function tryAddCandidate(
   pickedIds: Set<string>,
   limit: number,
   start: number,
-  _end: number,
+  end: number,
   span: number,
   width: number,
   density: ChapterDensity,
@@ -292,7 +569,7 @@ function tryAddCandidate(
   const id = canonicalEventId(candidate)
   if (pickedIds.has(id)) return false
   if (!passesTemporalDiversity(candidate, picked, start, span, width, density)) return false
-  if (!passesTypeDiversity(candidate, picked, density)) return false
+  if (!passesTypeDiversity(candidate, picked, density, start, end)) return false
   pickedIds.add(id)
   picked.push(candidate)
   return true
@@ -304,9 +581,125 @@ function bestInZone(
   start: number,
   end: number,
   scoreOf: (event: FamilyEvent) => number,
+  span: number,
+  width: number,
+  calloutObstacle?: CollisionObstacle | CalloutObstacles | null,
 ): FamilyEvent | null {
   const inZone = events.filter((e) => zoneForYear(e.year, start, end) === zone)
-  return sortByImportance(inZone, scoreOf)[0] ?? null
+  if (!inZone.length) return null
+
+  return [...inZone].sort(
+    (a, b) =>
+      selectionPlacabilityScore(b, pickedProbeContext(start, span, width, calloutObstacle), scoreOf) -
+        selectionPlacabilityScore(a, pickedProbeContext(start, span, width, calloutObstacle), scoreOf) ||
+      scoreOf(b) - scoreOf(a) ||
+      a.year - b.year,
+  )[0]
+}
+
+type PlacementProbeContext = {
+  start: number
+  span: number
+  width: number
+  reservedBand: { left: number; right: number } | null
+}
+
+function pickedProbeContext(
+  start: number,
+  span: number,
+  width: number,
+  calloutObstacle?: CollisionObstacle | CalloutObstacles | null,
+): PlacementProbeContext {
+  let reservedBand: { left: number; right: number } | null = null
+  if (calloutObstacle && 'frame' in calloutObstacle) {
+    reservedBand = {
+      left: calloutObstacle.frame.left - PLACEMENT_PROBE_GAP,
+      right: calloutObstacle.frame.right + PLACEMENT_PROBE_GAP,
+    }
+  } else if (calloutObstacle) {
+    reservedBand = {
+      left: calloutObstacle.left - PLACEMENT_PROBE_GAP,
+      right: calloutObstacle.right + PLACEMENT_PROBE_GAP,
+    }
+  }
+
+  return { start, span, width, reservedBand }
+}
+
+function markerXForEvent(event: FamilyEvent, context: PlacementProbeContext): number {
+  return yearX(event.year, context.start, context.span, context.width)
+}
+
+function markerInReservedBand(markerX: number, band: { left: number; right: number } | null): boolean {
+  if (!band) return false
+  return markerX >= band.left && markerX <= band.right
+}
+
+function markerUnderCallout(
+  markerX: number,
+  obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+): boolean {
+  if (!obstacles || !('frame' in obstacles)) return false
+  const gap = PLACEMENT_PROBE_GAP
+  return (
+    markerX >= Math.min(obstacles.frame.left, obstacles.connector.left) - gap &&
+    markerX <= Math.max(obstacles.frame.right, obstacles.connector.right) + gap
+  )
+}
+
+function selectionPlacabilityScore(
+  event: FamilyEvent,
+  context: PlacementProbeContext,
+  scoreOf: (event: FamilyEvent) => number,
+): number {
+  let score = scoreOf(event)
+  if (!context.reservedBand) return score
+
+  const markerX = markerXForEvent(event, context)
+  if (markerInReservedBand(markerX, context.reservedBand)) {
+    score -= 35
+  } else if (
+    markerX >= context.reservedBand.left - 72 &&
+    markerX <= context.reservedBand.right + 72
+  ) {
+    score -= 12
+  } else {
+    score += 24
+  }
+
+  return score
+}
+
+function bestInYearRange(
+  events: FamilyEvent[],
+  rangeStart: number,
+  rangeEnd: number,
+  scoreOf: (event: FamilyEvent) => number,
+): FamilyEvent | null {
+  const inRange = events.filter((e) => e.year >= rangeStart && e.year <= rangeEnd)
+  return sortByImportance(inRange, scoreOf)[0] ?? null
+}
+
+function pickEraQuotas(
+  events: FamilyEvent[],
+  picked: FamilyEvent[],
+  pickedIds: Set<string>,
+  limit: number,
+  start: number,
+  end: number,
+  span: number,
+  width: number,
+  density: ChapterDensity,
+  scoreOf: (event: FamilyEvent) => number,
+  eraCount = 5,
+): void {
+  for (let i = 0; i < eraCount; i++) {
+    if (picked.length >= limit) break
+    const eraStart = start + (span * i) / eraCount
+    const eraEnd = i === eraCount - 1 ? end : start + (span * (i + 1)) / eraCount - 1
+    const best = bestInYearRange(events, eraStart, eraEnd, scoreOf)
+    if (best) tryAddCandidate(best, picked, pickedIds, limit, start, end, span, width, density)
+  }
 }
 
 function pickZoneQuotas(
@@ -320,6 +713,7 @@ function pickZoneQuotas(
   width: number,
   density: ChapterDensity,
   scoreOf: (event: FamilyEvent) => number,
+  calloutObstacle?: CollisionObstacle | CalloutObstacles | null,
 ): void {
   const zones: TemporalZone[] = ['left', 'center', 'right']
   const hasZone = (z: TemporalZone) => events.some((e) => zoneForYear(e.year, start, end) === z)
@@ -327,15 +721,24 @@ function pickZoneQuotas(
   if (limit >= 3 && hasZone('left') && hasZone('center') && hasZone('right')) {
     for (const zone of zones) {
       if (picked.length >= limit) break
-      const best = bestInZone(events, zone, start, end, scoreOf)
+      const best = bestInZone(events, zone, start, end, scoreOf, span, width, calloutObstacle)
       if (best) tryAddCandidate(best, picked, pickedIds, limit, start, end, span, width, density)
+    }
+
+    if (calloutObstacle && picked.length < limit) {
+      const centerStart = start + (span * ZONE_LEFT_MAX)
+      const centerEnd = start + (span * ZONE_CENTER_MAX)
+      const centerBest = bestInYearRange(events, centerStart, centerEnd, scoreOf)
+      if (centerBest && !pickedIds.has(canonicalEventId(centerBest))) {
+        tryAddCandidate(centerBest, picked, pickedIds, limit, start, end, span, width, density)
+      }
     }
     return
   }
 
   if (limit === 2 && hasZone('left') && hasZone('right')) {
-    const leftBest = bestInZone(events, 'left', start, end, scoreOf)
-    const rightBest = bestInZone(events, 'right', start, end, scoreOf)
+    const leftBest = bestInZone(events, 'left', start, end, scoreOf, span, width, calloutObstacle)
+    const rightBest = bestInZone(events, 'right', start, end, scoreOf, span, width, calloutObstacle)
     if (leftBest) tryAddCandidate(leftBest, picked, pickedIds, limit, start, end, span, width, density)
     if (rightBest) tryAddCandidate(rightBest, picked, pickedIds, limit, start, end, span, width, density)
     return
@@ -362,6 +765,79 @@ function pickZoneQuotas(
   }
 }
 
+function tryAddNearGenerationCandidate(
+  candidate: FamilyEvent,
+  picked: FamilyEvent[],
+  pickedIds: Set<string>,
+  limit: number,
+  start: number,
+  span: number,
+  width: number,
+): boolean {
+  if (picked.length >= limit) return false
+  if (!isNearGeneration(candidate.person, 2)) return false
+  const id = canonicalEventId(candidate)
+  if (pickedIds.has(id)) return false
+
+  const cx = yearX(candidate.year, start, span, width)
+  for (const p of picked) {
+    const px = yearX(p.year, start, span, width)
+    // Only block when labels would visibly collide.
+    if (Math.abs(px - cx) < 52 && Math.abs(p.year - candidate.year) < 3) return false
+  }
+
+  pickedIds.add(id)
+  picked.push(candidate)
+  return true
+}
+
+/**
+ * Guarantee seats for root/parents/grandparents when they fall in-view and the
+ * axis has room — generation proximity outranks pure temporal spread.
+ */
+function pickNearGenerationSeats(
+  events: FamilyEvent[],
+  picked: FamilyEvent[],
+  pickedIds: Set<string>,
+  limit: number,
+  start: number,
+  end: number,
+  span: number,
+  width: number,
+  scoreOf: (event: FamilyEvent) => number,
+): void {
+  const inView = events.filter(
+    (e) => e.year >= start && e.year <= end && isNearGeneration(e.person, 2),
+  )
+  if (!inView.length) return
+
+  const pxPerYear = width / Math.max(1, span)
+  const roomy = pxPerYear >= 12
+  const target = Math.min(
+    inView.length,
+    roomy ? Math.max(3, Math.min(5, Math.ceil(limit * 0.6))) : Math.min(2, limit),
+  )
+
+  const ranked = [...inView].sort((a, b) => {
+    const ga = a.person.generation ?? 99
+    const gb = b.person.generation ?? 99
+    if (ga !== gb) return ga - gb
+    const kindRank = (k: FamilyEvent['kind']) =>
+      k === 'birth' ? 0 : k === 'move' ? 1 : k === 'death' ? 2 : 3
+    if (kindRank(a.kind) !== kindRank(b.kind)) return kindRank(a.kind) - kindRank(b.kind)
+    return scoreOf(b) - scoreOf(a) || a.year - b.year
+  })
+
+  let nearCount = picked.filter((e) => isNearGeneration(e.person, 2)).length
+  for (const candidate of ranked) {
+    if (picked.length >= limit) break
+    if (nearCount >= target) break
+    if (tryAddNearGenerationCandidate(candidate, picked, pickedIds, limit, start, span, width)) {
+      nearCount++
+    }
+  }
+}
+
 /** Balanced temporal landmark selection across the full visible range. */
 export function selectDistributedLandmarks(
   events: FamilyEvent[],
@@ -371,20 +847,43 @@ export function selectDistributedLandmarks(
   width: number,
   mode: SemanticZoomMode,
   scoreOf: (event: FamilyEvent) => number,
-  _calloutObstacle?: CollisionObstacle | CalloutObstacles | null,
+  calloutObstacle?: CollisionObstacle | CalloutObstacles | null,
 ): FamilyEvent[] {
   if (!events.length || mode === 'detail') return events
 
   const density = chapterDensity(events, start, end)
-  const limit = targetVisibleEventCount(density, mode, events.length)
+  const limit = targetVisibleEventCount(density, mode, events.length, width, span)
   if (limit <= 0) return []
 
   const bucketCount = temporalBucketCount(mode, span, events.length)
   const buckets = assignTemporalBuckets(events, start, end, bucketCount)
   const picked: FamilyEvent[] = []
   const pickedIds = new Set<string>()
+  const probeContext = pickedProbeContext(start, span, width, calloutObstacle)
 
-  pickZoneQuotas(events, picked, pickedIds, limit, start, end, span, width, density, scoreOf)
+  // Near-generation first so parents are not crowded out by temporal-spread quotas.
+  pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
+
+  if (mode === 'far' && limit >= 5) {
+    pickEraQuotas(events, picked, pickedIds, limit, start, end, span, width, density, scoreOf)
+  } else {
+    pickZoneQuotas(
+      events,
+      picked,
+      pickedIds,
+      limit,
+      start,
+      end,
+      span,
+      width,
+      density,
+      scoreOf,
+      calloutObstacle,
+    )
+  }
+
+  // Second pass after zone fill — claim any remaining near-gen seats.
+  pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
 
   const visitOrder = spreadBucketOrder(bucketCount)
   for (const bucketIdx of visitOrder) {
@@ -394,6 +893,8 @@ export function selectDistributedLandmarks(
 
     const ranked = [...bucketEvents].sort(
       (a, b) =>
+        selectionPlacabilityScore(b, probeContext, scoreOf) -
+          selectionPlacabilityScore(a, probeContext, scoreOf) ||
         combinedSelectionScore(b, picked, scoreOf, start, end, span, width) -
           combinedSelectionScore(a, picked, scoreOf, start, end, span, width) ||
         scoreOf(b) - scoreOf(a),
@@ -414,7 +915,9 @@ export function selectDistributedLandmarks(
       .map((e) => ({
         event: e,
         spread: minTemporalDistance(e, picked, start, end),
-        score: combinedSelectionScore(e, picked, scoreOf, start, end, span, width),
+        score:
+          selectionPlacabilityScore(e, probeContext, scoreOf) +
+          combinedSelectionScore(e, picked, scoreOf, start, end, span, width),
       }))
       .sort(
         (a, b) =>
@@ -485,9 +988,10 @@ type PlacedRect = {
   anchorY: number
 }
 
-function laneY(height: number, lane: number): number {
-  const offset = HYBRID_LANE_OFFSETS[Math.min(lane, HYBRID_MAX_LANES - 1)]
-  return Math.max(168, height * 0.54 - offset)
+function laneY(height: number, lane: number, viewportWidth = 1200): number {
+  const offsets = hybridLaneOffsets(viewportWidth)
+  const offset = offsets[Math.min(lane, offsets.length - 1)]
+  return Math.max(familyLabelFloorY(viewportWidth, height), timelineAxisY(height, viewportWidth) - offset)
 }
 
 function rectsCollide(
@@ -504,25 +1008,50 @@ function rectsCollide(
 
 function collidesWithObstacles(
   bounds: { left: number; right: number; top: number; bottom: number },
-  markerX: number,
+  _markerX: number,
   obstacles?: CalloutObstacles | CollisionObstacle | null,
+  editorialObstacles: EditorialObstacle[] = [],
 ): boolean {
-  if (!obstacles) return false
-
-  if ('frame' in obstacles) {
+  if (obstacles && 'frame' in obstacles) {
     if (rectsCollide(bounds, obstacles.frame)) return true
-    const nearStem = Math.abs(markerX - (obstacles.connector.left + obstacles.connector.right) / 2) < 48
-    if (nearStem && rectsCollide(bounds, obstacles.connector)) return true
+
+    const overlapsConnectorHorizontally = !(
+      bounds.right + HYBRID_H_GAP < obstacles.connector.left ||
+      bounds.left - HYBRID_H_GAP > obstacles.connector.right
+    )
+    if (overlapsConnectorHorizontally && rectsCollide(bounds, obstacles.connector)) {
+      return true
+    }
+
     if (obstacles.brace && rectsCollide(bounds, obstacles.brace)) return true
-    return false
+  } else if (obstacles && rectsCollide(bounds, obstacles)) {
+    return true
   }
 
-  return rectsCollide(bounds, obstacles)
+  for (const panel of editorialObstacles) {
+    if (rectsCollide(bounds, panel)) return true
+  }
+
+  return false
 }
 
-function hybridAlignmentOrder(markerX: number, viewportWidth: number): LabelAlignment[] {
+function hybridAlignmentOrder(
+  markerX: number,
+  viewportWidth: number,
+  editorialObstacles: EditorialObstacle[] = [],
+): LabelAlignment[] {
+  const rightPanel = editorialObstacles[1]
+  const leftPanel = editorialObstacles[0]
+
+  if (rightPanel && markerX > rightPanel.left - 140) {
+    return ['right', 'center', 'left']
+  }
+  if (leftPanel && markerX < leftPanel.right + 140) {
+    return ['left', 'center', 'right']
+  }
+
   const centerX = viewportWidth / 2
-  if (Math.abs(markerX - centerX) < 130) return ['left', 'right', 'center']
+  if (Math.abs(markerX - centerX) < 150) return ['left', 'right']
   if (markerX < 110) return ['left', 'center', 'right']
   if (markerX > viewportWidth - 150) return ['right', 'center', 'left']
   return ['left', 'right', 'center']
@@ -539,8 +1068,10 @@ function tryHybridPlacement(
   alignment: LabelAlignment,
   nudge: number,
   compact: boolean,
+  editorialObstacles: EditorialObstacle[] = [],
+  vGap = HYBRID_V_GAP,
 ): PlacedRect | null {
-  let anchorY = laneY(height, lane)
+  let anchorY = laneY(height, lane, width)
   const footprint = measureDetailedFootprint(event, width, compact)
   if (obstacles && 'frame' in obstacles) {
     const frame = obstacles.frame
@@ -553,6 +1084,16 @@ function tryHybridPlacement(
       anchorY += frame.bottom - boundsProbe.top
     }
   }
+  for (const panel of editorialObstacles) {
+    const boundsProbe = footprintBounds(markerX, anchorY, footprint, alignment, nudge, width)
+    const overlapsHorizontally = !(
+      boundsProbe.right + HYBRID_H_GAP < panel.left ||
+      boundsProbe.left - HYBRID_H_GAP > panel.right
+    )
+    if (overlapsHorizontally && boundsProbe.top < panel.bottom) {
+      anchorY += panel.bottom - boundsProbe.top + 8
+    }
+  }
   const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, width)
   const rect: PlacedRect = {
     left: bounds.left,
@@ -563,15 +1104,72 @@ function tryHybridPlacement(
     anchorY,
   }
 
-  if (collidesWithObstacles(rect, markerX, obstacles)) return null
+  if (collidesWithObstacles(rect, markerX, obstacles, editorialObstacles)) return null
+
+  const gap = isNearGeneration(event.person) ? Math.min(vGap, 12) : vGap
 
   for (const other of placed) {
-    if (rectsCollide(rect, other)) return null
+    const hClear =
+      rect.right + HYBRID_H_GAP < other.left || other.right + HYBRID_H_GAP < rect.left
+    const vClear = rect.bottom + gap < other.top || other.bottom + gap < rect.top
+    if (!hClear && !vClear) return null
     if (stemIntersectsBox(markerX, anchorY, footprint.stemHeight, other)) return null
     if (stemIntersectsBox(other.markerX, other.anchorY, footprint.stemHeight, rect)) return null
   }
 
   return rect
+}
+
+function plaqueFlankNudges(
+  obstacles: CalloutObstacles,
+  markerX: number,
+): Array<{ alignment: LabelAlignment; nudge: number }> {
+  const gap = PLACEMENT_PROBE_GAP
+  const reservedLeft = Math.min(obstacles.frame.left, obstacles.connector.left) - gap
+  const reservedRight = Math.max(obstacles.frame.right, obstacles.connector.right) + gap
+  // Drop extreme flanks — they read as date misalignment; prefer a higher lane instead.
+  const maxFlank = 72
+
+  return [
+    { alignment: 'right' as const, nudge: reservedLeft - markerX },
+    { alignment: 'left' as const, nudge: reservedRight - markerX },
+  ].filter(({ nudge }) => Math.abs(nudge) <= maxFlank)
+}
+
+function tryPlaqueFlankPlacement(
+  event: FamilyEvent,
+  markerX: number,
+  width: number,
+  height: number,
+  placed: PlacedRect[],
+  obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+  editorialObstacles: EditorialObstacle[],
+  minLane: number,
+  compact: boolean,
+): { rect: PlacedRect; alignment: LabelAlignment; nudge: number; lane: number; compact: boolean } | null {
+  if (!obstacles || !('frame' in obstacles)) return null
+
+  const maxLanes = hybridMaxLanes(width)
+  for (let lane = minLane; lane < maxLanes; lane++) {
+    for (const { alignment, nudge } of plaqueFlankNudges(obstacles, markerX)) {
+      const rect = tryHybridPlacement(
+        event,
+        markerX,
+        width,
+        height,
+        placed,
+        obstacles,
+        lane,
+        alignment,
+        nudge,
+        compact,
+        editorialObstacles,
+      )
+      if (rect) return { rect, alignment, nudge, lane, compact }
+    }
+  }
+
+  return null
 }
 
 function placeOneHybridEvent(
@@ -581,78 +1179,165 @@ function placeOneHybridEvent(
   height: number,
   placed: PlacedRect[],
   obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+  editorialObstacles: EditorialObstacle[],
   minLane = 0,
   forceAlignment?: LabelAlignment,
 ): HybridPlacedEvent | null {
+  if (markerUnderCallout(markerX, obstacles)) {
+    const flank = tryPlaqueFlankPlacement(
+      event,
+      markerX,
+      width,
+      height,
+      placed,
+      obstacles,
+      editorialObstacles,
+      minLane,
+      false,
+    )
+    if (flank) {
+      placed.push(flank.rect)
+      const footprint = measureDetailedFootprint(event, width, flank.compact)
+      const adjustedNudge = effectiveLabelNudge(
+        markerX,
+        flank.rect.anchorY,
+        footprint,
+        flank.alignment,
+        flank.nudge,
+        width,
+      )
+      return {
+        event,
+        x: markerX,
+        y: flank.rect.anchorY,
+        alignment: flank.alignment,
+        nudge: adjustedNudge,
+        compact: flank.compact,
+        lane: flank.lane,
+      }
+    }
+  }
+
   const alignments =
     forceAlignment != null
-      ? [forceAlignment, ...hybridAlignmentOrder(markerX, width).filter((a) => a !== forceAlignment)]
-      : hybridAlignmentOrder(markerX, width)
+      ? [
+          forceAlignment,
+          ...hybridAlignmentOrder(markerX, width, editorialObstacles).filter((a) => a !== forceAlignment),
+        ]
+      : hybridAlignmentOrder(markerX, width, editorialObstacles)
 
-  for (let lane = minLane; lane < HYBRID_MAX_LANES; lane++) {
-    for (const alignment of alignments) {
-      for (const nudge of DETAIL_NUDGES) {
-        const rect = tryHybridPlacement(
-          event,
-          markerX,
-          width,
-          height,
-          placed,
-          obstacles,
-          lane,
-          alignment,
-          nudge,
-          false,
-        )
-        if (rect) {
-          placed.push(rect)
-          const footprint = measureDetailedFootprint(event, width, false)
-          const adjustedNudge = effectiveLabelNudge(
+  const maxLanes = hybridMaxLanes(width)
+  const compactPasses = isNarrowStage(width) ? [true] : [false, true]
+
+  for (const compact of compactPasses) {
+    for (let lane = minLane; lane < maxLanes; lane++) {
+      for (const alignment of alignments) {
+        for (const nudge of DETAIL_NUDGES) {
+          const rect = tryHybridPlacement(
+            event,
             markerX,
-            rect.anchorY,
-            footprint,
+            width,
+            height,
+            placed,
+            obstacles,
+            lane,
             alignment,
             nudge,
-            width,
+            compact,
+            editorialObstacles,
           )
-          return { event, x: markerX, y: rect.anchorY, alignment, nudge: adjustedNudge, compact: false, lane }
+          if (rect) {
+            placed.push(rect)
+            const footprint = measureDetailedFootprint(event, width, compact)
+            const adjustedNudge = effectiveLabelNudge(
+              markerX,
+              rect.anchorY,
+              footprint,
+              alignment,
+              nudge,
+              width,
+            )
+            return { event, x: markerX, y: rect.anchorY, alignment, nudge: adjustedNudge, compact, lane }
+          }
         }
       }
     }
   }
 
-  for (let lane = minLane; lane < HYBRID_MAX_LANES; lane++) {
+  const flank = tryPlaqueFlankPlacement(
+    event,
+    markerX,
+    width,
+    height,
+    placed,
+    obstacles,
+    editorialObstacles,
+    minLane,
+    true,
+  )
+  if (flank) {
+    placed.push(flank.rect)
+    const footprint = measureDetailedFootprint(event, width, flank.compact)
+    const adjustedNudge = effectiveLabelNudge(
+      markerX,
+      flank.rect.anchorY,
+      footprint,
+      flank.alignment,
+      flank.nudge,
+      width,
+    )
+    return {
+      event,
+      x: markerX,
+      y: flank.rect.anchorY,
+      alignment: flank.alignment,
+      nudge: adjustedNudge,
+      compact: flank.compact,
+      lane: flank.lane,
+    }
+  }
+
+  // Last resort: ignore callout obstacles only — still refuse label/label overlap.
+  for (let lane = Math.max(minLane, maxLanes - 3); lane < maxLanes; lane++) {
     for (const alignment of alignments) {
-      for (const nudge of DETAIL_NUDGES) {
-        const rect = tryHybridPlacement(
-          event,
+      const rect = tryHybridPlacement(
+        event,
+        markerX,
+        width,
+        height,
+        placed,
+        null,
+        lane,
+        alignment,
+        0,
+        true,
+        editorialObstacles,
+      )
+      if (rect) {
+        placed.push(rect)
+        const footprint = measureDetailedFootprint(event, width, true)
+        const adjustedNudge = effectiveLabelNudge(
           markerX,
-          width,
-          height,
-          placed,
-          obstacles,
-          lane,
+          rect.anchorY,
+          footprint,
           alignment,
-          nudge,
-          true,
+          0,
+          width,
         )
-        if (rect) {
-          placed.push(rect)
-          const footprint = measureDetailedFootprint(event, width, true)
-          const adjustedNudge = effectiveLabelNudge(
-            markerX,
-            rect.anchorY,
-            footprint,
-            alignment,
-            nudge,
-            width,
-          )
-          return { event, x: markerX, y: rect.anchorY, alignment, nudge: adjustedNudge, compact: true, lane }
+        return {
+          event,
+          x: markerX,
+          y: rect.anchorY,
+          alignment,
+          nudge: adjustedNudge,
+          compact: true,
+          lane,
         }
       }
     }
   }
 
+  // Prefer residual clustering over stacked labels (TIMELINE_RULES: zero overlap).
   return null
 }
 
@@ -664,6 +1349,7 @@ function applyCachedHybridPlacement(
   height: number,
   placedRects: PlacedRect[],
   obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+  editorialObstacles: EditorialObstacle[],
 ): HybridPlacedEvent | null {
   const rect = tryHybridPlacement(
     event,
@@ -676,6 +1362,7 @@ function applyCachedHybridPlacement(
     profile.alignment,
     profile.nudge,
     profile.compact,
+    editorialObstacles,
   )
   if (!rect) return null
 
@@ -708,6 +1395,7 @@ export function placeHybridLandmarks(
   const placedIds = new Set<string>()
   const end = start + span
   const stabilityKey = landmarkStabilityKey(mode, span)
+  const editorialObstacles = estimateEditorialSidenoteObstacles(width)
 
   const debugRejected: LandmarkDebugSnapshot['rejected'] = []
   const debugReplacements: LandmarkDebugSnapshot['replacements'] = []
@@ -739,6 +1427,7 @@ export function placeHybridLandmarks(
       .map((entry) => entry.item)
       .sort(
         (a, b) =>
+          (a.event.person.generation ?? 99) - (b.event.person.generation ?? 99) ||
           _scoreOf(b.event) - _scoreOf(a.event) ||
           a.event.year - b.event.year ||
           a.event.person.name.localeCompare(b.event.person.name),
@@ -748,11 +1437,25 @@ export function placeHybridLandmarks(
       placementPlan.push({
         event: entry.event,
         markerX: entry.markerX,
-        minLane: minLaneForGroupIndex(groupIndex, HYBRID_MAX_LANES),
+        minLane: minLaneForGroupIndex(groupIndex, hybridMaxLanes(width), ordered.length),
         forceAlignment: ordered.length > 1 ? staggerAlignmentForIndex(groupIndex) : undefined,
       })
     })
   }
+
+  placementPlan.sort((a, b) => {
+    const ga = a.event.person.generation ?? 99
+    const gb = b.event.person.generation ?? 99
+    if (ga !== gb) return ga - gb
+    const nearA = isNearGeneration(a.event.person) ? 0 : 1
+    const nearB = isNearGeneration(b.event.person) ? 0 : 1
+    if (nearA !== nearB) return nearA - nearB
+    return (
+      _scoreOf(b.event) - _scoreOf(a.event) ||
+      a.event.year - b.event.year ||
+      a.event.person.name.localeCompare(b.event.person.name)
+    )
+  })
 
   for (const plan of placementPlan) {
     const { event, markerX, minLane, forceAlignment } = plan
@@ -769,6 +1472,7 @@ export function placeHybridLandmarks(
         height,
         placedRects,
         obstacles,
+        editorialObstacles,
       )
       if (cachedResult) {
         placed.push(cachedResult)
@@ -784,6 +1488,7 @@ export function placeHybridLandmarks(
       height,
       placedRects,
       obstacles,
+      editorialObstacles,
       minLane,
       forceAlignment,
     )
@@ -809,6 +1514,226 @@ export function placeHybridLandmarks(
     }
   }
 
+  const probeContext = pickedProbeContext(start, span, width, obstacles)
+
+  // Recover near-generation landmarks that lost a lane — displace a farther relative first.
+  for (const failed of [...unplaced]) {
+    if (!isNearGeneration(failed.person, 1)) continue
+    const failedGen = failed.person.generation ?? 99
+
+    const victims = placed
+      .map((entry, index) => ({ entry, index }))
+      .filter(({ entry }) => (entry.event.person.generation ?? 99) > failedGen)
+      .sort(
+        (a, b) =>
+          (b.entry.event.person.generation ?? 99) - (a.entry.event.person.generation ?? 99) ||
+          _scoreOf(a.entry.event) - _scoreOf(b.entry.event),
+      )
+
+    for (const { entry: victim, index: victimIndex } of victims) {
+      const victimId = canonicalEventId(victim.event)
+      const removedRects = placedRects.splice(victimIndex, 1)
+      const removedPlaced = placed.splice(victimIndex, 1)
+      placedIds.delete(victimId)
+
+      const markerX = yearX(failed.year, start, span, width)
+      const result = placeOneHybridEvent(
+        failed,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+        editorialObstacles,
+        0,
+      )
+
+      if (result) {
+        rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(failed), {
+          lane: result.lane,
+          alignment: result.alignment,
+          nudge: result.nudge,
+          compact: result.compact,
+        })
+        placed.push(result)
+        placedIds.add(canonicalEventId(failed))
+        const failedIndex = unplaced.findIndex(
+          (event) => canonicalEventId(event) === canonicalEventId(failed),
+        )
+        if (failedIndex >= 0) unplaced.splice(failedIndex, 1)
+        unplaced.push(victim.event)
+        break
+      }
+
+      // Restore victim if the swap did not free a lane for the nearer person.
+      if (removedRects[0]) placedRects.splice(victimIndex, 0, removedRects[0])
+      if (removedPlaced[0]) placed.splice(victimIndex, 0, removedPlaced[0])
+      placedIds.add(victimId)
+    }
+  }
+
+  for (const failed of [...unplaced]) {
+    const zone = zoneForYear(failed.year, start, end)
+    const failedGen = failed.person.generation ?? 99
+    const replacements = alternates
+      .filter(
+        (event) =>
+          zoneForYear(event.year, start, end) === zone &&
+          !placedIds.has(canonicalEventId(event)) &&
+          canonicalEventId(event) !== canonicalEventId(failed) &&
+          // Never replace a nearer person with a more distant relative.
+          !(isNearGeneration(failed.person, 1) && (event.person.generation ?? 99) > failedGen),
+      )
+      .sort(
+        (a, b) =>
+          (a.person.generation ?? 99) - (b.person.generation ?? 99) ||
+          selectionPlacabilityScore(b, probeContext, _scoreOf) -
+            selectionPlacabilityScore(a, probeContext, _scoreOf) ||
+          _scoreOf(b) - _scoreOf(a),
+      )
+
+    for (const replacement of replacements) {
+      const markerX = yearX(replacement.year, start, span, width)
+      const result = placeOneHybridEvent(
+        replacement,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+        editorialObstacles,
+      )
+      if (!result) continue
+      rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(replacement), {
+        lane: result.lane,
+        alignment: result.alignment,
+        nudge: result.nudge,
+        compact: result.compact,
+      })
+      placed.push(result)
+      placedIds.add(canonicalEventId(replacement))
+      const failedIndex = unplaced.findIndex((event) => canonicalEventId(event) === canonicalEventId(failed))
+      if (failedIndex >= 0) unplaced.splice(failedIndex, 1)
+      break
+    }
+  }
+
+  // Final near-generation rescue: prefer parents over more distant markers when lanes collide.
+  const unresolvedNear = unplaced.filter((event) => isNearGeneration(event.person, 1))
+  if (unresolvedNear.length) {
+    const nearPlaced: HybridPlacedEvent[] = []
+    const nearRects: PlacedRect[] = []
+    const otherPlaced: HybridPlacedEvent[] = []
+    placed.forEach((entry, index) => {
+      if (isNearGeneration(entry.event.person, 1)) {
+        nearPlaced.push(entry)
+        nearRects.push(placedRects[index])
+      } else {
+        otherPlaced.push(entry)
+      }
+    })
+
+    placed.length = 0
+    placedRects.length = 0
+    placedIds.clear()
+    for (let i = 0; i < nearPlaced.length; i++) {
+      placed.push(nearPlaced[i])
+      placedRects.push(nearRects[i])
+      placedIds.add(canonicalEventId(nearPlaced[i].event))
+    }
+
+    for (const failed of unresolvedNear) {
+      if (placedIds.has(canonicalEventId(failed))) continue
+      const markerX = yearX(failed.year, start, span, width)
+      const result = placeOneHybridEvent(
+        failed,
+        markerX,
+        width,
+        height,
+        placedRects,
+        null,
+        [],
+        0,
+      )
+      if (!result) continue
+      rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(failed), {
+        lane: result.lane,
+        alignment: result.alignment,
+        nudge: result.nudge,
+        compact: result.compact,
+      })
+      placed.push(result)
+      placedIds.add(canonicalEventId(failed))
+      const failedIndex = unplaced.findIndex(
+        (event) => canonicalEventId(event) === canonicalEventId(failed),
+      )
+      if (failedIndex >= 0) unplaced.splice(failedIndex, 1)
+    }
+
+    for (const entry of otherPlaced) {
+      const markerX = yearX(entry.event.year, start, span, width)
+      const result = placeOneHybridEvent(
+        entry.event,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+        editorialObstacles,
+        0,
+      )
+      if (!result) {
+        unplaced.push(entry.event)
+        continue
+      }
+      placed.push(result)
+      placedIds.add(canonicalEventId(entry.event))
+    }
+  }
+
+  for (const zone of ['left', 'center', 'right'] as const) {
+    const hasPlacedInZone = placed.some(
+      (entry) => zoneForYear(entry.event.year, start, end) === zone,
+    )
+    if (hasPlacedInZone) continue
+
+    const candidates = alternates
+      .filter(
+        (event) =>
+          zoneForYear(event.year, start, end) === zone &&
+          !placedIds.has(canonicalEventId(event)),
+      )
+      .sort(
+        (a, b) =>
+          _scoreOf(b) - _scoreOf(a) ||
+          selectionPlacabilityScore(b, probeContext, _scoreOf) -
+            selectionPlacabilityScore(a, probeContext, _scoreOf),
+      )
+
+    for (const event of candidates) {
+      const markerX = yearX(event.year, start, span, width)
+      const result = placeOneHybridEvent(
+        event,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+        editorialObstacles,
+      )
+      if (!result) continue
+      rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
+        lane: result.lane,
+        alignment: result.alignment,
+        nudge: result.nudge,
+        compact: result.compact,
+      })
+      placed.push(result)
+      placedIds.add(canonicalEventId(event))
+      break
+    }
+  }
+
   placed.sort((a, b) => a.x - b.x)
 
   const minimum = Math.min(alternates.length, MIN_VIEWPORT_EVENTS)
@@ -820,7 +1745,15 @@ export function placeHybridLandmarks(
     for (const event of ranked) {
       if (placed.length >= minimum) break
       const markerX = yearX(event.year, start, span, width)
-      const result = placeOneHybridEvent(event, markerX, width, height, placedRects, obstacles)
+      const result = placeOneHybridEvent(
+        event,
+        markerX,
+        width,
+        height,
+        placedRects,
+        obstacles,
+        editorialObstacles,
+      )
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
         lane: result.lane,
@@ -849,7 +1782,22 @@ export function placeHybridLandmarks(
     })
   }
 
-  return { placed, unplaced }
+  // All zoom levels: history-style vertical stagger; drop what cannot fit cleanly.
+  const staggered = staggerFamilyEventLanes(placed, height, span, width)
+  for (const entry of staggered) {
+    rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(entry.event), {
+      lane: entry.lane,
+      alignment: entry.alignment,
+      nudge: entry.nudge,
+      compact: entry.compact,
+    })
+  }
+  const staggeredIds = new Set(staggered.map((entry) => canonicalEventId(entry.event)))
+  for (const entry of placed) {
+    const id = canonicalEventId(entry.event)
+    if (!staggeredIds.has(id)) unplaced.push(entry.event)
+  }
+  return { placed: staggered, unplaced }
 }
 
 export function estimateCalloutObstacle(
@@ -937,7 +1885,7 @@ export function estimateCalloutObstacle(
   }
 }
 
-const PLAQUE_EVENT_CLEARANCE_PX = 24
+const PLAQUE_EVENT_CLEARANCE_PX = 36
 
 /** Merge estimated callout geometry with a measured plaque anchor from the DOM. */
 export function resolveCalloutObstacle(

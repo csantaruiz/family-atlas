@@ -87,10 +87,10 @@
 .story-card{min-height:92px;padding:13px 16px}
 .zoom-caption{top:2px}
 .context-key{top:auto;bottom:44px}
-.worldline{top:54%}
-.year-label{top:calc(54% + 17px)}
-.century{top:calc(54% - 12px)}
-.density{bottom:46%}
+.worldline{top:62%}
+.year-label{top:calc(62% + 17px)}
+.century{top:calc(62% - 12px)}
+.density{bottom:38%}
 /* Family records always rise above the family line. */
 .node .node-label{bottom:18px;top:auto}
 .node.below .node-label{bottom:18px;top:auto}

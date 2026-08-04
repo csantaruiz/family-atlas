@@ -1,0 +1,6818 @@
+{
+  "text": " Every family leaves a trail. Most of it disappears. Lives once filled with work, worry, laughter, ambition and loss are gradually reduced to a few names and dates. But sometimes fragments survive. A place written in a parish record, a household captured in a census. A journey revealed because one generation was born in one country and the next in another. Taken separately, these fragments can seem ordinary. Together, they reveal the long and improbable story of a family. This story reaches across more than 500 years. The earliest surviving thread begins in Cheshire, England. The oldest dated life in this archive is William Lounds, recorded in 1473. The record tells us very little about him. But the date places his life in a world before Shakespeare, before permanent English settlement in North America, and before the religious upheavals that reshaped Britain. The Lounds and Stubbs families appear repeatedly in and around Cheshire. Gawzworth, Aspery, Sandbach, North Road. For generations, the geography barely changes. Children are born near the places where their parents lived. Families remain connected to the same villages and parishes. Their world is local, but history beyond it is accelerating. Dynasties rise and fall. Religious divisions transform England. Civil war reaches across the kingdom. Yet the family line continues quietly, one generation at a time. Elsewhere, another part of the story is taking shape. The archive places Joseph Jose Pignon in the kingdoms of Castile in the 17th century. By the early 18th century, the loyal line appears in Chihuahua. Juan de Loya is connected to Chihuahua by 1712. Later generations appear in Tienega, Santa Isabel, Cuiteco, and Oginaga. Northern Mexico was a vast frontier of ranches, missions, settlements, indigenous communities, imperial authority, and difficult distances. For generations, the family remained rooted there, while the political world around them changed. From Spanish rule, through independence, and into modern Mexico. Then, the geography begins to move. Manuel Loya Ruiz was born in Oginaga, Chihuahua in 1873. His life ends across the border in El Paso, Texas in 1932. In the records of a single life, the family story crosses from Mexico into the United States. The next generations become increasingly connected to Texas and eventually California. Victor Manuel Ruiz, born in El Paso in 1915, would live into the 21st century and die in Manrovia, California. The distance from Oginaga to California can be measured in miles. Its meaning can only be measured in generations. At roughly the same time, other branches were following different routes. The Stubbs line moves out of England. The Hendry family appears in Scotland, Pennsylvania, and New Jersey. By the early 20th century, Gloucester City and Camden had become important family places. Communities shaped by factories, railways, shipyards, construction, and industrial America. The records follow Edwin Allewish's Hendry through New Jersey and connect him to the Panama Canal Zone. Each move added another strand to a family no longer rooted in one village, region or country. For centuries, these families had no knowledge of one another. Lounds and Stubbs in England. Lawyer, Bignon, and Ruiz in Northern Mexico in Texas. Hendry and Jackson in the Eastern United States. Their lives unfolded separately, shaped by different languages, borders, occupations, and historical forces. But family history is a story of convergence. Separate lines gradually approach. Journeys intersect. Children inherit the consequences of decisions made long before they were born. By the late 20th century, these once-distant branches meet in California. The archive reaches Craig Ruiz, born in Santa Clara in 1975. And it continues into the next generation in San Diego. More than five centuries separate the earliest dated record from the family alive today. Across that distance, borders changed, nations formed, wars began and ended. People crossed oceans, deserts, industrial cities, and international boundaries. Most never knew where the family would eventually go. They simply lived the lives in front of them. Yet every survival, marriage, migration, and ordinary decision helped create the next chapter. This atlas cannot recover everything that has been lost. It cannot tell us precisely what William Lounds believed in. 1473, or what Manuel Loya Ruiz felt as his life crossed from Chihuahua into Texas. But it can preserve what remains. It can place each life back into geography, back into history, and back into relationship with the generations that followed. The story you have heard is only the beginning. The people are here. The places are here. The evidence is waiting. Now enter the atlas and explore the journey for yourself.",
+  "segments": [
+    {
+      "id": 0,
+      "seek": 0,
+      "start": 0.0,
+      "end": 3.52,
+      "text": " Every family leaves a trail. Most of it disappears.",
+      "tokens": [
+        50364,
+        2048,
+        1605,
+        5510,
+        257,
+        9924,
+        13,
+        4534,
+        295,
+        309,
+        25527,
+        13,
+        50564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.22193279036556382,
+      "compression_ratio": 1.5127118644067796,
+      "no_speech_prob": 0.01257036067545414,
+      "words": [
+        {
+          "word": " Every",
+          "start": 0.0,
+          "end": 0.32,
+          "probability": 0.8754357099533081
+        },
+        {
+          "word": " family",
+          "start": 0.32,
+          "end": 0.74,
+          "probability": 0.9985570311546326
+        },
+        {
+          "word": " leaves",
+          "start": 0.74,
+          "end": 1.14,
+          "probability": 0.9935247898101807
+        },
+        {
+          "word": " a",
+          "start": 1.14,
+          "end": 1.26,
+          "probability": 0.9886940121650696
+        },
+        {
+          "word": " trail.",
+          "start": 1.26,
+          "end": 1.6,
+          "probability": 0.9942094087600708
+        },
+        {
+          "word": " Most",
+          "start": 2.4,
+          "end": 2.64,
+          "probability": 0.9955664277076721
+        },
+        {
+          "word": " of",
+          "start": 2.64,
+          "end": 2.82,
+          "probability": 0.997383177280426
+        },
+        {
+          "word": " it",
+          "start": 2.82,
+          "end": 2.92,
+          "probability": 0.9976943135261536
+        },
+        {
+          "word": " disappears.",
+          "start": 2.92,
+          "end": 3.52,
+          "probability": 0.9895548820495605
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "seek": 0,
+      "start": 4.62,
+      "end": 11.22,
+      "text": " Lives once filled with work, worry, laughter, ambition and loss are gradually reduced to a",
+      "tokens": [
+        50564,
+        25791,
+        1564,
+        6412,
+        365,
+        589,
+        11,
+        3292,
+        11,
+        13092,
+        11,
+        22814,
+        293,
+        4470,
+        366,
+        13145,
+        9212,
+        281,
+        257,
+        50922
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.22193279036556382,
+      "compression_ratio": 1.5127118644067796,
+      "no_speech_prob": 0.01257036067545414,
+      "words": [
+        {
+          "word": " Lives",
+          "start": 4.62,
+          "end": 4.98,
+          "probability": 0.9145852327346802
+        },
+        {
+          "word": " once",
+          "start": 4.98,
+          "end": 5.28,
+          "probability": 0.9035345315933228
+        },
+        {
+          "word": " filled",
+          "start": 5.28,
+          "end": 5.56,
+          "probability": 0.98894202709198
+        },
+        {
+          "word": " with",
+          "start": 5.56,
+          "end": 5.76,
+          "probability": 0.9995344877243042
+        },
+        {
+          "word": " work,",
+          "start": 5.76,
+          "end": 6.14,
+          "probability": 0.998494029045105
+        },
+        {
+          "word": " worry,",
+          "start": 6.52,
+          "end": 6.72,
+          "probability": 0.9955787062644958
+        },
+        {
+          "word": " laughter,",
+          "start": 7.28,
+          "end": 7.58,
+          "probability": 0.9966962337493896
+        },
+        {
+          "word": " ambition",
+          "start": 8.02,
+          "end": 8.4,
+          "probability": 0.9949954748153687
+        },
+        {
+          "word": " and",
+          "start": 8.4,
+          "end": 8.8,
+          "probability": 0.49123308062553406
+        },
+        {
+          "word": " loss",
+          "start": 8.8,
+          "end": 9.14,
+          "probability": 0.9927296042442322
+        },
+        {
+          "word": " are",
+          "start": 9.14,
+          "end": 9.94,
+          "probability": 0.940444827079773
+        },
+        {
+          "word": " gradually",
+          "start": 9.94,
+          "end": 10.4,
+          "probability": 0.9942264556884766
+        },
+        {
+          "word": " reduced",
+          "start": 10.4,
+          "end": 10.88,
+          "probability": 0.9963439106941223
+        },
+        {
+          "word": " to",
+          "start": 10.88,
+          "end": 11.12,
+          "probability": 0.9981181621551514
+        },
+        {
+          "word": " a",
+          "start": 11.12,
+          "end": 11.22,
+          "probability": 0.9952757358551025
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "seek": 0,
+      "start": 11.22,
+      "end": 15.76,
+      "text": " few names and dates. But sometimes fragments survive.",
+      "tokens": [
+        50922,
+        1326,
+        5288,
+        293,
+        11691,
+        13,
+        583,
+        2171,
+        29197,
+        7867,
+        13,
+        51164
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.22193279036556382,
+      "compression_ratio": 1.5127118644067796,
+      "no_speech_prob": 0.01257036067545414,
+      "words": [
+        {
+          "word": " few",
+          "start": 11.22,
+          "end": 11.4,
+          "probability": 0.9996230602264404
+        },
+        {
+          "word": " names",
+          "start": 11.4,
+          "end": 11.74,
+          "probability": 0.9991782307624817
+        },
+        {
+          "word": " and",
+          "start": 11.74,
+          "end": 12.0,
+          "probability": 0.9972468614578247
+        },
+        {
+          "word": " dates.",
+          "start": 12.0,
+          "end": 12.26,
+          "probability": 0.9987736344337463
+        },
+        {
+          "word": " But",
+          "start": 13.1,
+          "end": 13.72,
+          "probability": 0.9913279414176941
+        },
+        {
+          "word": " sometimes",
+          "start": 13.72,
+          "end": 14.34,
+          "probability": 0.9792305827140808
+        },
+        {
+          "word": " fragments",
+          "start": 14.34,
+          "end": 15.18,
+          "probability": 0.46101516485214233
+        },
+        {
+          "word": " survive.",
+          "start": 15.18,
+          "end": 15.76,
+          "probability": 0.9914830327033997
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "seek": 0,
+      "start": 16.88,
+      "end": 20.98,
+      "text": " A place written in a parish record, a household captured in a census.",
+      "tokens": [
+        51164,
+        316,
+        1081,
+        3720,
+        294,
+        257,
+        45325,
+        2136,
+        11,
+        257,
+        9888,
+        11828,
+        294,
+        257,
+        23725,
+        13,
+        51464
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.22193279036556382,
+      "compression_ratio": 1.5127118644067796,
+      "no_speech_prob": 0.01257036067545414,
+      "words": [
+        {
+          "word": " A",
+          "start": 16.88,
+          "end": 17.08,
+          "probability": 0.9950513243675232
+        },
+        {
+          "word": " place",
+          "start": 17.08,
+          "end": 17.28,
+          "probability": 0.9988240599632263
+        },
+        {
+          "word": " written",
+          "start": 17.28,
+          "end": 17.62,
+          "probability": 0.9935110211372375
+        },
+        {
+          "word": " in",
+          "start": 17.62,
+          "end": 17.74,
+          "probability": 0.9981023669242859
+        },
+        {
+          "word": " a",
+          "start": 17.74,
+          "end": 17.86,
+          "probability": 0.9970245957374573
+        },
+        {
+          "word": " parish",
+          "start": 17.86,
+          "end": 18.08,
+          "probability": 0.9655954837799072
+        },
+        {
+          "word": " record,",
+          "start": 18.08,
+          "end": 18.56,
+          "probability": 0.9867516756057739
+        },
+        {
+          "word": " a",
+          "start": 19.18,
+          "end": 19.48,
+          "probability": 0.9958654642105103
+        },
+        {
+          "word": " household",
+          "start": 19.48,
+          "end": 19.84,
+          "probability": 0.9976153373718262
+        },
+        {
+          "word": " captured",
+          "start": 19.84,
+          "end": 20.38,
+          "probability": 0.9893845915794373
+        },
+        {
+          "word": " in",
+          "start": 20.38,
+          "end": 20.58,
+          "probability": 0.9829580187797546
+        },
+        {
+          "word": " a",
+          "start": 20.58,
+          "end": 20.64,
+          "probability": 0.9393158555030823
+        },
+        {
+          "word": " census.",
+          "start": 20.64,
+          "end": 20.98,
+          "probability": 0.9696127772331238
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "seek": 0,
+      "start": 21.84,
+      "end": 27.5,
+      "text": " A journey revealed because one generation was born in one country and the next in another.",
+      "tokens": [
+        51464,
+        316,
+        4671,
+        9599,
+        570,
+        472,
+        5125,
+        390,
+        4232,
+        294,
+        472,
+        1941,
+        293,
+        264,
+        958,
+        294,
+        1071,
+        13,
+        51814
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.22193279036556382,
+      "compression_ratio": 1.5127118644067796,
+      "no_speech_prob": 0.01257036067545414,
+      "words": [
+        {
+          "word": " A",
+          "start": 21.84,
+          "end": 22.52,
+          "probability": 0.9894996285438538
+        },
+        {
+          "word": " journey",
+          "start": 22.52,
+          "end": 22.76,
+          "probability": 0.9983282685279846
+        },
+        {
+          "word": " revealed",
+          "start": 22.76,
+          "end": 23.28,
+          "probability": 0.9961775541305542
+        },
+        {
+          "word": " because",
+          "start": 23.28,
+          "end": 23.64,
+          "probability": 0.9743428826332092
+        },
+        {
+          "word": " one",
+          "start": 23.64,
+          "end": 23.98,
+          "probability": 0.9947798252105713
+        },
+        {
+          "word": " generation",
+          "start": 23.98,
+          "end": 24.38,
+          "probability": 0.997700035572052
+        },
+        {
+          "word": " was",
+          "start": 24.38,
+          "end": 24.94,
+          "probability": 0.9968389272689819
+        },
+        {
+          "word": " born",
+          "start": 24.94,
+          "end": 25.24,
+          "probability": 0.9989101886749268
+        },
+        {
+          "word": " in",
+          "start": 25.24,
+          "end": 25.4,
+          "probability": 0.997420072555542
+        },
+        {
+          "word": " one",
+          "start": 25.4,
+          "end": 25.58,
+          "probability": 0.9979332685470581
+        },
+        {
+          "word": " country",
+          "start": 25.58,
+          "end": 26.02,
+          "probability": 0.998717188835144
+        },
+        {
+          "word": " and",
+          "start": 26.02,
+          "end": 26.56,
+          "probability": 0.8591294884681702
+        },
+        {
+          "word": " the",
+          "start": 26.56,
+          "end": 26.7,
+          "probability": 0.9751855134963989
+        },
+        {
+          "word": " next",
+          "start": 26.7,
+          "end": 26.98,
+          "probability": 0.9973933696746826
+        },
+        {
+          "word": " in",
+          "start": 26.98,
+          "end": 27.18,
+          "probability": 0.9936889410018921
+        },
+        {
+          "word": " another.",
+          "start": 27.18,
+          "end": 27.5,
+          "probability": 0.9984700083732605
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "seek": 2750,
+      "start": 28.32,
+      "end": 32.2,
+      "text": " Taken separately, these fragments can seem ordinary.",
+      "tokens": [
+        50364,
+        9118,
+        268,
+        14759,
+        11,
+        613,
+        29197,
+        393,
+        1643,
+        10547,
+        13,
+        50614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1026346206665039,
+      "compression_ratio": 1.4396135265700483,
+      "no_speech_prob": 0.07907900214195251,
+      "words": [
+        {
+          "word": " Taken",
+          "start": 28.32,
+          "end": 29.06,
+          "probability": 0.498055552598089
+        },
+        {
+          "word": " separately,",
+          "start": 29.06,
+          "end": 29.5,
+          "probability": 0.9864149689674377
+        },
+        {
+          "word": " these",
+          "start": 30.46,
+          "end": 30.66,
+          "probability": 0.9798301458358765
+        },
+        {
+          "word": " fragments",
+          "start": 30.66,
+          "end": 31.06,
+          "probability": 0.9967520236968994
+        },
+        {
+          "word": " can",
+          "start": 31.06,
+          "end": 31.36,
+          "probability": 0.7964987754821777
+        },
+        {
+          "word": " seem",
+          "start": 31.36,
+          "end": 31.68,
+          "probability": 0.9935584664344788
+        },
+        {
+          "word": " ordinary.",
+          "start": 31.68,
+          "end": 32.2,
+          "probability": 0.9968022108078003
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "seek": 2750,
+      "start": 33.14,
+      "end": 37.74,
+      "text": " Together, they reveal the long and improbable story of a family.",
+      "tokens": [
+        50614,
+        15911,
+        11,
+        436,
+        10658,
+        264,
+        938,
+        293,
+        2530,
+        65,
+        712,
+        1657,
+        295,
+        257,
+        1605,
+        13,
+        50864
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1026346206665039,
+      "compression_ratio": 1.4396135265700483,
+      "no_speech_prob": 0.07907900214195251,
+      "words": [
+        {
+          "word": " Together,",
+          "start": 33.14,
+          "end": 33.88,
+          "probability": 0.9901112914085388
+        },
+        {
+          "word": " they",
+          "start": 34.52,
+          "end": 34.82,
+          "probability": 0.9952782392501831
+        },
+        {
+          "word": " reveal",
+          "start": 34.82,
+          "end": 35.22,
+          "probability": 0.8410098552703857
+        },
+        {
+          "word": " the",
+          "start": 35.22,
+          "end": 35.52,
+          "probability": 0.9918711185455322
+        },
+        {
+          "word": " long",
+          "start": 35.52,
+          "end": 35.78,
+          "probability": 0.9897101521492004
+        },
+        {
+          "word": " and",
+          "start": 35.78,
+          "end": 36.14,
+          "probability": 0.911615788936615
+        },
+        {
+          "word": " improbable",
+          "start": 36.14,
+          "end": 36.76,
+          "probability": 0.9877885182698568
+        },
+        {
+          "word": " story",
+          "start": 36.76,
+          "end": 37.08,
+          "probability": 0.9990288019180298
+        },
+        {
+          "word": " of",
+          "start": 37.08,
+          "end": 37.28,
+          "probability": 0.9986843466758728
+        },
+        {
+          "word": " a",
+          "start": 37.28,
+          "end": 37.36,
+          "probability": 0.9713626503944397
+        },
+        {
+          "word": " family.",
+          "start": 37.36,
+          "end": 37.74,
+          "probability": 0.9987297654151917
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "seek": 2750,
+      "start": 38.98,
+      "end": 42.04,
+      "text": " This story reaches across more than 500 years.",
+      "tokens": [
+        50864,
+        639,
+        1657,
+        14235,
+        2108,
+        544,
+        813,
+        5923,
+        924,
+        13,
+        51114
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1026346206665039,
+      "compression_ratio": 1.4396135265700483,
+      "no_speech_prob": 0.07907900214195251,
+      "words": [
+        {
+          "word": " This",
+          "start": 38.98,
+          "end": 39.3,
+          "probability": 0.9843798875808716
+        },
+        {
+          "word": " story",
+          "start": 39.3,
+          "end": 39.66,
+          "probability": 0.9990901947021484
+        },
+        {
+          "word": " reaches",
+          "start": 39.66,
+          "end": 39.98,
+          "probability": 0.9914366602897644
+        },
+        {
+          "word": " across",
+          "start": 39.98,
+          "end": 40.4,
+          "probability": 0.9881183505058289
+        },
+        {
+          "word": " more",
+          "start": 40.4,
+          "end": 40.76,
+          "probability": 0.9820677042007446
+        },
+        {
+          "word": " than",
+          "start": 40.76,
+          "end": 40.88,
+          "probability": 0.9979998469352722
+        },
+        {
+          "word": " 500",
+          "start": 40.88,
+          "end": 41.56,
+          "probability": 0.9128488302230835
+        },
+        {
+          "word": " years.",
+          "start": 41.56,
+          "end": 42.04,
+          "probability": 0.9978790283203125
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "seek": 2750,
+      "start": 43.2,
+      "end": 46.04,
+      "text": " The earliest surviving thread begins in Cheshire, England.",
+      "tokens": [
+        51114,
+        440,
+        20573,
+        24948,
+        7207,
+        7338,
+        294,
+        761,
+        14935,
+        621,
+        11,
+        8196,
+        13,
+        51314
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1026346206665039,
+      "compression_ratio": 1.4396135265700483,
+      "no_speech_prob": 0.07907900214195251,
+      "words": [
+        {
+          "word": " The",
+          "start": 43.2,
+          "end": 43.38,
+          "probability": 0.9920694828033447
+        },
+        {
+          "word": " earliest",
+          "start": 43.38,
+          "end": 43.78,
+          "probability": 0.9901939034461975
+        },
+        {
+          "word": " surviving",
+          "start": 43.78,
+          "end": 44.22,
+          "probability": 0.9849171042442322
+        },
+        {
+          "word": " thread",
+          "start": 44.22,
+          "end": 44.62,
+          "probability": 0.9189136028289795
+        },
+        {
+          "word": " begins",
+          "start": 44.62,
+          "end": 45.0,
+          "probability": 0.9865443110466003
+        },
+        {
+          "word": " in",
+          "start": 45.0,
+          "end": 45.26,
+          "probability": 0.9993364214897156
+        },
+        {
+          "word": " Cheshire,",
+          "start": 45.26,
+          "end": 45.66,
+          "probability": 0.8016687234242758
+        },
+        {
+          "word": " England.",
+          "start": 45.74,
+          "end": 46.04,
+          "probability": 0.994473397731781
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "seek": 2750,
+      "start": 46.66,
+      "end": 52.92,
+      "text": " The oldest dated life in this archive is William Lounds, recorded in 1473.",
+      "tokens": [
+        51314,
+        440,
+        14026,
+        23804,
+        993,
+        294,
+        341,
+        23507,
+        307,
+        6740,
+        441,
+        4432,
+        11,
+        8287,
+        294,
+        3499,
+        33396,
+        13,
+        51664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.1026346206665039,
+      "compression_ratio": 1.4396135265700483,
+      "no_speech_prob": 0.07907900214195251,
+      "words": [
+        {
+          "word": " The",
+          "start": 46.66,
+          "end": 46.94,
+          "probability": 0.9947007894515991
+        },
+        {
+          "word": " oldest",
+          "start": 46.94,
+          "end": 47.26,
+          "probability": 0.997171938419342
+        },
+        {
+          "word": " dated",
+          "start": 47.26,
+          "end": 47.6,
+          "probability": 0.9710162281990051
+        },
+        {
+          "word": " life",
+          "start": 47.6,
+          "end": 47.96,
+          "probability": 0.994022786617279
+        },
+        {
+          "word": " in",
+          "start": 47.96,
+          "end": 48.12,
+          "probability": 0.9919865131378174
+        },
+        {
+          "word": " this",
+          "start": 48.12,
+          "end": 48.3,
+          "probability": 0.9939160943031311
+        },
+        {
+          "word": " archive",
+          "start": 48.3,
+          "end": 48.74,
+          "probability": 0.9837015271186829
+        },
+        {
+          "word": " is",
+          "start": 48.74,
+          "end": 49.64,
+          "probability": 0.9557523727416992
+        },
+        {
+          "word": " William",
+          "start": 49.64,
+          "end": 49.96,
+          "probability": 0.9821245670318604
+        },
+        {
+          "word": " Lounds,",
+          "start": 49.96,
+          "end": 50.42,
+          "probability": 0.6756293475627899
+        },
+        {
+          "word": " recorded",
+          "start": 51.28,
+          "end": 51.6,
+          "probability": 0.9935862421989441
+        },
+        {
+          "word": " in",
+          "start": 51.6,
+          "end": 51.8,
+          "probability": 0.9990856647491455
+        },
+        {
+          "word": " 1473.",
+          "start": 51.8,
+          "end": 52.92,
+          "probability": 0.9934970438480377
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "seek": 5292,
+      "start": 53.8,
+      "end": 56.42,
+      "text": " The record tells us very little about him.",
+      "tokens": [
+        50414,
+        440,
+        2136,
+        5112,
+        505,
+        588,
+        707,
+        466,
+        796,
+        13,
+        50564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08979909949832493,
+      "compression_ratio": 1.4568527918781726,
+      "no_speech_prob": 0.3192777931690216,
+      "words": [
+        {
+          "word": " The",
+          "start": 53.8,
+          "end": 54.54,
+          "probability": 0.44081106781959534
+        },
+        {
+          "word": " record",
+          "start": 54.54,
+          "end": 54.76,
+          "probability": 0.9428096413612366
+        },
+        {
+          "word": " tells",
+          "start": 54.76,
+          "end": 55.08,
+          "probability": 0.9929327964782715
+        },
+        {
+          "word": " us",
+          "start": 55.08,
+          "end": 55.28,
+          "probability": 0.9949955940246582
+        },
+        {
+          "word": " very",
+          "start": 55.28,
+          "end": 55.52,
+          "probability": 0.9872438311576843
+        },
+        {
+          "word": " little",
+          "start": 55.52,
+          "end": 55.8,
+          "probability": 0.9995484948158264
+        },
+        {
+          "word": " about",
+          "start": 55.8,
+          "end": 56.1,
+          "probability": 0.9987494945526123
+        },
+        {
+          "word": " him.",
+          "start": 56.1,
+          "end": 56.42,
+          "probability": 0.985243558883667
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "seek": 5292,
+      "start": 57.1,
+      "end": 60.5,
+      "text": " But the date places his life in a world before Shakespeare,",
+      "tokens": [
+        50564,
+        583,
+        264,
+        4002,
+        3190,
+        702,
+        993,
+        294,
+        257,
+        1002,
+        949,
+        22825,
+        11,
+        50764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08979909949832493,
+      "compression_ratio": 1.4568527918781726,
+      "no_speech_prob": 0.3192777931690216,
+      "words": [
+        {
+          "word": " But",
+          "start": 57.1,
+          "end": 57.48,
+          "probability": 0.9477587342262268
+        },
+        {
+          "word": " the",
+          "start": 57.48,
+          "end": 57.62,
+          "probability": 0.9855276346206665
+        },
+        {
+          "word": " date",
+          "start": 57.62,
+          "end": 57.86,
+          "probability": 0.9892392158508301
+        },
+        {
+          "word": " places",
+          "start": 57.86,
+          "end": 58.34,
+          "probability": 0.9916871190071106
+        },
+        {
+          "word": " his",
+          "start": 58.34,
+          "end": 58.58,
+          "probability": 0.9947149157524109
+        },
+        {
+          "word": " life",
+          "start": 58.58,
+          "end": 58.94,
+          "probability": 0.9977282881736755
+        },
+        {
+          "word": " in",
+          "start": 58.94,
+          "end": 59.26,
+          "probability": 0.9926791191101074
+        },
+        {
+          "word": " a",
+          "start": 59.26,
+          "end": 59.36,
+          "probability": 0.995236873626709
+        },
+        {
+          "word": " world",
+          "start": 59.36,
+          "end": 59.62,
+          "probability": 0.9935688972473145
+        },
+        {
+          "word": " before",
+          "start": 59.62,
+          "end": 59.98,
+          "probability": 0.9932392835617065
+        },
+        {
+          "word": " Shakespeare,",
+          "start": 59.98,
+          "end": 60.5,
+          "probability": 0.9970329999923706
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "seek": 5292,
+      "start": 61.52,
+      "end": 64.12,
+      "text": " before permanent English settlement in North America,",
+      "tokens": [
+        50764,
+        949,
+        10996,
+        3669,
+        18130,
+        294,
+        4067,
+        3374,
+        11,
+        50964
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08979909949832493,
+      "compression_ratio": 1.4568527918781726,
+      "no_speech_prob": 0.3192777931690216,
+      "words": [
+        {
+          "word": " before",
+          "start": 61.52,
+          "end": 61.82,
+          "probability": 0.9797220230102539
+        },
+        {
+          "word": " permanent",
+          "start": 61.82,
+          "end": 62.26,
+          "probability": 0.9697637557983398
+        },
+        {
+          "word": " English",
+          "start": 62.26,
+          "end": 62.72,
+          "probability": 0.9895819425582886
+        },
+        {
+          "word": " settlement",
+          "start": 62.72,
+          "end": 63.12,
+          "probability": 0.996253252029419
+        },
+        {
+          "word": " in",
+          "start": 63.12,
+          "end": 63.5,
+          "probability": 0.96998131275177
+        },
+        {
+          "word": " North",
+          "start": 63.5,
+          "end": 63.7,
+          "probability": 0.9924421310424805
+        },
+        {
+          "word": " America,",
+          "start": 63.7,
+          "end": 64.12,
+          "probability": 0.9994710087776184
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "seek": 5292,
+      "start": 64.88,
+      "end": 68.34,
+      "text": " and before the religious upheavals that reshaped Britain.",
+      "tokens": [
+        50964,
+        293,
+        949,
+        264,
+        7185,
+        493,
+        675,
+        706,
+        1124,
+        300,
+        725,
+        71,
+        18653,
+        12960,
+        13,
+        51164
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08979909949832493,
+      "compression_ratio": 1.4568527918781726,
+      "no_speech_prob": 0.3192777931690216,
+      "words": [
+        {
+          "word": " and",
+          "start": 64.88,
+          "end": 65.12,
+          "probability": 0.9919155240058899
+        },
+        {
+          "word": " before",
+          "start": 65.12,
+          "end": 65.5,
+          "probability": 0.9975415468215942
+        },
+        {
+          "word": " the",
+          "start": 65.5,
+          "end": 65.7,
+          "probability": 0.9967143535614014
+        },
+        {
+          "word": " religious",
+          "start": 65.7,
+          "end": 66.08,
+          "probability": 0.9985188841819763
+        },
+        {
+          "word": " upheavals",
+          "start": 66.08,
+          "end": 66.92,
+          "probability": 0.9819403141736984
+        },
+        {
+          "word": " that",
+          "start": 66.92,
+          "end": 67.38,
+          "probability": 0.9827358722686768
+        },
+        {
+          "word": " reshaped",
+          "start": 67.38,
+          "end": 67.96,
+          "probability": 0.9696456988652548
+        },
+        {
+          "word": " Britain.",
+          "start": 67.96,
+          "end": 68.34,
+          "probability": 0.9943283200263977
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "seek": 5292,
+      "start": 69.56,
+      "end": 73.76,
+      "text": " The Lounds and Stubbs families appear repeatedly in and around Cheshire.",
+      "tokens": [
+        51164,
+        440,
+        441,
+        4432,
+        293,
+        745,
+        836,
+        929,
+        4466,
+        4204,
+        18227,
+        294,
+        293,
+        926,
+        761,
+        14935,
+        621,
+        13,
+        51414
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08979909949832493,
+      "compression_ratio": 1.4568527918781726,
+      "no_speech_prob": 0.3192777931690216,
+      "words": [
+        {
+          "word": " The",
+          "start": 69.56,
+          "end": 69.84,
+          "probability": 0.9825775027275085
+        },
+        {
+          "word": " Lounds",
+          "start": 69.84,
+          "end": 70.16,
+          "probability": 0.38583602011203766
+        },
+        {
+          "word": " and",
+          "start": 70.16,
+          "end": 70.36,
+          "probability": 0.9505634903907776
+        },
+        {
+          "word": " Stubbs",
+          "start": 70.36,
+          "end": 70.7,
+          "probability": 0.7318967779477438
+        },
+        {
+          "word": " families",
+          "start": 70.7,
+          "end": 71.1,
+          "probability": 0.9474762678146362
+        },
+        {
+          "word": " appear",
+          "start": 71.1,
+          "end": 71.68,
+          "probability": 0.9896741509437561
+        },
+        {
+          "word": " repeatedly",
+          "start": 71.68,
+          "end": 72.3,
+          "probability": 0.972118616104126
+        },
+        {
+          "word": " in",
+          "start": 72.3,
+          "end": 72.78,
+          "probability": 0.9869033098220825
+        },
+        {
+          "word": " and",
+          "start": 72.78,
+          "end": 72.98,
+          "probability": 0.962664008140564
+        },
+        {
+          "word": " around",
+          "start": 72.98,
+          "end": 73.26,
+          "probability": 0.9973714351654053
+        },
+        {
+          "word": " Cheshire.",
+          "start": 73.26,
+          "end": 73.76,
+          "probability": 0.8712655504544576
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "seek": 7376,
+      "start": 74.76,
+      "end": 78.96,
+      "text": " Gawzworth, Aspery, Sandbach, North Road.",
+      "tokens": [
+        50414,
+        460,
+        1607,
+        89,
+        13136,
+        11,
+        1018,
+        610,
+        88,
+        11,
+        7985,
+        32096,
+        11,
+        4067,
+        11507,
+        13,
+        50664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " Gawzworth,",
+          "start": 74.74000000000001,
+          "end": 75.12,
+          "probability": 0.36499518947675824
+        },
+        {
+          "word": " Aspery,",
+          "start": 75.72,
+          "end": 76.3,
+          "probability": 0.7184161146481832
+        },
+        {
+          "word": " Sandbach,",
+          "start": 76.82,
+          "end": 77.26,
+          "probability": 0.8767666220664978
+        },
+        {
+          "word": " North",
+          "start": 78.26,
+          "end": 78.48,
+          "probability": 0.9500176906585693
+        },
+        {
+          "word": " Road.",
+          "start": 78.48,
+          "end": 78.96,
+          "probability": 0.8253691792488098
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "seek": 7376,
+      "start": 79.74,
+      "end": 82.82,
+      "text": " For generations, the geography barely changes.",
+      "tokens": [
+        50664,
+        1171,
+        10593,
+        11,
+        264,
+        26695,
+        10268,
+        2962,
+        13,
+        50864
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " For",
+          "start": 79.74,
+          "end": 80.5,
+          "probability": 0.8963577747344971
+        },
+        {
+          "word": " generations,",
+          "start": 80.5,
+          "end": 81.04,
+          "probability": 0.9913629293441772
+        },
+        {
+          "word": " the",
+          "start": 81.42,
+          "end": 81.44,
+          "probability": 0.9935181736946106
+        },
+        {
+          "word": " geography",
+          "start": 81.44,
+          "end": 81.86,
+          "probability": 0.9812594056129456
+        },
+        {
+          "word": " barely",
+          "start": 81.86,
+          "end": 82.36,
+          "probability": 0.9625683426856995
+        },
+        {
+          "word": " changes.",
+          "start": 82.36,
+          "end": 82.82,
+          "probability": 0.9989539384841919
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "seek": 7376,
+      "start": 83.76,
+      "end": 86.8,
+      "text": " Children are born near the places where their parents lived.",
+      "tokens": [
+        50864,
+        13354,
+        366,
+        4232,
+        2651,
+        264,
+        3190,
+        689,
+        641,
+        3152,
+        5152,
+        13,
+        51064
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " Children",
+          "start": 83.76,
+          "end": 84.14,
+          "probability": 0.9847733974456787
+        },
+        {
+          "word": " are",
+          "start": 84.14,
+          "end": 84.44,
+          "probability": 0.9964637160301208
+        },
+        {
+          "word": " born",
+          "start": 84.44,
+          "end": 84.7,
+          "probability": 0.9913231134414673
+        },
+        {
+          "word": " near",
+          "start": 84.7,
+          "end": 85.0,
+          "probability": 0.9986253976821899
+        },
+        {
+          "word": " the",
+          "start": 85.0,
+          "end": 85.16,
+          "probability": 0.995989978313446
+        },
+        {
+          "word": " places",
+          "start": 85.16,
+          "end": 85.48,
+          "probability": 0.9956653714179993
+        },
+        {
+          "word": " where",
+          "start": 85.48,
+          "end": 85.82,
+          "probability": 0.9929991960525513
+        },
+        {
+          "word": " their",
+          "start": 85.82,
+          "end": 86.04,
+          "probability": 0.9956768155097961
+        },
+        {
+          "word": " parents",
+          "start": 86.04,
+          "end": 86.38,
+          "probability": 0.9979013204574585
+        },
+        {
+          "word": " lived.",
+          "start": 86.38,
+          "end": 86.8,
+          "probability": 0.9906084537506104
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "seek": 7376,
+      "start": 87.78,
+      "end": 91.14,
+      "text": " Families remain connected to the same villages and parishes.",
+      "tokens": [
+        51064,
+        45081,
+        6222,
+        4582,
+        281,
+        264,
+        912,
+        20444,
+        293,
+        971,
+        16423,
+        13,
+        51264
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " Families",
+          "start": 87.78,
+          "end": 88.08,
+          "probability": 0.9886350631713867
+        },
+        {
+          "word": " remain",
+          "start": 88.08,
+          "end": 88.56,
+          "probability": 0.9584439396858215
+        },
+        {
+          "word": " connected",
+          "start": 88.56,
+          "end": 89.1,
+          "probability": 0.9983869791030884
+        },
+        {
+          "word": " to",
+          "start": 89.1,
+          "end": 89.4,
+          "probability": 0.9963101744651794
+        },
+        {
+          "word": " the",
+          "start": 89.4,
+          "end": 89.5,
+          "probability": 0.9951105713844299
+        },
+        {
+          "word": " same",
+          "start": 89.5,
+          "end": 89.84,
+          "probability": 0.9997610449790955
+        },
+        {
+          "word": " villages",
+          "start": 89.84,
+          "end": 90.2,
+          "probability": 0.9841762781143188
+        },
+        {
+          "word": " and",
+          "start": 90.2,
+          "end": 90.68,
+          "probability": 0.9930023550987244
+        },
+        {
+          "word": " parishes.",
+          "start": 90.68,
+          "end": 91.14,
+          "probability": 0.8586156070232391
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "seek": 7376,
+      "start": 92.12,
+      "end": 95.78,
+      "text": " Their world is local, but history beyond it is accelerating.",
+      "tokens": [
+        51264,
+        6710,
+        1002,
+        307,
+        2654,
+        11,
+        457,
+        2503,
+        4399,
+        309,
+        307,
+        34391,
+        13,
+        51514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " Their",
+          "start": 92.12,
+          "end": 92.38,
+          "probability": 0.9919398427009583
+        },
+        {
+          "word": " world",
+          "start": 92.38,
+          "end": 92.7,
+          "probability": 0.9993937015533447
+        },
+        {
+          "word": " is",
+          "start": 92.7,
+          "end": 92.84,
+          "probability": 0.998589813709259
+        },
+        {
+          "word": " local,",
+          "start": 92.84,
+          "end": 93.12,
+          "probability": 0.995781660079956
+        },
+        {
+          "word": " but",
+          "start": 93.68,
+          "end": 93.88,
+          "probability": 0.9984752535820007
+        },
+        {
+          "word": " history",
+          "start": 93.88,
+          "end": 94.12,
+          "probability": 0.9980401396751404
+        },
+        {
+          "word": " beyond",
+          "start": 94.12,
+          "end": 94.56,
+          "probability": 0.9477903246879578
+        },
+        {
+          "word": " it",
+          "start": 94.56,
+          "end": 94.88,
+          "probability": 0.9945684671401978
+        },
+        {
+          "word": " is",
+          "start": 94.88,
+          "end": 95.2,
+          "probability": 0.9909802079200745
+        },
+        {
+          "word": " accelerating.",
+          "start": 95.2,
+          "end": 95.78,
+          "probability": 0.9916141033172607
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "seek": 7376,
+      "start": 97.1,
+      "end": 98.5,
+      "text": " Dynasties rise and fall.",
+      "tokens": [
+        51514,
+        413,
+        2534,
+        525,
+        530,
+        6272,
+        293,
+        2100,
+        13,
+        51614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13587762132475648,
+      "compression_ratio": 1.4676616915422886,
+      "no_speech_prob": 0.2918411195278168,
+      "words": [
+        {
+          "word": " Dynasties",
+          "start": 97.1,
+          "end": 97.66,
+          "probability": 0.8305957242846489
+        },
+        {
+          "word": " rise",
+          "start": 97.66,
+          "end": 97.96,
+          "probability": 0.9857924580574036
+        },
+        {
+          "word": " and",
+          "start": 97.96,
+          "end": 98.2,
+          "probability": 0.991327702999115
+        },
+        {
+          "word": " fall.",
+          "start": 98.2,
+          "end": 98.5,
+          "probability": 0.9975601434707642
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "seek": 9850,
+      "start": 99.5,
+      "end": 101.24,
+      "text": " Religious divisions transform England.",
+      "tokens": [
+        50414,
+        8738,
+        21883,
+        24328,
+        4088,
+        8196,
+        13,
+        50514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " Religious",
+          "start": 99.28,
+          "end": 99.7,
+          "probability": 0.513371198438108
+        },
+        {
+          "word": " divisions",
+          "start": 99.7,
+          "end": 100.18,
+          "probability": 0.6855707168579102
+        },
+        {
+          "word": " transform",
+          "start": 100.18,
+          "end": 100.76,
+          "probability": 0.8768625259399414
+        },
+        {
+          "word": " England.",
+          "start": 100.76,
+          "end": 101.24,
+          "probability": 0.9945384860038757
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "seek": 9850,
+      "start": 102.02,
+      "end": 104.22,
+      "text": " Civil war reaches across the kingdom.",
+      "tokens": [
+        50514,
+        13405,
+        1516,
+        14235,
+        2108,
+        264,
+        10231,
+        13,
+        50664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " Civil",
+          "start": 102.02,
+          "end": 102.3,
+          "probability": 0.9860791563987732
+        },
+        {
+          "word": " war",
+          "start": 102.3,
+          "end": 102.72,
+          "probability": 0.732923686504364
+        },
+        {
+          "word": " reaches",
+          "start": 102.72,
+          "end": 103.24,
+          "probability": 0.9903550148010254
+        },
+        {
+          "word": " across",
+          "start": 103.24,
+          "end": 103.68,
+          "probability": 0.991534948348999
+        },
+        {
+          "word": " the",
+          "start": 103.68,
+          "end": 103.9,
+          "probability": 0.9933438301086426
+        },
+        {
+          "word": " kingdom.",
+          "start": 103.9,
+          "end": 104.22,
+          "probability": 0.81113201379776
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "seek": 9850,
+      "start": 104.96,
+      "end": 109.74,
+      "text": " Yet the family line continues quietly, one generation at a time.",
+      "tokens": [
+        50664,
+        10890,
+        264,
+        1605,
+        1622,
+        6515,
+        19141,
+        11,
+        472,
+        5125,
+        412,
+        257,
+        565,
+        13,
+        50964
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " Yet",
+          "start": 104.96,
+          "end": 105.44,
+          "probability": 0.9952006340026855
+        },
+        {
+          "word": " the",
+          "start": 105.44,
+          "end": 105.58,
+          "probability": 0.9424138069152832
+        },
+        {
+          "word": " family",
+          "start": 105.58,
+          "end": 105.94,
+          "probability": 0.9437035322189331
+        },
+        {
+          "word": " line",
+          "start": 105.94,
+          "end": 106.3,
+          "probability": 0.9914092421531677
+        },
+        {
+          "word": " continues",
+          "start": 106.3,
+          "end": 106.82,
+          "probability": 0.9961898326873779
+        },
+        {
+          "word": " quietly,",
+          "start": 106.82,
+          "end": 107.42,
+          "probability": 0.9940525889396667
+        },
+        {
+          "word": " one",
+          "start": 108.02,
+          "end": 108.42,
+          "probability": 0.9765806198120117
+        },
+        {
+          "word": " generation",
+          "start": 108.42,
+          "end": 108.88,
+          "probability": 0.9929671287536621
+        },
+        {
+          "word": " at",
+          "start": 108.88,
+          "end": 109.3,
+          "probability": 0.9970993995666504
+        },
+        {
+          "word": " a",
+          "start": 109.3,
+          "end": 109.38,
+          "probability": 0.9984995126724243
+        },
+        {
+          "word": " time.",
+          "start": 109.38,
+          "end": 109.74,
+          "probability": 0.9996629953384399
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "seek": 9850,
+      "start": 110.72,
+      "end": 113.42,
+      "text": " Elsewhere, another part of the story is taking shape.",
+      "tokens": [
+        50964,
+        45472,
+        1992,
+        11,
+        1071,
+        644,
+        295,
+        264,
+        1657,
+        307,
+        1940,
+        3909,
+        13,
+        51164
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " Elsewhere,",
+          "start": 110.72,
+          "end": 111.24,
+          "probability": 0.9752779603004456
+        },
+        {
+          "word": " another",
+          "start": 111.7,
+          "end": 111.86,
+          "probability": 0.9971165657043457
+        },
+        {
+          "word": " part",
+          "start": 111.86,
+          "end": 112.14,
+          "probability": 0.998601496219635
+        },
+        {
+          "word": " of",
+          "start": 112.14,
+          "end": 112.28,
+          "probability": 0.9976215958595276
+        },
+        {
+          "word": " the",
+          "start": 112.28,
+          "end": 112.38,
+          "probability": 0.9905855059623718
+        },
+        {
+          "word": " story",
+          "start": 112.38,
+          "end": 112.66,
+          "probability": 0.9982407093048096
+        },
+        {
+          "word": " is",
+          "start": 112.66,
+          "end": 112.8,
+          "probability": 0.9984273910522461
+        },
+        {
+          "word": " taking",
+          "start": 112.8,
+          "end": 113.04,
+          "probability": 0.988063633441925
+        },
+        {
+          "word": " shape.",
+          "start": 113.04,
+          "end": 113.42,
+          "probability": 0.9994004964828491
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "seek": 9850,
+      "start": 114.18,
+      "end": 120.72,
+      "text": " The archive places Joseph Jose Pignon in the kingdoms of Castile in the 17th century.",
+      "tokens": [
+        51164,
+        440,
+        23507,
+        3190,
+        11170,
+        8635,
+        430,
+        41846,
+        294,
+        264,
+        44171,
+        295,
+        11019,
+        794,
+        294,
+        264,
+        3282,
+        392,
+        4901,
+        13,
+        51514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " The",
+          "start": 114.18,
+          "end": 114.8,
+          "probability": 0.9803086519241333
+        },
+        {
+          "word": " archive",
+          "start": 114.8,
+          "end": 115.24,
+          "probability": 0.9259971380233765
+        },
+        {
+          "word": " places",
+          "start": 115.24,
+          "end": 115.72,
+          "probability": 0.9761566519737244
+        },
+        {
+          "word": " Joseph",
+          "start": 115.72,
+          "end": 116.26,
+          "probability": 0.9524361491203308
+        },
+        {
+          "word": " Jose",
+          "start": 116.26,
+          "end": 116.6,
+          "probability": 0.6559947729110718
+        },
+        {
+          "word": " Pignon",
+          "start": 116.6,
+          "end": 117.0,
+          "probability": 0.6052192747592926
+        },
+        {
+          "word": " in",
+          "start": 117.0,
+          "end": 117.76,
+          "probability": 0.8959366083145142
+        },
+        {
+          "word": " the",
+          "start": 117.76,
+          "end": 117.88,
+          "probability": 0.9589276313781738
+        },
+        {
+          "word": " kingdoms",
+          "start": 117.88,
+          "end": 118.18,
+          "probability": 0.9304360747337341
+        },
+        {
+          "word": " of",
+          "start": 118.18,
+          "end": 118.48,
+          "probability": 0.9981651902198792
+        },
+        {
+          "word": " Castile",
+          "start": 118.48,
+          "end": 119.06,
+          "probability": 0.8504584431648254
+        },
+        {
+          "word": " in",
+          "start": 119.06,
+          "end": 119.58,
+          "probability": 0.8637909889221191
+        },
+        {
+          "word": " the",
+          "start": 119.58,
+          "end": 119.68,
+          "probability": 0.9759750366210938
+        },
+        {
+          "word": " 17th",
+          "start": 119.68,
+          "end": 120.32,
+          "probability": 0.9381205141544342
+        },
+        {
+          "word": " century.",
+          "start": 120.32,
+          "end": 120.72,
+          "probability": 0.9638931751251221
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "seek": 9850,
+      "start": 121.3,
+      "end": 125.84,
+      "text": " By the early 18th century, the loyal line appears in Chihuahua.",
+      "tokens": [
+        51514,
+        3146,
+        264,
+        2440,
+        2443,
+        392,
+        4901,
+        11,
+        264,
+        12682,
+        1622,
+        7038,
+        294,
+        761,
+        44344,
+        545,
+        4398,
+        13,
+        51764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10990156910636208,
+      "compression_ratio": 1.513157894736842,
+      "no_speech_prob": 0.18185676634311676,
+      "words": [
+        {
+          "word": " By",
+          "start": 121.3,
+          "end": 121.9,
+          "probability": 0.9949561953544617
+        },
+        {
+          "word": " the",
+          "start": 121.9,
+          "end": 122.04,
+          "probability": 0.9945206642150879
+        },
+        {
+          "word": " early",
+          "start": 122.04,
+          "end": 122.3,
+          "probability": 0.998428225517273
+        },
+        {
+          "word": " 18th",
+          "start": 122.3,
+          "end": 122.92,
+          "probability": 0.9916337430477142
+        },
+        {
+          "word": " century,",
+          "start": 122.92,
+          "end": 123.36,
+          "probability": 0.9917003512382507
+        },
+        {
+          "word": " the",
+          "start": 123.98,
+          "end": 124.04,
+          "probability": 0.9675512909889221
+        },
+        {
+          "word": " loyal",
+          "start": 124.04,
+          "end": 124.32,
+          "probability": 0.30167266726493835
+        },
+        {
+          "word": " line",
+          "start": 124.32,
+          "end": 124.64,
+          "probability": 0.9187821745872498
+        },
+        {
+          "word": " appears",
+          "start": 124.64,
+          "end": 124.94,
+          "probability": 0.9973030090332031
+        },
+        {
+          "word": " in",
+          "start": 124.94,
+          "end": 125.22,
+          "probability": 0.9983160495758057
+        },
+        {
+          "word": " Chihuahua.",
+          "start": 125.22,
+          "end": 125.84,
+          "probability": 0.8767866343259811
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "seek": 12584,
+      "start": 125.84,
+      "end": 130.14,
+      "text": " Juan de Loya is connected to Chihuahua by 1712.",
+      "tokens": [
+        50364,
+        17064,
+        368,
+        441,
+        24642,
+        307,
+        4582,
+        281,
+        761,
+        44344,
+        545,
+        4398,
+        538,
+        3282,
+        4762,
+        13,
+        50614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15478857063952786,
+      "compression_ratio": 1.4136363636363636,
+      "no_speech_prob": 0.014092700555920601,
+      "words": [
+        {
+          "word": " Juan",
+          "start": 125.84,
+          "end": 126.88,
+          "probability": 0.2646040618419647
+        },
+        {
+          "word": " de",
+          "start": 126.88,
+          "end": 127.04,
+          "probability": 0.6726679801940918
+        },
+        {
+          "word": " Loya",
+          "start": 127.04,
+          "end": 127.28,
+          "probability": 0.574834831058979
+        },
+        {
+          "word": " is",
+          "start": 127.28,
+          "end": 127.52,
+          "probability": 0.9810923933982849
+        },
+        {
+          "word": " connected",
+          "start": 127.52,
+          "end": 127.82,
+          "probability": 0.9916794896125793
+        },
+        {
+          "word": " to",
+          "start": 127.82,
+          "end": 128.06,
+          "probability": 0.9950931072235107
+        },
+        {
+          "word": " Chihuahua",
+          "start": 128.06,
+          "end": 128.56,
+          "probability": 0.9138182252645493
+        },
+        {
+          "word": " by",
+          "start": 128.56,
+          "end": 129.02,
+          "probability": 0.9505446553230286
+        },
+        {
+          "word": " 1712.",
+          "start": 129.02,
+          "end": 130.14,
+          "probability": 0.9685748517513275
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "seek": 12584,
+      "start": 131.32,
+      "end": 136.96,
+      "text": " Later generations appear in Tienega, Santa Isabel, Cuiteco, and Oginaga.",
+      "tokens": [
+        50614,
+        11965,
+        10593,
+        4204,
+        294,
+        314,
+        1053,
+        6335,
+        11,
+        9933,
+        1119,
+        18657,
+        11,
+        13205,
+        642,
+        1291,
+        11,
+        293,
+        422,
+        1494,
+        9286,
+        13,
+        50964
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15478857063952786,
+      "compression_ratio": 1.4136363636363636,
+      "no_speech_prob": 0.014092700555920601,
+      "words": [
+        {
+          "word": " Later",
+          "start": 131.32,
+          "end": 131.48,
+          "probability": 0.9920430779457092
+        },
+        {
+          "word": " generations",
+          "start": 131.48,
+          "end": 132.02,
+          "probability": 0.9858132004737854
+        },
+        {
+          "word": " appear",
+          "start": 132.02,
+          "end": 132.38,
+          "probability": 0.539962649345398
+        },
+        {
+          "word": " in",
+          "start": 132.38,
+          "end": 132.58,
+          "probability": 0.997719943523407
+        },
+        {
+          "word": " Tienega,",
+          "start": 132.58,
+          "end": 133.06,
+          "probability": 0.5872704386711121
+        },
+        {
+          "word": " Santa",
+          "start": 133.8,
+          "end": 133.96,
+          "probability": 0.9701557755470276
+        },
+        {
+          "word": " Isabel,",
+          "start": 133.96,
+          "end": 134.46,
+          "probability": 0.9553068280220032
+        },
+        {
+          "word": " Cuiteco,",
+          "start": 135.1,
+          "end": 135.58,
+          "probability": 0.7144922912120819
+        },
+        {
+          "word": " and",
+          "start": 136.16,
+          "end": 136.26,
+          "probability": 0.9962314963340759
+        },
+        {
+          "word": " Oginaga.",
+          "start": 136.26,
+          "end": 136.96,
+          "probability": 0.6289909680684408
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "seek": 12584,
+      "start": 138.12,
+      "end": 143.34,
+      "text": " Northern Mexico was a vast frontier of ranches, missions, settlements,",
+      "tokens": [
+        50964,
+        14335,
+        8612,
+        390,
+        257,
+        8369,
+        35853,
+        295,
+        5872,
+        3781,
+        11,
+        13744,
+        11,
+        35558,
+        11,
+        51264
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15478857063952786,
+      "compression_ratio": 1.4136363636363636,
+      "no_speech_prob": 0.014092700555920601,
+      "words": [
+        {
+          "word": " Northern",
+          "start": 138.12,
+          "end": 138.58,
+          "probability": 0.9302089214324951
+        },
+        {
+          "word": " Mexico",
+          "start": 138.58,
+          "end": 139.14,
+          "probability": 0.9992069602012634
+        },
+        {
+          "word": " was",
+          "start": 139.14,
+          "end": 139.82,
+          "probability": 0.9890377521514893
+        },
+        {
+          "word": " a",
+          "start": 139.82,
+          "end": 139.94,
+          "probability": 0.9956192374229431
+        },
+        {
+          "word": " vast",
+          "start": 139.94,
+          "end": 140.38,
+          "probability": 0.998842716217041
+        },
+        {
+          "word": " frontier",
+          "start": 140.38,
+          "end": 140.82,
+          "probability": 0.9977391958236694
+        },
+        {
+          "word": " of",
+          "start": 140.82,
+          "end": 141.18,
+          "probability": 0.9984250068664551
+        },
+        {
+          "word": " ranches,",
+          "start": 141.18,
+          "end": 141.58,
+          "probability": 0.9316518902778625
+        },
+        {
+          "word": " missions,",
+          "start": 142.12,
+          "end": 142.32,
+          "probability": 0.9817805886268616
+        },
+        {
+          "word": " settlements,",
+          "start": 143.02,
+          "end": 143.34,
+          "probability": 0.9967114925384521
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "seek": 12584,
+      "start": 144.02,
+      "end": 148.44,
+      "text": " indigenous communities, imperial authority, and difficult distances.",
+      "tokens": [
+        51264,
+        15511,
+        4456,
+        11,
+        21143,
+        8281,
+        11,
+        293,
+        2252,
+        22182,
+        13,
+        51514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15478857063952786,
+      "compression_ratio": 1.4136363636363636,
+      "no_speech_prob": 0.014092700555920601,
+      "words": [
+        {
+          "word": " indigenous",
+          "start": 144.02,
+          "end": 144.32,
+          "probability": 0.8851606249809265
+        },
+        {
+          "word": " communities,",
+          "start": 144.32,
+          "end": 145.08,
+          "probability": 0.9975206255912781
+        },
+        {
+          "word": " imperial",
+          "start": 145.68,
+          "end": 146.1,
+          "probability": 0.8384803533554077
+        },
+        {
+          "word": " authority,",
+          "start": 146.1,
+          "end": 146.68,
+          "probability": 0.9892955422401428
+        },
+        {
+          "word": " and",
+          "start": 147.12,
+          "end": 147.34,
+          "probability": 0.9985585808753967
+        },
+        {
+          "word": " difficult",
+          "start": 147.34,
+          "end": 147.76,
+          "probability": 0.9943617582321167
+        },
+        {
+          "word": " distances.",
+          "start": 147.76,
+          "end": 148.44,
+          "probability": 0.9977820515632629
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "seek": 12584,
+      "start": 149.6,
+      "end": 152.7,
+      "text": " For generations, the family remained rooted there,",
+      "tokens": [
+        51514,
+        1171,
+        10593,
+        11,
+        264,
+        1605,
+        12780,
+        25277,
+        456,
+        11,
+        51714
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.15478857063952786,
+      "compression_ratio": 1.4136363636363636,
+      "no_speech_prob": 0.014092700555920601,
+      "words": [
+        {
+          "word": " For",
+          "start": 149.6,
+          "end": 149.9,
+          "probability": 0.7477794289588928
+        },
+        {
+          "word": " generations,",
+          "start": 149.9,
+          "end": 150.48,
+          "probability": 0.9980972409248352
+        },
+        {
+          "word": " the",
+          "start": 151.06,
+          "end": 151.26,
+          "probability": 0.9976102113723755
+        },
+        {
+          "word": " family",
+          "start": 151.26,
+          "end": 151.64,
+          "probability": 0.9925215840339661
+        },
+        {
+          "word": " remained",
+          "start": 151.64,
+          "end": 152.04,
+          "probability": 0.993282675743103
+        },
+        {
+          "word": " rooted",
+          "start": 152.04,
+          "end": 152.36,
+          "probability": 0.9629796147346497
+        },
+        {
+          "word": " there,",
+          "start": 152.36,
+          "end": 152.7,
+          "probability": 0.9947856068611145
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "seek": 15270,
+      "start": 152.7,
+      "end": 155.72,
+      "text": " while the political world around them changed.",
+      "tokens": [
+        50364,
+        1339,
+        264,
+        3905,
+        1002,
+        926,
+        552,
+        3105,
+        13,
+        50514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.11185341132314582,
+      "compression_ratio": 1.3350253807106598,
+      "no_speech_prob": 0.011814944446086884,
+      "words": [
+        {
+          "word": " while",
+          "start": 152.7,
+          "end": 153.48,
+          "probability": 0.3475387990474701
+        },
+        {
+          "word": " the",
+          "start": 153.48,
+          "end": 153.68,
+          "probability": 0.9916473627090454
+        },
+        {
+          "word": " political",
+          "start": 153.68,
+          "end": 154.12,
+          "probability": 0.9874241948127747
+        },
+        {
+          "word": " world",
+          "start": 154.12,
+          "end": 154.52,
+          "probability": 0.9989032745361328
+        },
+        {
+          "word": " around",
+          "start": 154.52,
+          "end": 154.8,
+          "probability": 0.9933386445045471
+        },
+        {
+          "word": " them",
+          "start": 154.8,
+          "end": 155.08,
+          "probability": 0.9912992119789124
+        },
+        {
+          "word": " changed.",
+          "start": 155.08,
+          "end": 155.72,
+          "probability": 0.9919295310974121
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "seek": 15270,
+      "start": 156.38,
+      "end": 161.04,
+      "text": " From Spanish rule, through independence, and into modern Mexico.",
+      "tokens": [
+        50514,
+        3358,
+        8058,
+        4978,
+        11,
+        807,
+        14640,
+        11,
+        293,
+        666,
+        4363,
+        8612,
+        13,
+        50814
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.11185341132314582,
+      "compression_ratio": 1.3350253807106598,
+      "no_speech_prob": 0.011814944446086884,
+      "words": [
+        {
+          "word": " From",
+          "start": 156.38,
+          "end": 156.7,
+          "probability": 0.9877445101737976
+        },
+        {
+          "word": " Spanish",
+          "start": 156.7,
+          "end": 157.08,
+          "probability": 0.9916766881942749
+        },
+        {
+          "word": " rule,",
+          "start": 157.08,
+          "end": 157.46,
+          "probability": 0.9857973456382751
+        },
+        {
+          "word": " through",
+          "start": 158.02,
+          "end": 158.16,
+          "probability": 0.9871511459350586
+        },
+        {
+          "word": " independence,",
+          "start": 158.16,
+          "end": 158.76,
+          "probability": 0.9369267821311951
+        },
+        {
+          "word": " and",
+          "start": 159.48,
+          "end": 159.9,
+          "probability": 0.9928919076919556
+        },
+        {
+          "word": " into",
+          "start": 159.9,
+          "end": 160.24,
+          "probability": 0.987459659576416
+        },
+        {
+          "word": " modern",
+          "start": 160.24,
+          "end": 160.56,
+          "probability": 0.9660727977752686
+        },
+        {
+          "word": " Mexico.",
+          "start": 160.56,
+          "end": 161.04,
+          "probability": 0.9972386360168457
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "seek": 15270,
+      "start": 161.9,
+      "end": 164.38,
+      "text": " Then, the geography begins to move.",
+      "tokens": [
+        50814,
+        1396,
+        11,
+        264,
+        26695,
+        7338,
+        281,
+        1286,
+        13,
+        50964
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.11185341132314582,
+      "compression_ratio": 1.3350253807106598,
+      "no_speech_prob": 0.011814944446086884,
+      "words": [
+        {
+          "word": " Then,",
+          "start": 161.9,
+          "end": 162.24,
+          "probability": 0.9825683832168579
+        },
+        {
+          "word": " the",
+          "start": 162.68,
+          "end": 162.94,
+          "probability": 0.9916354417800903
+        },
+        {
+          "word": " geography",
+          "start": 162.94,
+          "end": 163.34,
+          "probability": 0.9872516393661499
+        },
+        {
+          "word": " begins",
+          "start": 163.34,
+          "end": 163.8,
+          "probability": 0.992778480052948
+        },
+        {
+          "word": " to",
+          "start": 163.8,
+          "end": 164.06,
+          "probability": 0.9993568062782288
+        },
+        {
+          "word": " move.",
+          "start": 164.06,
+          "end": 164.38,
+          "probability": 0.9990956783294678
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "seek": 15270,
+      "start": 165.52,
+      "end": 170.98,
+      "text": " Manuel Loya Ruiz was born in Oginaga, Chihuahua in 1873.",
+      "tokens": [
+        50964,
+        34362,
+        441,
+        24642,
+        15702,
+        590,
+        390,
+        4232,
+        294,
+        422,
+        1494,
+        9286,
+        11,
+        761,
+        44344,
+        545,
+        4398,
+        294,
+        2443,
+        33396,
+        13,
+        51314
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.11185341132314582,
+      "compression_ratio": 1.3350253807106598,
+      "no_speech_prob": 0.011814944446086884,
+      "words": [
+        {
+          "word": " Manuel",
+          "start": 165.52,
+          "end": 165.96,
+          "probability": 0.9185963273048401
+        },
+        {
+          "word": " Loya",
+          "start": 165.96,
+          "end": 166.54,
+          "probability": 0.2687849849462509
+        },
+        {
+          "word": " Ruiz",
+          "start": 166.54,
+          "end": 167.0,
+          "probability": 0.7878472208976746
+        },
+        {
+          "word": " was",
+          "start": 167.0,
+          "end": 167.4,
+          "probability": 0.9871256947517395
+        },
+        {
+          "word": " born",
+          "start": 167.4,
+          "end": 167.72,
+          "probability": 0.9993960857391357
+        },
+        {
+          "word": " in",
+          "start": 167.72,
+          "end": 167.88,
+          "probability": 0.9957041144371033
+        },
+        {
+          "word": " Oginaga,",
+          "start": 167.88,
+          "end": 168.36,
+          "probability": 0.645767350991567
+        },
+        {
+          "word": " Chihuahua",
+          "start": 168.36,
+          "end": 169.08,
+          "probability": 0.9169938266277313
+        },
+        {
+          "word": " in",
+          "start": 169.08,
+          "end": 169.76,
+          "probability": 0.6886704564094543
+        },
+        {
+          "word": " 1873.",
+          "start": 169.76,
+          "end": 170.98,
+          "probability": 0.9934336245059967
+        }
+      ]
+    },
+    {
+      "id": 36,
+      "seek": 15270,
+      "start": 171.82,
+      "end": 176.8,
+      "text": " His life ends across the border in El Paso, Texas in 1932.",
+      "tokens": [
+        51314,
+        2812,
+        993,
+        5314,
+        2108,
+        264,
+        7838,
+        294,
+        2699,
+        14199,
+        78,
+        11,
+        7885,
+        294,
+        1294,
+        11440,
+        13,
+        51614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.11185341132314582,
+      "compression_ratio": 1.3350253807106598,
+      "no_speech_prob": 0.011814944446086884,
+      "words": [
+        {
+          "word": " His",
+          "start": 171.82,
+          "end": 172.14,
+          "probability": 0.9869195818901062
+        },
+        {
+          "word": " life",
+          "start": 172.14,
+          "end": 172.58,
+          "probability": 0.9987009763717651
+        },
+        {
+          "word": " ends",
+          "start": 172.58,
+          "end": 172.84,
+          "probability": 0.9929179549217224
+        },
+        {
+          "word": " across",
+          "start": 172.84,
+          "end": 173.14,
+          "probability": 0.9964264035224915
+        },
+        {
+          "word": " the",
+          "start": 173.14,
+          "end": 173.36,
+          "probability": 0.9977905750274658
+        },
+        {
+          "word": " border",
+          "start": 173.36,
+          "end": 173.62,
+          "probability": 0.9919549822807312
+        },
+        {
+          "word": " in",
+          "start": 173.62,
+          "end": 173.9,
+          "probability": 0.9857694506645203
+        },
+        {
+          "word": " El",
+          "start": 173.9,
+          "end": 174.12,
+          "probability": 0.9777418971061707
+        },
+        {
+          "word": " Paso,",
+          "start": 174.12,
+          "end": 174.52,
+          "probability": 0.9913829863071442
+        },
+        {
+          "word": " Texas",
+          "start": 174.66,
+          "end": 174.92,
+          "probability": 0.9937247633934021
+        },
+        {
+          "word": " in",
+          "start": 174.92,
+          "end": 175.72,
+          "probability": 0.7119662165641785
+        },
+        {
+          "word": " 1932.",
+          "start": 175.72,
+          "end": 176.8,
+          "probability": 0.994917094707489
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "seek": 17680,
+      "start": 177.8,
+      "end": 183.68,
+      "text": " In the records of a single life, the family story crosses from Mexico into the United States.",
+      "tokens": [
+        50414,
+        682,
+        264,
+        7724,
+        295,
+        257,
+        2167,
+        993,
+        11,
+        264,
+        1605,
+        1657,
+        28467,
+        490,
+        8612,
+        666,
+        264,
+        2824,
+        3040,
+        13,
+        50764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06917148897017555,
+      "compression_ratio": 1.5191489361702128,
+      "no_speech_prob": 0.06164902076125145,
+      "words": [
+        {
+          "word": " In",
+          "start": 177.67999999999998,
+          "end": 178.04,
+          "probability": 0.1917024850845337
+        },
+        {
+          "word": " the",
+          "start": 178.04,
+          "end": 178.16,
+          "probability": 0.9199066162109375
+        },
+        {
+          "word": " records",
+          "start": 178.16,
+          "end": 178.42,
+          "probability": 0.9592782258987427
+        },
+        {
+          "word": " of",
+          "start": 178.42,
+          "end": 178.7,
+          "probability": 0.9963843822479248
+        },
+        {
+          "word": " a",
+          "start": 178.7,
+          "end": 178.8,
+          "probability": 0.9846916794776917
+        },
+        {
+          "word": " single",
+          "start": 178.8,
+          "end": 179.06,
+          "probability": 0.9915900826454163
+        },
+        {
+          "word": " life,",
+          "start": 179.06,
+          "end": 179.48,
+          "probability": 0.9852651953697205
+        },
+        {
+          "word": " the",
+          "start": 179.9,
+          "end": 179.96,
+          "probability": 0.9464315176010132
+        },
+        {
+          "word": " family",
+          "start": 179.96,
+          "end": 180.32,
+          "probability": 0.9446825385093689
+        },
+        {
+          "word": " story",
+          "start": 180.32,
+          "end": 180.68,
+          "probability": 0.78009432554245
+        },
+        {
+          "word": " crosses",
+          "start": 180.68,
+          "end": 181.06,
+          "probability": 0.9966349005699158
+        },
+        {
+          "word": " from",
+          "start": 181.06,
+          "end": 181.32,
+          "probability": 0.9848671555519104
+        },
+        {
+          "word": " Mexico",
+          "start": 181.32,
+          "end": 181.74,
+          "probability": 0.9980049729347229
+        },
+        {
+          "word": " into",
+          "start": 181.74,
+          "end": 182.6,
+          "probability": 0.9428691864013672
+        },
+        {
+          "word": " the",
+          "start": 182.6,
+          "end": 182.84,
+          "probability": 0.9940564632415771
+        },
+        {
+          "word": " United",
+          "start": 182.84,
+          "end": 183.06,
+          "probability": 0.9863728880882263
+        },
+        {
+          "word": " States.",
+          "start": 183.06,
+          "end": 183.68,
+          "probability": 0.9978658556938171
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "seek": 17680,
+      "start": 184.6,
+      "end": 189.62,
+      "text": " The next generations become increasingly connected to Texas and eventually California.",
+      "tokens": [
+        50764,
+        440,
+        958,
+        10593,
+        1813,
+        12980,
+        4582,
+        281,
+        7885,
+        293,
+        4728,
+        5384,
+        13,
+        51064
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06917148897017555,
+      "compression_ratio": 1.5191489361702128,
+      "no_speech_prob": 0.06164902076125145,
+      "words": [
+        {
+          "word": " The",
+          "start": 184.6,
+          "end": 184.82,
+          "probability": 0.9876670837402344
+        },
+        {
+          "word": " next",
+          "start": 184.82,
+          "end": 185.04,
+          "probability": 0.9942994117736816
+        },
+        {
+          "word": " generations",
+          "start": 185.04,
+          "end": 185.54,
+          "probability": 0.9735392332077026
+        },
+        {
+          "word": " become",
+          "start": 185.54,
+          "end": 185.92,
+          "probability": 0.9775938987731934
+        },
+        {
+          "word": " increasingly",
+          "start": 185.92,
+          "end": 186.5,
+          "probability": 0.9978854060173035
+        },
+        {
+          "word": " connected",
+          "start": 186.5,
+          "end": 187.06,
+          "probability": 0.9973421692848206
+        },
+        {
+          "word": " to",
+          "start": 187.06,
+          "end": 187.28,
+          "probability": 0.998128354549408
+        },
+        {
+          "word": " Texas",
+          "start": 187.28,
+          "end": 187.64,
+          "probability": 0.9959701299667358
+        },
+        {
+          "word": " and",
+          "start": 187.64,
+          "end": 188.32,
+          "probability": 0.9164466261863708
+        },
+        {
+          "word": " eventually",
+          "start": 188.32,
+          "end": 188.82,
+          "probability": 0.974174976348877
+        },
+        {
+          "word": " California.",
+          "start": 188.82,
+          "end": 189.62,
+          "probability": 0.9555726051330566
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "seek": 17680,
+      "start": 190.8,
+      "end": 194.88,
+      "text": " Victor Manuel Ruiz, born in El Paso in 1915,",
+      "tokens": [
+        51064,
+        15777,
+        34362,
+        15702,
+        590,
+        11,
+        4232,
+        294,
+        2699,
+        14199,
+        78,
+        294,
+        1294,
+        5211,
+        11,
+        51314
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06917148897017555,
+      "compression_ratio": 1.5191489361702128,
+      "no_speech_prob": 0.06164902076125145,
+      "words": [
+        {
+          "word": " Victor",
+          "start": 190.8,
+          "end": 191.14,
+          "probability": 0.8916835188865662
+        },
+        {
+          "word": " Manuel",
+          "start": 191.14,
+          "end": 191.54,
+          "probability": 0.9372679591178894
+        },
+        {
+          "word": " Ruiz,",
+          "start": 191.54,
+          "end": 192.16,
+          "probability": 0.8142817914485931
+        },
+        {
+          "word": " born",
+          "start": 192.72,
+          "end": 192.94,
+          "probability": 0.9960775971412659
+        },
+        {
+          "word": " in",
+          "start": 192.94,
+          "end": 193.1,
+          "probability": 0.9953595995903015
+        },
+        {
+          "word": " El",
+          "start": 193.1,
+          "end": 193.2,
+          "probability": 0.9818772077560425
+        },
+        {
+          "word": " Paso",
+          "start": 193.2,
+          "end": 193.66,
+          "probability": 0.9511072337627411
+        },
+        {
+          "word": " in",
+          "start": 193.66,
+          "end": 193.82,
+          "probability": 0.9814127683639526
+        },
+        {
+          "word": " 1915,",
+          "start": 193.82,
+          "end": 194.88,
+          "probability": 0.9900959134101868
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "seek": 17680,
+      "start": 195.6,
+      "end": 199.66,
+      "text": " would live into the 21st century and die in Manrovia, California.",
+      "tokens": [
+        51314,
+        576,
+        1621,
+        666,
+        264,
+        5080,
+        372,
+        4901,
+        293,
+        978,
+        294,
+        2458,
+        340,
+        11617,
+        11,
+        5384,
+        13,
+        51564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06917148897017555,
+      "compression_ratio": 1.5191489361702128,
+      "no_speech_prob": 0.06164902076125145,
+      "words": [
+        {
+          "word": " would",
+          "start": 195.6,
+          "end": 195.8,
+          "probability": 0.989550769329071
+        },
+        {
+          "word": " live",
+          "start": 195.8,
+          "end": 196.02,
+          "probability": 0.9962833523750305
+        },
+        {
+          "word": " into",
+          "start": 196.02,
+          "end": 196.3,
+          "probability": 0.9479910731315613
+        },
+        {
+          "word": " the",
+          "start": 196.3,
+          "end": 196.44,
+          "probability": 0.987774670124054
+        },
+        {
+          "word": " 21st",
+          "start": 196.44,
+          "end": 197.04,
+          "probability": 0.9839402139186859
+        },
+        {
+          "word": " century",
+          "start": 197.04,
+          "end": 197.4,
+          "probability": 0.9476206302642822
+        },
+        {
+          "word": " and",
+          "start": 197.4,
+          "end": 198.06,
+          "probability": 0.9060962200164795
+        },
+        {
+          "word": " die",
+          "start": 198.06,
+          "end": 198.36,
+          "probability": 0.9663597941398621
+        },
+        {
+          "word": " in",
+          "start": 198.36,
+          "end": 198.56,
+          "probability": 0.9981074333190918
+        },
+        {
+          "word": " Manrovia,",
+          "start": 198.56,
+          "end": 199.0,
+          "probability": 0.6362653275330862
+        },
+        {
+          "word": " California.",
+          "start": 199.14,
+          "end": 199.66,
+          "probability": 0.9937146306037903
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "seek": 17680,
+      "start": 200.64000000000001,
+      "end": 204.96,
+      "text": " The distance from Oginaga to California can be measured in miles.",
+      "tokens": [
+        51564,
+        440,
+        4560,
+        490,
+        422,
+        1494,
+        9286,
+        281,
+        5384,
+        393,
+        312,
+        12690,
+        294,
+        6193,
+        13,
+        51814
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06917148897017555,
+      "compression_ratio": 1.5191489361702128,
+      "no_speech_prob": 0.06164902076125145,
+      "words": [
+        {
+          "word": " The",
+          "start": 200.64000000000001,
+          "end": 201.36,
+          "probability": 0.9922692179679871
+        },
+        {
+          "word": " distance",
+          "start": 201.36,
+          "end": 201.68,
+          "probability": 0.9971086382865906
+        },
+        {
+          "word": " from",
+          "start": 201.68,
+          "end": 202.0,
+          "probability": 0.9981104135513306
+        },
+        {
+          "word": " Oginaga",
+          "start": 202.0,
+          "end": 202.52,
+          "probability": 0.6779086391131083
+        },
+        {
+          "word": " to",
+          "start": 202.52,
+          "end": 202.72,
+          "probability": 0.9922526478767395
+        },
+        {
+          "word": " California",
+          "start": 202.72,
+          "end": 203.3,
+          "probability": 0.9958622455596924
+        },
+        {
+          "word": " can",
+          "start": 203.3,
+          "end": 203.94,
+          "probability": 0.972186803817749
+        },
+        {
+          "word": " be",
+          "start": 203.94,
+          "end": 204.1,
+          "probability": 0.9969611763954163
+        },
+        {
+          "word": " measured",
+          "start": 204.1,
+          "end": 204.46,
+          "probability": 0.9957356452941895
+        },
+        {
+          "word": " in",
+          "start": 204.46,
+          "end": 204.68,
+          "probability": 0.9977032542228699
+        },
+        {
+          "word": " miles.",
+          "start": 204.68,
+          "end": 204.96,
+          "probability": 0.9823381900787354
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "seek": 20496,
+      "start": 205.8,
+      "end": 208.9,
+      "text": " Its meaning can only be measured in generations.",
+      "tokens": [
+        50414,
+        6953,
+        3620,
+        393,
+        787,
+        312,
+        12690,
+        294,
+        10593,
+        13,
+        50614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08387755140473571,
+      "compression_ratio": 1.4304932735426008,
+      "no_speech_prob": 0.024093130603432655,
+      "words": [
+        {
+          "word": " Its",
+          "start": 205.8,
+          "end": 206.52,
+          "probability": 0.09140889346599579
+        },
+        {
+          "word": " meaning",
+          "start": 206.52,
+          "end": 206.86,
+          "probability": 0.9684123992919922
+        },
+        {
+          "word": " can",
+          "start": 206.86,
+          "end": 207.16,
+          "probability": 0.9914274215698242
+        },
+        {
+          "word": " only",
+          "start": 207.16,
+          "end": 207.54,
+          "probability": 0.9951033592224121
+        },
+        {
+          "word": " be",
+          "start": 207.54,
+          "end": 207.74,
+          "probability": 0.9990045428276062
+        },
+        {
+          "word": " measured",
+          "start": 207.74,
+          "end": 208.12,
+          "probability": 0.9944816827774048
+        },
+        {
+          "word": " in",
+          "start": 208.12,
+          "end": 208.32,
+          "probability": 0.9958013892173767
+        },
+        {
+          "word": " generations.",
+          "start": 208.32,
+          "end": 208.9,
+          "probability": 0.9904329776763916
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "seek": 20496,
+      "start": 209.7,
+      "end": 214.18,
+      "text": " At roughly the same time, other branches were following different routes.",
+      "tokens": [
+        50614,
+        1711,
+        9810,
+        264,
+        912,
+        565,
+        11,
+        661,
+        14770,
+        645,
+        3480,
+        819,
+        18242,
+        13,
+        50864
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08387755140473571,
+      "compression_ratio": 1.4304932735426008,
+      "no_speech_prob": 0.024093130603432655,
+      "words": [
+        {
+          "word": " At",
+          "start": 209.7,
+          "end": 210.42,
+          "probability": 0.9892327785491943
+        },
+        {
+          "word": " roughly",
+          "start": 210.42,
+          "end": 210.72,
+          "probability": 0.9980254173278809
+        },
+        {
+          "word": " the",
+          "start": 210.72,
+          "end": 210.96,
+          "probability": 0.9974547028541565
+        },
+        {
+          "word": " same",
+          "start": 210.96,
+          "end": 211.22,
+          "probability": 0.9994001388549805
+        },
+        {
+          "word": " time,",
+          "start": 211.22,
+          "end": 211.76,
+          "probability": 0.9985415935516357
+        },
+        {
+          "word": " other",
+          "start": 212.26,
+          "end": 212.54,
+          "probability": 0.9971701502799988
+        },
+        {
+          "word": " branches",
+          "start": 212.54,
+          "end": 212.9,
+          "probability": 0.9925661087036133
+        },
+        {
+          "word": " were",
+          "start": 212.9,
+          "end": 213.16,
+          "probability": 0.9882900714874268
+        },
+        {
+          "word": " following",
+          "start": 213.16,
+          "end": 213.52,
+          "probability": 0.9990033507347107
+        },
+        {
+          "word": " different",
+          "start": 213.52,
+          "end": 213.9,
+          "probability": 0.9947233200073242
+        },
+        {
+          "word": " routes.",
+          "start": 213.9,
+          "end": 214.18,
+          "probability": 0.4833486080169678
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "seek": 20496,
+      "start": 215.2,
+      "end": 217.06,
+      "text": " The Stubbs line moves out of England.",
+      "tokens": [
+        50864,
+        440,
+        745,
+        836,
+        929,
+        1622,
+        6067,
+        484,
+        295,
+        8196,
+        13,
+        51014
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08387755140473571,
+      "compression_ratio": 1.4304932735426008,
+      "no_speech_prob": 0.024093130603432655,
+      "words": [
+        {
+          "word": " The",
+          "start": 215.2,
+          "end": 215.32,
+          "probability": 0.986821711063385
+        },
+        {
+          "word": " Stubbs",
+          "start": 215.32,
+          "end": 215.68,
+          "probability": 0.7817609111467997
+        },
+        {
+          "word": " line",
+          "start": 215.68,
+          "end": 215.9,
+          "probability": 0.6901376843452454
+        },
+        {
+          "word": " moves",
+          "start": 215.9,
+          "end": 216.42,
+          "probability": 0.9531425833702087
+        },
+        {
+          "word": " out",
+          "start": 216.42,
+          "end": 216.66,
+          "probability": 0.9923959970474243
+        },
+        {
+          "word": " of",
+          "start": 216.66,
+          "end": 216.8,
+          "probability": 0.9979566335678101
+        },
+        {
+          "word": " England.",
+          "start": 216.8,
+          "end": 217.06,
+          "probability": 0.9957695007324219
+        }
+      ]
+    },
+    {
+      "id": 45,
+      "seek": 20496,
+      "start": 218.12,
+      "end": 222.12,
+      "text": " The Hendry family appears in Scotland, Pennsylvania, and New Jersey.",
+      "tokens": [
+        51014,
+        440,
+        28594,
+        627,
+        1605,
+        7038,
+        294,
+        11180,
+        11,
+        17963,
+        11,
+        293,
+        1873,
+        16601,
+        13,
+        51264
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08387755140473571,
+      "compression_ratio": 1.4304932735426008,
+      "no_speech_prob": 0.024093130603432655,
+      "words": [
+        {
+          "word": " The",
+          "start": 218.12,
+          "end": 218.28,
+          "probability": 0.989726722240448
+        },
+        {
+          "word": " Hendry",
+          "start": 218.28,
+          "end": 218.58,
+          "probability": 0.7156658470630646
+        },
+        {
+          "word": " family",
+          "start": 218.58,
+          "end": 218.94,
+          "probability": 0.9171773791313171
+        },
+        {
+          "word": " appears",
+          "start": 218.94,
+          "end": 219.32,
+          "probability": 0.9940459728240967
+        },
+        {
+          "word": " in",
+          "start": 219.32,
+          "end": 219.52,
+          "probability": 0.9988995790481567
+        },
+        {
+          "word": " Scotland,",
+          "start": 219.52,
+          "end": 219.94,
+          "probability": 0.9938437938690186
+        },
+        {
+          "word": " Pennsylvania,",
+          "start": 220.38,
+          "end": 220.88,
+          "probability": 0.9966243505477905
+        },
+        {
+          "word": " and",
+          "start": 221.28,
+          "end": 221.58,
+          "probability": 0.9902058243751526
+        },
+        {
+          "word": " New",
+          "start": 221.58,
+          "end": 221.72,
+          "probability": 0.9930984377861023
+        },
+        {
+          "word": " Jersey.",
+          "start": 221.72,
+          "end": 222.12,
+          "probability": 0.9996891021728516
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "seek": 20496,
+      "start": 223.04,
+      "end": 229.06,
+      "text": " By the early 20th century, Gloucester City and Camden had become important family places.",
+      "tokens": [
+        51264,
+        3146,
+        264,
+        2440,
+        945,
+        392,
+        4901,
+        11,
+        5209,
+        263,
+        66,
+        3011,
+        4392,
+        293,
+        6886,
+        1556,
+        632,
+        1813,
+        1021,
+        1605,
+        3190,
+        13,
+        51564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.08387755140473571,
+      "compression_ratio": 1.4304932735426008,
+      "no_speech_prob": 0.024093130603432655,
+      "words": [
+        {
+          "word": " By",
+          "start": 223.04,
+          "end": 223.48,
+          "probability": 0.9961732029914856
+        },
+        {
+          "word": " the",
+          "start": 223.48,
+          "end": 223.62,
+          "probability": 0.9985253214836121
+        },
+        {
+          "word": " early",
+          "start": 223.62,
+          "end": 223.86,
+          "probability": 0.9961333274841309
+        },
+        {
+          "word": " 20th",
+          "start": 223.86,
+          "end": 224.48,
+          "probability": 0.9454372823238373
+        },
+        {
+          "word": " century,",
+          "start": 224.48,
+          "end": 224.96,
+          "probability": 0.9725606441497803
+        },
+        {
+          "word": " Gloucester",
+          "start": 225.82,
+          "end": 226.14,
+          "probability": 0.9485157579183578
+        },
+        {
+          "word": " City",
+          "start": 226.14,
+          "end": 226.46,
+          "probability": 0.8869813084602356
+        },
+        {
+          "word": " and",
+          "start": 226.46,
+          "end": 226.7,
+          "probability": 0.9827063083648682
+        },
+        {
+          "word": " Camden",
+          "start": 226.7,
+          "end": 227.1,
+          "probability": 0.9407490789890289
+        },
+        {
+          "word": " had",
+          "start": 227.1,
+          "end": 227.32,
+          "probability": 0.9820928573608398
+        },
+        {
+          "word": " become",
+          "start": 227.32,
+          "end": 227.58,
+          "probability": 0.9976803064346313
+        },
+        {
+          "word": " important",
+          "start": 227.58,
+          "end": 228.12,
+          "probability": 0.9934658408164978
+        },
+        {
+          "word": " family",
+          "start": 228.12,
+          "end": 228.54,
+          "probability": 0.9874825477600098
+        },
+        {
+          "word": " places.",
+          "start": 228.54,
+          "end": 229.06,
+          "probability": 0.9906544089317322
+        }
+      ]
+    },
+    {
+      "id": 47,
+      "seek": 22906,
+      "start": 230.06,
+      "end": 236.34,
+      "text": " Communities shaped by factories, railways, shipyards, construction, and industrial America.",
+      "tokens": [
+        50414,
+        6800,
+        1088,
+        13475,
+        538,
+        24813,
+        11,
+        8765,
+        942,
+        11,
+        5374,
+        48905,
+        11,
+        6435,
+        11,
+        293,
+        9987,
+        3374,
+        13,
+        50764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12122545960128948,
+      "compression_ratio": 1.4787644787644787,
+      "no_speech_prob": 0.18828357756137848,
+      "words": [
+        {
+          "word": " Communities",
+          "start": 230.01999999999998,
+          "end": 230.38,
+          "probability": 0.512090221978724
+        },
+        {
+          "word": " shaped",
+          "start": 230.38,
+          "end": 230.88,
+          "probability": 0.8989712595939636
+        },
+        {
+          "word": " by",
+          "start": 230.88,
+          "end": 231.08,
+          "probability": 0.9971959590911865
+        },
+        {
+          "word": " factories,",
+          "start": 231.08,
+          "end": 231.62,
+          "probability": 0.9846335053443909
+        },
+        {
+          "word": " railways,",
+          "start": 232.2,
+          "end": 232.64,
+          "probability": 0.9936578571796417
+        },
+        {
+          "word": " shipyards,",
+          "start": 233.16,
+          "end": 233.5,
+          "probability": 0.9902640879154205
+        },
+        {
+          "word": " construction,",
+          "start": 233.96,
+          "end": 234.5,
+          "probability": 0.9892386198043823
+        },
+        {
+          "word": " and",
+          "start": 235.12,
+          "end": 235.28,
+          "probability": 0.9925853610038757
+        },
+        {
+          "word": " industrial",
+          "start": 235.28,
+          "end": 235.78,
+          "probability": 0.9669344425201416
+        },
+        {
+          "word": " America.",
+          "start": 235.78,
+          "end": 236.34,
+          "probability": 0.9811601042747498
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "seek": 22906,
+      "start": 236.96,
+      "end": 243.68,
+      "text": " The records follow Edwin Allewish's Hendry through New Jersey and connect him to the Panama Canal Zone.",
+      "tokens": [
+        50764,
+        440,
+        7724,
+        1524,
+        3977,
+        9136,
+        1057,
+        1023,
+        742,
+        311,
+        28594,
+        627,
+        807,
+        1873,
+        16601,
+        293,
+        1745,
+        796,
+        281,
+        264,
+        41202,
+        38250,
+        22800,
+        13,
+        51114
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12122545960128948,
+      "compression_ratio": 1.4787644787644787,
+      "no_speech_prob": 0.18828357756137848,
+      "words": [
+        {
+          "word": " The",
+          "start": 236.96,
+          "end": 237.68,
+          "probability": 0.984708309173584
+        },
+        {
+          "word": " records",
+          "start": 237.68,
+          "end": 237.98,
+          "probability": 0.9831725358963013
+        },
+        {
+          "word": " follow",
+          "start": 237.98,
+          "end": 238.42,
+          "probability": 0.9424394369125366
+        },
+        {
+          "word": " Edwin",
+          "start": 238.42,
+          "end": 238.8,
+          "probability": 0.9913535714149475
+        },
+        {
+          "word": " Allewish's",
+          "start": 238.8,
+          "end": 239.42,
+          "probability": 0.4486335627734661
+        },
+        {
+          "word": " Hendry",
+          "start": 239.42,
+          "end": 239.76,
+          "probability": 0.5775183513760567
+        },
+        {
+          "word": " through",
+          "start": 239.76,
+          "end": 240.0,
+          "probability": 0.9320737719535828
+        },
+        {
+          "word": " New",
+          "start": 240.0,
+          "end": 240.16,
+          "probability": 0.9928777813911438
+        },
+        {
+          "word": " Jersey",
+          "start": 240.16,
+          "end": 240.56,
+          "probability": 0.9995481371879578
+        },
+        {
+          "word": " and",
+          "start": 240.56,
+          "end": 241.56,
+          "probability": 0.5877000093460083
+        },
+        {
+          "word": " connect",
+          "start": 241.56,
+          "end": 241.9,
+          "probability": 0.9875146150588989
+        },
+        {
+          "word": " him",
+          "start": 241.9,
+          "end": 242.2,
+          "probability": 0.9916525483131409
+        },
+        {
+          "word": " to",
+          "start": 242.2,
+          "end": 242.36,
+          "probability": 0.9957667589187622
+        },
+        {
+          "word": " the",
+          "start": 242.36,
+          "end": 242.48,
+          "probability": 0.9738266468048096
+        },
+        {
+          "word": " Panama",
+          "start": 242.48,
+          "end": 242.82,
+          "probability": 0.9719579815864563
+        },
+        {
+          "word": " Canal",
+          "start": 242.82,
+          "end": 243.26,
+          "probability": 0.9763482213020325
+        },
+        {
+          "word": " Zone.",
+          "start": 243.26,
+          "end": 243.68,
+          "probability": 0.9087778925895691
+        }
+      ]
+    },
+    {
+      "id": 49,
+      "seek": 22906,
+      "start": 244.4,
+      "end": 250.46,
+      "text": " Each move added another strand to a family no longer rooted in one village, region or country.",
+      "tokens": [
+        51114,
+        6947,
+        1286,
+        3869,
+        1071,
+        14955,
+        281,
+        257,
+        1605,
+        572,
+        2854,
+        25277,
+        294,
+        472,
+        7288,
+        11,
+        4458,
+        420,
+        1941,
+        13,
+        51464
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12122545960128948,
+      "compression_ratio": 1.4787644787644787,
+      "no_speech_prob": 0.18828357756137848,
+      "words": [
+        {
+          "word": " Each",
+          "start": 244.4,
+          "end": 245.12,
+          "probability": 0.9909823536872864
+        },
+        {
+          "word": " move",
+          "start": 245.12,
+          "end": 245.48,
+          "probability": 0.9943270087242126
+        },
+        {
+          "word": " added",
+          "start": 245.48,
+          "end": 245.86,
+          "probability": 0.9936020970344543
+        },
+        {
+          "word": " another",
+          "start": 245.86,
+          "end": 246.22,
+          "probability": 0.9920410513877869
+        },
+        {
+          "word": " strand",
+          "start": 246.22,
+          "end": 246.56,
+          "probability": 0.9766321778297424
+        },
+        {
+          "word": " to",
+          "start": 246.56,
+          "end": 246.8,
+          "probability": 0.996995210647583
+        },
+        {
+          "word": " a",
+          "start": 246.8,
+          "end": 246.9,
+          "probability": 0.9928950667381287
+        },
+        {
+          "word": " family",
+          "start": 246.9,
+          "end": 247.28,
+          "probability": 0.9987483024597168
+        },
+        {
+          "word": " no",
+          "start": 247.28,
+          "end": 247.56,
+          "probability": 0.9976425766944885
+        },
+        {
+          "word": " longer",
+          "start": 247.56,
+          "end": 247.9,
+          "probability": 0.9980220794677734
+        },
+        {
+          "word": " rooted",
+          "start": 247.9,
+          "end": 248.18,
+          "probability": 0.9955379962921143
+        },
+        {
+          "word": " in",
+          "start": 248.18,
+          "end": 248.38,
+          "probability": 0.9982994198799133
+        },
+        {
+          "word": " one",
+          "start": 248.38,
+          "end": 248.58,
+          "probability": 0.9822885990142822
+        },
+        {
+          "word": " village,",
+          "start": 248.58,
+          "end": 248.92,
+          "probability": 0.9967505931854248
+        },
+        {
+          "word": " region",
+          "start": 249.5,
+          "end": 249.74,
+          "probability": 0.9899930357933044
+        },
+        {
+          "word": " or",
+          "start": 249.74,
+          "end": 250.04,
+          "probability": 0.6017729640007019
+        },
+        {
+          "word": " country.",
+          "start": 250.04,
+          "end": 250.46,
+          "probability": 0.993983805179596
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "seek": 22906,
+      "start": 251.4,
+      "end": 254.86,
+      "text": " For centuries, these families had no knowledge of one another.",
+      "tokens": [
+        51464,
+        1171,
+        13926,
+        11,
+        613,
+        4466,
+        632,
+        572,
+        3601,
+        295,
+        472,
+        1071,
+        13,
+        51664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12122545960128948,
+      "compression_ratio": 1.4787644787644787,
+      "no_speech_prob": 0.18828357756137848,
+      "words": [
+        {
+          "word": " For",
+          "start": 251.4,
+          "end": 251.68,
+          "probability": 0.9959344863891602
+        },
+        {
+          "word": " centuries,",
+          "start": 251.68,
+          "end": 252.12,
+          "probability": 0.999739944934845
+        },
+        {
+          "word": " these",
+          "start": 252.72,
+          "end": 252.86,
+          "probability": 0.9953887462615967
+        },
+        {
+          "word": " families",
+          "start": 252.86,
+          "end": 253.34,
+          "probability": 0.9952090382575989
+        },
+        {
+          "word": " had",
+          "start": 253.34,
+          "end": 253.6,
+          "probability": 0.9938720464706421
+        },
+        {
+          "word": " no",
+          "start": 253.6,
+          "end": 253.86,
+          "probability": 0.9989714622497559
+        },
+        {
+          "word": " knowledge",
+          "start": 253.86,
+          "end": 254.2,
+          "probability": 0.9991563558578491
+        },
+        {
+          "word": " of",
+          "start": 254.2,
+          "end": 254.36,
+          "probability": 0.9993866682052612
+        },
+        {
+          "word": " one",
+          "start": 254.36,
+          "end": 254.52,
+          "probability": 0.9984809756278992
+        },
+        {
+          "word": " another.",
+          "start": 254.52,
+          "end": 254.86,
+          "probability": 0.9985392093658447
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "seek": 22906,
+      "start": 256.24,
+      "end": 257.68,
+      "text": " Lounds and Stubbs in England.",
+      "tokens": [
+        51664,
+        441,
+        4432,
+        293,
+        745,
+        836,
+        929,
+        294,
+        8196,
+        13,
+        51814
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.12122545960128948,
+      "compression_ratio": 1.4787644787644787,
+      "no_speech_prob": 0.18828357756137848,
+      "words": [
+        {
+          "word": " Lounds",
+          "start": 256.24,
+          "end": 256.54,
+          "probability": 0.682318776845932
+        },
+        {
+          "word": " and",
+          "start": 256.54,
+          "end": 256.74,
+          "probability": 0.989120602607727
+        },
+        {
+          "word": " Stubbs",
+          "start": 256.74,
+          "end": 257.16,
+          "probability": 0.4108380451798439
+        },
+        {
+          "word": " in",
+          "start": 257.16,
+          "end": 257.26,
+          "probability": 0.9954778552055359
+        },
+        {
+          "word": " England.",
+          "start": 257.26,
+          "end": 257.68,
+          "probability": 0.9986949563026428
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "seek": 25768,
+      "start": 258.68,
+      "end": 262.62,
+      "text": " Lawyer, Bignon, and Ruiz in Northern Mexico in Texas.",
+      "tokens": [
+        50414,
+        7744,
+        7224,
+        11,
+        363,
+        41846,
+        11,
+        293,
+        15702,
+        590,
+        294,
+        14335,
+        8612,
+        294,
+        7885,
+        13,
+        50664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13727659649319118,
+      "compression_ratio": 1.4174757281553398,
+      "no_speech_prob": 0.04265998303890228,
+      "words": [
+        {
+          "word": " Lawyer,",
+          "start": 258.68,
+          "end": 259.18,
+          "probability": 0.3229079432785511
+        },
+        {
+          "word": " Bignon,",
+          "start": 259.56,
+          "end": 259.9,
+          "probability": 0.30987492948770523
+        },
+        {
+          "word": " and",
+          "start": 260.54,
+          "end": 260.62,
+          "probability": 0.9874683618545532
+        },
+        {
+          "word": " Ruiz",
+          "start": 260.62,
+          "end": 261.06,
+          "probability": 0.8828818798065186
+        },
+        {
+          "word": " in",
+          "start": 261.06,
+          "end": 261.34,
+          "probability": 0.9494038820266724
+        },
+        {
+          "word": " Northern",
+          "start": 261.34,
+          "end": 261.6,
+          "probability": 0.5994041562080383
+        },
+        {
+          "word": " Mexico",
+          "start": 261.6,
+          "end": 262.08,
+          "probability": 0.9963403940200806
+        },
+        {
+          "word": " in",
+          "start": 262.08,
+          "end": 262.28,
+          "probability": 0.6112266778945923
+        },
+        {
+          "word": " Texas.",
+          "start": 262.28,
+          "end": 262.62,
+          "probability": 0.9990929365158081
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "seek": 25768,
+      "start": 263.84,
+      "end": 266.76,
+      "text": " Hendry and Jackson in the Eastern United States.",
+      "tokens": [
+        50664,
+        28594,
+        627,
+        293,
+        10647,
+        294,
+        264,
+        12901,
+        2824,
+        3040,
+        13,
+        50864
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13727659649319118,
+      "compression_ratio": 1.4174757281553398,
+      "no_speech_prob": 0.04265998303890228,
+      "words": [
+        {
+          "word": " Hendry",
+          "start": 263.84,
+          "end": 264.2,
+          "probability": 0.6245452016592026
+        },
+        {
+          "word": " and",
+          "start": 264.2,
+          "end": 264.5,
+          "probability": 0.9067817330360413
+        },
+        {
+          "word": " Jackson",
+          "start": 264.5,
+          "end": 264.84,
+          "probability": 0.9605028033256531
+        },
+        {
+          "word": " in",
+          "start": 264.84,
+          "end": 265.38,
+          "probability": 0.906956672668457
+        },
+        {
+          "word": " the",
+          "start": 265.38,
+          "end": 265.5,
+          "probability": 0.9943112134933472
+        },
+        {
+          "word": " Eastern",
+          "start": 265.5,
+          "end": 265.84,
+          "probability": 0.8464309573173523
+        },
+        {
+          "word": " United",
+          "start": 265.84,
+          "end": 266.2,
+          "probability": 0.981947660446167
+        },
+        {
+          "word": " States.",
+          "start": 266.2,
+          "end": 266.76,
+          "probability": 0.996752142906189
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "seek": 25768,
+      "start": 267.36,
+      "end": 275.0,
+      "text": " Their lives unfolded separately, shaped by different languages, borders, occupations, and historical forces.",
+      "tokens": [
+        50864,
+        6710,
+        2909,
+        17980,
+        292,
+        14759,
+        11,
+        13475,
+        538,
+        819,
+        8650,
+        11,
+        16287,
+        11,
+        8073,
+        763,
+        11,
+        293,
+        8584,
+        5874,
+        13,
+        51264
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13727659649319118,
+      "compression_ratio": 1.4174757281553398,
+      "no_speech_prob": 0.04265998303890228,
+      "words": [
+        {
+          "word": " Their",
+          "start": 267.36,
+          "end": 267.92,
+          "probability": 0.9731951951980591
+        },
+        {
+          "word": " lives",
+          "start": 267.92,
+          "end": 268.32,
+          "probability": 0.9984951019287109
+        },
+        {
+          "word": " unfolded",
+          "start": 268.32,
+          "end": 269.08,
+          "probability": 0.99396613240242
+        },
+        {
+          "word": " separately,",
+          "start": 269.08,
+          "end": 269.52,
+          "probability": 0.9918854236602783
+        },
+        {
+          "word": " shaped",
+          "start": 270.04,
+          "end": 270.48,
+          "probability": 0.9913040399551392
+        },
+        {
+          "word": " by",
+          "start": 270.48,
+          "end": 270.66,
+          "probability": 0.9986494183540344
+        },
+        {
+          "word": " different",
+          "start": 270.66,
+          "end": 270.98,
+          "probability": 0.9986029267311096
+        },
+        {
+          "word": " languages,",
+          "start": 270.98,
+          "end": 271.5,
+          "probability": 0.995590329170227
+        },
+        {
+          "word": " borders,",
+          "start": 272.02,
+          "end": 272.24,
+          "probability": 0.9864417314529419
+        },
+        {
+          "word": " occupations,",
+          "start": 272.76,
+          "end": 273.38,
+          "probability": 0.9965810477733612
+        },
+        {
+          "word": " and",
+          "start": 273.78,
+          "end": 274.02,
+          "probability": 0.9986379742622375
+        },
+        {
+          "word": " historical",
+          "start": 274.02,
+          "end": 274.48,
+          "probability": 0.9932382106781006
+        },
+        {
+          "word": " forces.",
+          "start": 274.48,
+          "end": 275.0,
+          "probability": 0.9985743761062622
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "seek": 25768,
+      "start": 275.78,
+      "end": 279.44,
+      "text": " But family history is a story of convergence.",
+      "tokens": [
+        51264,
+        583,
+        1605,
+        2503,
+        307,
+        257,
+        1657,
+        295,
+        32181,
+        13,
+        51514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13727659649319118,
+      "compression_ratio": 1.4174757281553398,
+      "no_speech_prob": 0.04265998303890228,
+      "words": [
+        {
+          "word": " But",
+          "start": 275.78,
+          "end": 276.26,
+          "probability": 0.9880258440971375
+        },
+        {
+          "word": " family",
+          "start": 276.26,
+          "end": 276.72,
+          "probability": 0.9219337701797485
+        },
+        {
+          "word": " history",
+          "start": 276.72,
+          "end": 277.22,
+          "probability": 0.995107889175415
+        },
+        {
+          "word": " is",
+          "start": 277.22,
+          "end": 278.06,
+          "probability": 0.9754539132118225
+        },
+        {
+          "word": " a",
+          "start": 278.06,
+          "end": 278.2,
+          "probability": 0.9188309907913208
+        },
+        {
+          "word": " story",
+          "start": 278.2,
+          "end": 278.58,
+          "probability": 0.9991229176521301
+        },
+        {
+          "word": " of",
+          "start": 278.58,
+          "end": 278.9,
+          "probability": 0.9995007514953613
+        },
+        {
+          "word": " convergence.",
+          "start": 278.9,
+          "end": 279.44,
+          "probability": 0.9799547791481018
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "seek": 25768,
+      "start": 280.98,
+      "end": 282.76,
+      "text": " Separate lines gradually approach.",
+      "tokens": [
+        51514,
+        43480,
+        473,
+        3876,
+        13145,
+        3109,
+        13,
+        51664
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.13727659649319118,
+      "compression_ratio": 1.4174757281553398,
+      "no_speech_prob": 0.04265998303890228,
+      "words": [
+        {
+          "word": " Separate",
+          "start": 280.98,
+          "end": 281.34,
+          "probability": 0.9684400856494904
+        },
+        {
+          "word": " lines",
+          "start": 281.34,
+          "end": 281.62,
+          "probability": 0.9899563789367676
+        },
+        {
+          "word": " gradually",
+          "start": 281.62,
+          "end": 282.14,
+          "probability": 0.8729856610298157
+        },
+        {
+          "word": " approach.",
+          "start": 282.14,
+          "end": 282.76,
+          "probability": 0.9978944659233093
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "seek": 28276,
+      "start": 283.76,
+      "end": 284.9,
+      "text": " Journeys intersect.",
+      "tokens": [
+        50414,
+        13483,
+        14859,
+        27815,
+        13,
+        50514
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06250826070006464,
+      "compression_ratio": 1.4285714285714286,
+      "no_speech_prob": 0.09538141638040543,
+      "words": [
+        {
+          "word": " Journeys",
+          "start": 283.76,
+          "end": 284.24,
+          "probability": 0.5121201016008854
+        },
+        {
+          "word": " intersect.",
+          "start": 284.24,
+          "end": 284.9,
+          "probability": 0.9315878748893738
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "seek": 28276,
+      "start": 286.08,
+      "end": 290.3,
+      "text": " Children inherit the consequences of decisions made long before they were born.",
+      "tokens": [
+        50514,
+        13354,
+        21389,
+        264,
+        10098,
+        295,
+        5327,
+        1027,
+        938,
+        949,
+        436,
+        645,
+        4232,
+        13,
+        50764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06250826070006464,
+      "compression_ratio": 1.4285714285714286,
+      "no_speech_prob": 0.09538141638040543,
+      "words": [
+        {
+          "word": " Children",
+          "start": 286.08,
+          "end": 286.32,
+          "probability": 0.9798731803894043
+        },
+        {
+          "word": " inherit",
+          "start": 286.32,
+          "end": 286.82,
+          "probability": 0.9933760762214661
+        },
+        {
+          "word": " the",
+          "start": 286.82,
+          "end": 287.04,
+          "probability": 0.9982543587684631
+        },
+        {
+          "word": " consequences",
+          "start": 287.04,
+          "end": 287.56,
+          "probability": 0.9968252182006836
+        },
+        {
+          "word": " of",
+          "start": 287.56,
+          "end": 287.96,
+          "probability": 0.9985918402671814
+        },
+        {
+          "word": " decisions",
+          "start": 287.96,
+          "end": 288.34,
+          "probability": 0.9847707152366638
+        },
+        {
+          "word": " made",
+          "start": 288.34,
+          "end": 288.76,
+          "probability": 0.9964480400085449
+        },
+        {
+          "word": " long",
+          "start": 288.76,
+          "end": 289.14,
+          "probability": 0.991851270198822
+        },
+        {
+          "word": " before",
+          "start": 289.14,
+          "end": 289.54,
+          "probability": 0.9975951313972473
+        },
+        {
+          "word": " they",
+          "start": 289.54,
+          "end": 289.82,
+          "probability": 0.9968293309211731
+        },
+        {
+          "word": " were",
+          "start": 289.82,
+          "end": 289.94,
+          "probability": 0.9981568455696106
+        },
+        {
+          "word": " born.",
+          "start": 289.94,
+          "end": 290.3,
+          "probability": 0.9971412420272827
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "seek": 28276,
+      "start": 291.16,
+      "end": 296.26,
+      "text": " By the late 20th century, these once-distant branches meet in California.",
+      "tokens": [
+        50764,
+        3146,
+        264,
+        3469,
+        945,
+        392,
+        4901,
+        11,
+        613,
+        1564,
+        12,
+        67,
+        10329,
+        14770,
+        1677,
+        294,
+        5384,
+        13,
+        51064
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06250826070006464,
+      "compression_ratio": 1.4285714285714286,
+      "no_speech_prob": 0.09538141638040543,
+      "words": [
+        {
+          "word": " By",
+          "start": 291.16,
+          "end": 291.5,
+          "probability": 0.9939975738525391
+        },
+        {
+          "word": " the",
+          "start": 291.5,
+          "end": 291.66,
+          "probability": 0.9960888624191284
+        },
+        {
+          "word": " late",
+          "start": 291.66,
+          "end": 291.86,
+          "probability": 0.9969106316566467
+        },
+        {
+          "word": " 20th",
+          "start": 291.86,
+          "end": 292.48,
+          "probability": 0.9536585807800293
+        },
+        {
+          "word": " century,",
+          "start": 292.48,
+          "end": 292.92,
+          "probability": 0.9509307742118835
+        },
+        {
+          "word": " these",
+          "start": 293.58,
+          "end": 293.84,
+          "probability": 0.9946759939193726
+        },
+        {
+          "word": " once",
+          "start": 293.84,
+          "end": 294.2,
+          "probability": 0.9416993856430054
+        },
+        {
+          "word": "-distant",
+          "start": 294.2,
+          "end": 294.66,
+          "probability": 0.8528489073117574
+        },
+        {
+          "word": " branches",
+          "start": 294.66,
+          "end": 294.92,
+          "probability": 0.9906976819038391
+        },
+        {
+          "word": " meet",
+          "start": 294.92,
+          "end": 295.38,
+          "probability": 0.9923606514930725
+        },
+        {
+          "word": " in",
+          "start": 295.38,
+          "end": 295.66,
+          "probability": 0.9987139701843262
+        },
+        {
+          "word": " California.",
+          "start": 295.66,
+          "end": 296.26,
+          "probability": 0.9968921542167664
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "seek": 28276,
+      "start": 297.2,
+      "end": 302.42,
+      "text": " The archive reaches Craig Ruiz, born in Santa Clara in 1975.",
+      "tokens": [
+        51064,
+        440,
+        23507,
+        14235,
+        19732,
+        15702,
+        590,
+        11,
+        4232,
+        294,
+        9933,
+        32048,
+        294,
+        32454,
+        13,
+        51364
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06250826070006464,
+      "compression_ratio": 1.4285714285714286,
+      "no_speech_prob": 0.09538141638040543,
+      "words": [
+        {
+          "word": " The",
+          "start": 297.2,
+          "end": 297.42,
+          "probability": 0.9954802989959717
+        },
+        {
+          "word": " archive",
+          "start": 297.42,
+          "end": 297.84,
+          "probability": 0.9425380825996399
+        },
+        {
+          "word": " reaches",
+          "start": 297.84,
+          "end": 298.28,
+          "probability": 0.9895859360694885
+        },
+        {
+          "word": " Craig",
+          "start": 298.28,
+          "end": 298.66,
+          "probability": 0.948624312877655
+        },
+        {
+          "word": " Ruiz,",
+          "start": 298.66,
+          "end": 299.12,
+          "probability": 0.8638818264007568
+        },
+        {
+          "word": " born",
+          "start": 299.74,
+          "end": 299.96,
+          "probability": 0.997123658657074
+        },
+        {
+          "word": " in",
+          "start": 299.96,
+          "end": 300.12,
+          "probability": 0.9993261098861694
+        },
+        {
+          "word": " Santa",
+          "start": 300.12,
+          "end": 300.34,
+          "probability": 0.9924255609512329
+        },
+        {
+          "word": " Clara",
+          "start": 300.34,
+          "end": 300.74,
+          "probability": 0.9960410594940186
+        },
+        {
+          "word": " in",
+          "start": 300.74,
+          "end": 301.4,
+          "probability": 0.7261807322502136
+        },
+        {
+          "word": " 1975.",
+          "start": 301.4,
+          "end": 302.42,
+          "probability": 0.9933894872665405
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "seek": 28276,
+      "start": 303.44,
+      "end": 306.38,
+      "text": " And it continues into the next generation in San Diego.",
+      "tokens": [
+        51364,
+        400,
+        309,
+        6515,
+        666,
+        264,
+        958,
+        5125,
+        294,
+        5271,
+        16377,
+        13,
+        51564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.06250826070006464,
+      "compression_ratio": 1.4285714285714286,
+      "no_speech_prob": 0.09538141638040543,
+      "words": [
+        {
+          "word": " And",
+          "start": 303.44,
+          "end": 303.58,
+          "probability": 0.9566615223884583
+        },
+        {
+          "word": " it",
+          "start": 303.58,
+          "end": 303.68,
+          "probability": 0.9950417876243591
+        },
+        {
+          "word": " continues",
+          "start": 303.68,
+          "end": 304.28,
+          "probability": 0.9965227842330933
+        },
+        {
+          "word": " into",
+          "start": 304.28,
+          "end": 304.64,
+          "probability": 0.9893596172332764
+        },
+        {
+          "word": " the",
+          "start": 304.64,
+          "end": 304.82,
+          "probability": 0.9944086670875549
+        },
+        {
+          "word": " next",
+          "start": 304.82,
+          "end": 305.06,
+          "probability": 0.9947181344032288
+        },
+        {
+          "word": " generation",
+          "start": 305.06,
+          "end": 305.58,
+          "probability": 0.9964340925216675
+        },
+        {
+          "word": " in",
+          "start": 305.58,
+          "end": 305.78,
+          "probability": 0.9965835213661194
+        },
+        {
+          "word": " San",
+          "start": 305.78,
+          "end": 306.0,
+          "probability": 0.972134530544281
+        },
+        {
+          "word": " Diego.",
+          "start": 306.0,
+          "end": 306.38,
+          "probability": 0.9986261129379272
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "seek": 30638,
+      "start": 307.38,
+      "end": 312.72,
+      "text": " More than five centuries separate the earliest dated record from the family alive today.",
+      "tokens": [
+        50414,
+        5048,
+        813,
+        1732,
+        13926,
+        4994,
+        264,
+        20573,
+        23804,
+        2136,
+        490,
+        264,
+        1605,
+        5465,
+        965,
+        13,
+        50714
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.052009413116856626,
+      "compression_ratio": 1.5585585585585586,
+      "no_speech_prob": 0.22350865602493286,
+      "words": [
+        {
+          "word": " More",
+          "start": 307.38,
+          "end": 307.86,
+          "probability": 0.3341873586177826
+        },
+        {
+          "word": " than",
+          "start": 307.86,
+          "end": 308.06,
+          "probability": 0.9963615536689758
+        },
+        {
+          "word": " five",
+          "start": 308.06,
+          "end": 308.46,
+          "probability": 0.7506746649742126
+        },
+        {
+          "word": " centuries",
+          "start": 308.46,
+          "end": 308.88,
+          "probability": 0.9817411303520203
+        },
+        {
+          "word": " separate",
+          "start": 308.88,
+          "end": 309.7,
+          "probability": 0.9118920564651489
+        },
+        {
+          "word": " the",
+          "start": 309.7,
+          "end": 309.94,
+          "probability": 0.9884936213493347
+        },
+        {
+          "word": " earliest",
+          "start": 309.94,
+          "end": 310.38,
+          "probability": 0.9955931305885315
+        },
+        {
+          "word": " dated",
+          "start": 310.38,
+          "end": 310.66,
+          "probability": 0.9769285321235657
+        },
+        {
+          "word": " record",
+          "start": 310.66,
+          "end": 311.06,
+          "probability": 0.9817662835121155
+        },
+        {
+          "word": " from",
+          "start": 311.06,
+          "end": 311.34,
+          "probability": 0.9908167123794556
+        },
+        {
+          "word": " the",
+          "start": 311.34,
+          "end": 311.5,
+          "probability": 0.9841597676277161
+        },
+        {
+          "word": " family",
+          "start": 311.5,
+          "end": 311.86,
+          "probability": 0.9812749028205872
+        },
+        {
+          "word": " alive",
+          "start": 311.86,
+          "end": 312.32,
+          "probability": 0.9780455827713013
+        },
+        {
+          "word": " today.",
+          "start": 312.32,
+          "end": 312.72,
+          "probability": 0.989323079586029
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "seek": 30638,
+      "start": 313.82,
+      "end": 320.46,
+      "text": " Across that distance, borders changed, nations formed, wars began and ended.",
+      "tokens": [
+        50714,
+        34527,
+        300,
+        4560,
+        11,
+        16287,
+        3105,
+        11,
+        11035,
+        8693,
+        11,
+        13718,
+        4283,
+        293,
+        4590,
+        13,
+        51064
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.052009413116856626,
+      "compression_ratio": 1.5585585585585586,
+      "no_speech_prob": 0.22350865602493286,
+      "words": [
+        {
+          "word": " Across",
+          "start": 313.82,
+          "end": 314.22,
+          "probability": 0.9904530048370361
+        },
+        {
+          "word": " that",
+          "start": 314.22,
+          "end": 314.52,
+          "probability": 0.9973791837692261
+        },
+        {
+          "word": " distance,",
+          "start": 314.52,
+          "end": 315.04,
+          "probability": 0.9983581900596619
+        },
+        {
+          "word": " borders",
+          "start": 315.56,
+          "end": 315.76,
+          "probability": 0.9881927371025085
+        },
+        {
+          "word": " changed,",
+          "start": 315.76,
+          "end": 316.42,
+          "probability": 0.9914467334747314
+        },
+        {
+          "word": " nations",
+          "start": 317.14,
+          "end": 317.36,
+          "probability": 0.992343008518219
+        },
+        {
+          "word": " formed,",
+          "start": 317.36,
+          "end": 318.0,
+          "probability": 0.9935160875320435
+        },
+        {
+          "word": " wars",
+          "start": 318.72,
+          "end": 319.14,
+          "probability": 0.991407573223114
+        },
+        {
+          "word": " began",
+          "start": 319.14,
+          "end": 319.56,
+          "probability": 0.9969779253005981
+        },
+        {
+          "word": " and",
+          "start": 319.56,
+          "end": 320.08,
+          "probability": 0.8501412272453308
+        },
+        {
+          "word": " ended.",
+          "start": 320.08,
+          "end": 320.46,
+          "probability": 0.9979941844940186
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "seek": 30638,
+      "start": 321.24,
+      "end": 326.38,
+      "text": " People crossed oceans, deserts, industrial cities, and international boundaries.",
+      "tokens": [
+        51064,
+        3432,
+        14622,
+        25004,
+        11,
+        11029,
+        82,
+        11,
+        9987,
+        6486,
+        11,
+        293,
+        5058,
+        13180,
+        13,
+        51414
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.052009413116856626,
+      "compression_ratio": 1.5585585585585586,
+      "no_speech_prob": 0.22350865602493286,
+      "words": [
+        {
+          "word": " People",
+          "start": 321.24,
+          "end": 321.56,
+          "probability": 0.991747260093689
+        },
+        {
+          "word": " crossed",
+          "start": 321.56,
+          "end": 321.96,
+          "probability": 0.9923194050788879
+        },
+        {
+          "word": " oceans,",
+          "start": 321.96,
+          "end": 322.32,
+          "probability": 0.9920382499694824
+        },
+        {
+          "word": " deserts,",
+          "start": 322.92,
+          "end": 323.38,
+          "probability": 0.9899907410144806
+        },
+        {
+          "word": " industrial",
+          "start": 323.62,
+          "end": 324.04,
+          "probability": 0.9949570298194885
+        },
+        {
+          "word": " cities,",
+          "start": 324.04,
+          "end": 324.54,
+          "probability": 0.9974217414855957
+        },
+        {
+          "word": " and",
+          "start": 325.04,
+          "end": 325.14,
+          "probability": 0.9969616532325745
+        },
+        {
+          "word": " international",
+          "start": 325.14,
+          "end": 325.78,
+          "probability": 0.9906548857688904
+        },
+        {
+          "word": " boundaries.",
+          "start": 325.78,
+          "end": 326.38,
+          "probability": 0.9911085367202759
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "seek": 30638,
+      "start": 327.52,
+      "end": 329.96,
+      "text": " Most never knew where the family would eventually go.",
+      "tokens": [
+        51414,
+        4534,
+        1128,
+        2586,
+        689,
+        264,
+        1605,
+        576,
+        4728,
+        352,
+        13,
+        51564
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.052009413116856626,
+      "compression_ratio": 1.5585585585585586,
+      "no_speech_prob": 0.22350865602493286,
+      "words": [
+        {
+          "word": " Most",
+          "start": 327.52,
+          "end": 327.78,
+          "probability": 0.9960659146308899
+        },
+        {
+          "word": " never",
+          "start": 327.78,
+          "end": 328.08,
+          "probability": 0.9942113757133484
+        },
+        {
+          "word": " knew",
+          "start": 328.08,
+          "end": 328.28,
+          "probability": 0.9983659386634827
+        },
+        {
+          "word": " where",
+          "start": 328.28,
+          "end": 328.48,
+          "probability": 0.9981132745742798
+        },
+        {
+          "word": " the",
+          "start": 328.48,
+          "end": 328.58,
+          "probability": 0.9945825934410095
+        },
+        {
+          "word": " family",
+          "start": 328.58,
+          "end": 328.92,
+          "probability": 0.9971535205841064
+        },
+        {
+          "word": " would",
+          "start": 328.92,
+          "end": 329.18,
+          "probability": 0.9976261258125305
+        },
+        {
+          "word": " eventually",
+          "start": 329.18,
+          "end": 329.56,
+          "probability": 0.9951658248901367
+        },
+        {
+          "word": " go.",
+          "start": 329.56,
+          "end": 329.96,
+          "probability": 0.9981119632720947
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "seek": 30638,
+      "start": 330.82,
+      "end": 333.14,
+      "text": " They simply lived the lives in front of them.",
+      "tokens": [
+        51564,
+        814,
+        2935,
+        5152,
+        264,
+        2909,
+        294,
+        1868,
+        295,
+        552,
+        13,
+        51714
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.052009413116856626,
+      "compression_ratio": 1.5585585585585586,
+      "no_speech_prob": 0.22350865602493286,
+      "words": [
+        {
+          "word": " They",
+          "start": 330.82,
+          "end": 331.06,
+          "probability": 0.9970058798789978
+        },
+        {
+          "word": " simply",
+          "start": 331.06,
+          "end": 331.38,
+          "probability": 0.9977099895477295
+        },
+        {
+          "word": " lived",
+          "start": 331.38,
+          "end": 331.82,
+          "probability": 0.9982619881629944
+        },
+        {
+          "word": " the",
+          "start": 331.82,
+          "end": 332.0,
+          "probability": 0.983583390712738
+        },
+        {
+          "word": " lives",
+          "start": 332.0,
+          "end": 332.32,
+          "probability": 0.9989027976989746
+        },
+        {
+          "word": " in",
+          "start": 332.32,
+          "end": 332.54,
+          "probability": 0.9980971217155457
+        },
+        {
+          "word": " front",
+          "start": 332.54,
+          "end": 332.72,
+          "probability": 0.9990513920783997
+        },
+        {
+          "word": " of",
+          "start": 332.72,
+          "end": 332.94,
+          "probability": 0.9987491369247437
+        },
+        {
+          "word": " them.",
+          "start": 332.94,
+          "end": 333.14,
+          "probability": 0.996847927570343
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "seek": 33314,
+      "start": 334.14,
+      "end": 340.64,
+      "text": " Yet every survival, marriage, migration, and ordinary decision helped create the next chapter.",
+      "tokens": [
+        50414,
+        10890,
+        633,
+        12559,
+        11,
+        7194,
+        11,
+        17011,
+        11,
+        293,
+        10547,
+        3537,
+        4254,
+        1884,
+        264,
+        958,
+        7187,
+        13,
+        50764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10457950685082412,
+      "compression_ratio": 1.4622222222222223,
+      "no_speech_prob": 0.09506731480360031,
+      "words": [
+        {
+          "word": " Yet",
+          "start": 333.91,
+          "end": 334.3,
+          "probability": 0.16953253746032715
+        },
+        {
+          "word": " every",
+          "start": 334.3,
+          "end": 334.64,
+          "probability": 0.9231655597686768
+        },
+        {
+          "word": " survival,",
+          "start": 334.64,
+          "end": 335.26,
+          "probability": 0.9823077917098999
+        },
+        {
+          "word": " marriage,",
+          "start": 336.0,
+          "end": 336.36,
+          "probability": 0.9972585439682007
+        },
+        {
+          "word": " migration,",
+          "start": 336.86,
+          "end": 337.34,
+          "probability": 0.9964306950569153
+        },
+        {
+          "word": " and",
+          "start": 337.74,
+          "end": 338.04,
+          "probability": 0.9740731716156006
+        },
+        {
+          "word": " ordinary",
+          "start": 338.04,
+          "end": 338.48,
+          "probability": 0.9881597757339478
+        },
+        {
+          "word": " decision",
+          "start": 338.48,
+          "end": 339.0,
+          "probability": 0.9773653149604797
+        },
+        {
+          "word": " helped",
+          "start": 339.0,
+          "end": 339.32,
+          "probability": 0.9361009001731873
+        },
+        {
+          "word": " create",
+          "start": 339.32,
+          "end": 339.72,
+          "probability": 0.9770836234092712
+        },
+        {
+          "word": " the",
+          "start": 339.72,
+          "end": 339.96,
+          "probability": 0.9903388619422913
+        },
+        {
+          "word": " next",
+          "start": 339.96,
+          "end": 340.2,
+          "probability": 0.9649900197982788
+        },
+        {
+          "word": " chapter.",
+          "start": 340.2,
+          "end": 340.64,
+          "probability": 0.9962872266769409
+        }
+      ]
+    },
+    {
+      "id": 68,
+      "seek": 33314,
+      "start": 341.5,
+      "end": 344.96,
+      "text": " This atlas cannot recover everything that has been lost.",
+      "tokens": [
+        50764,
+        639,
+        412,
+        7743,
+        2644,
+        8114,
+        1203,
+        300,
+        575,
+        668,
+        2731,
+        13,
+        51014
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10457950685082412,
+      "compression_ratio": 1.4622222222222223,
+      "no_speech_prob": 0.09506731480360031,
+      "words": [
+        {
+          "word": " This",
+          "start": 341.5,
+          "end": 342.28,
+          "probability": 0.9865531325340271
+        },
+        {
+          "word": " atlas",
+          "start": 342.28,
+          "end": 342.68,
+          "probability": 0.8653423488140106
+        },
+        {
+          "word": " cannot",
+          "start": 342.68,
+          "end": 342.96,
+          "probability": 0.9850988388061523
+        },
+        {
+          "word": " recover",
+          "start": 342.96,
+          "end": 343.44,
+          "probability": 0.9928573369979858
+        },
+        {
+          "word": " everything",
+          "start": 343.44,
+          "end": 343.96,
+          "probability": 0.9886960983276367
+        },
+        {
+          "word": " that",
+          "start": 343.96,
+          "end": 344.18,
+          "probability": 0.996151864528656
+        },
+        {
+          "word": " has",
+          "start": 344.18,
+          "end": 344.34,
+          "probability": 0.9948595762252808
+        },
+        {
+          "word": " been",
+          "start": 344.34,
+          "end": 344.54,
+          "probability": 0.9987779259681702
+        },
+        {
+          "word": " lost.",
+          "start": 344.54,
+          "end": 344.96,
+          "probability": 0.9983458518981934
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "seek": 33314,
+      "start": 346.26,
+      "end": 349.44,
+      "text": " It cannot tell us precisely what William Lounds believed in.",
+      "tokens": [
+        51014,
+        467,
+        2644,
+        980,
+        505,
+        13402,
+        437,
+        6740,
+        441,
+        4432,
+        7847,
+        294,
+        13,
+        51214
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10457950685082412,
+      "compression_ratio": 1.4622222222222223,
+      "no_speech_prob": 0.09506731480360031,
+      "words": [
+        {
+          "word": " It",
+          "start": 346.26,
+          "end": 346.48,
+          "probability": 0.9911819696426392
+        },
+        {
+          "word": " cannot",
+          "start": 346.48,
+          "end": 346.8,
+          "probability": 0.9904147386550903
+        },
+        {
+          "word": " tell",
+          "start": 346.8,
+          "end": 347.06,
+          "probability": 0.9976277947425842
+        },
+        {
+          "word": " us",
+          "start": 347.06,
+          "end": 347.22,
+          "probability": 0.9807602167129517
+        },
+        {
+          "word": " precisely",
+          "start": 347.22,
+          "end": 347.68,
+          "probability": 0.9972686767578125
+        },
+        {
+          "word": " what",
+          "start": 347.68,
+          "end": 348.06,
+          "probability": 0.9978522062301636
+        },
+        {
+          "word": " William",
+          "start": 348.06,
+          "end": 348.36,
+          "probability": 0.9824560880661011
+        },
+        {
+          "word": " Lounds",
+          "start": 348.36,
+          "end": 348.72,
+          "probability": 0.5965823233127594
+        },
+        {
+          "word": " believed",
+          "start": 348.72,
+          "end": 349.12,
+          "probability": 0.994744062423706
+        },
+        {
+          "word": " in.",
+          "start": 349.12,
+          "end": 349.44,
+          "probability": 0.9982815980911255
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "seek": 33314,
+      "start": 350.88000000000005,
+      "end": 357.38,
+      "text": " 1473, or what Manuel Loya Ruiz felt as his life crossed from Chihuahua into Texas.",
+      "tokens": [
+        51214,
+        3499,
+        33396,
+        11,
+        420,
+        437,
+        34362,
+        441,
+        24642,
+        15702,
+        590,
+        2762,
+        382,
+        702,
+        993,
+        14622,
+        490,
+        761,
+        44344,
+        545,
+        4398,
+        666,
+        7885,
+        13,
+        51614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10457950685082412,
+      "compression_ratio": 1.4622222222222223,
+      "no_speech_prob": 0.09506731480360031,
+      "words": [
+        {
+          "word": " 1473,",
+          "start": 350.88000000000005,
+          "end": 351.66,
+          "probability": 0.9331948161125183
+        },
+        {
+          "word": " or",
+          "start": 352.36,
+          "end": 352.78,
+          "probability": 0.9871169924736023
+        },
+        {
+          "word": " what",
+          "start": 352.78,
+          "end": 352.96,
+          "probability": 0.9728615880012512
+        },
+        {
+          "word": " Manuel",
+          "start": 352.96,
+          "end": 353.24,
+          "probability": 0.9946404099464417
+        },
+        {
+          "word": " Loya",
+          "start": 353.24,
+          "end": 353.74,
+          "probability": 0.44652120769023895
+        },
+        {
+          "word": " Ruiz",
+          "start": 353.74,
+          "end": 354.12,
+          "probability": 0.8843715786933899
+        },
+        {
+          "word": " felt",
+          "start": 354.12,
+          "end": 354.52,
+          "probability": 0.992088258266449
+        },
+        {
+          "word": " as",
+          "start": 354.52,
+          "end": 355.26,
+          "probability": 0.6066930890083313
+        },
+        {
+          "word": " his",
+          "start": 355.26,
+          "end": 355.46,
+          "probability": 0.9920008182525635
+        },
+        {
+          "word": " life",
+          "start": 355.46,
+          "end": 355.76,
+          "probability": 0.9715394973754883
+        },
+        {
+          "word": " crossed",
+          "start": 355.76,
+          "end": 356.04,
+          "probability": 0.7284129858016968
+        },
+        {
+          "word": " from",
+          "start": 356.04,
+          "end": 356.32,
+          "probability": 0.997192919254303
+        },
+        {
+          "word": " Chihuahua",
+          "start": 356.32,
+          "end": 356.8,
+          "probability": 0.9126717746257782
+        },
+        {
+          "word": " into",
+          "start": 356.8,
+          "end": 357.0,
+          "probability": 0.7671305537223816
+        },
+        {
+          "word": " Texas.",
+          "start": 357.0,
+          "end": 357.38,
+          "probability": 0.9967744946479797
+        }
+      ]
+    },
+    {
+      "id": 71,
+      "seek": 33314,
+      "start": 358.14,
+      "end": 360.0,
+      "text": " But it can preserve what remains.",
+      "tokens": [
+        51614,
+        583,
+        309,
+        393,
+        15665,
+        437,
+        7023,
+        13,
+        51764
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.10457950685082412,
+      "compression_ratio": 1.4622222222222223,
+      "no_speech_prob": 0.09506731480360031,
+      "words": [
+        {
+          "word": " But",
+          "start": 358.14,
+          "end": 358.44,
+          "probability": 0.9861673712730408
+        },
+        {
+          "word": " it",
+          "start": 358.44,
+          "end": 358.54,
+          "probability": 0.9860928654670715
+        },
+        {
+          "word": " can",
+          "start": 358.54,
+          "end": 358.82,
+          "probability": 0.9955611228942871
+        },
+        {
+          "word": " preserve",
+          "start": 358.82,
+          "end": 359.28,
+          "probability": 0.992087185382843
+        },
+        {
+          "word": " what",
+          "start": 359.28,
+          "end": 359.6,
+          "probability": 0.99874347448349
+        },
+        {
+          "word": " remains.",
+          "start": 359.6,
+          "end": 360.0,
+          "probability": 0.9981208443641663
+        }
+      ]
+    },
+    {
+      "id": 72,
+      "seek": 36000,
+      "start": 361.0,
+      "end": 369.7,
+      "text": " It can place each life back into geography, back into history, and back into relationship with the generations that followed.",
+      "tokens": [
+        50414,
+        467,
+        393,
+        1081,
+        1184,
+        993,
+        646,
+        666,
+        26695,
+        11,
+        646,
+        666,
+        2503,
+        11,
+        293,
+        646,
+        666,
+        2480,
+        365,
+        264,
+        10593,
+        300,
+        6263,
+        13,
+        50864
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.0925797448642012,
+      "compression_ratio": 1.6373626373626373,
+      "no_speech_prob": 0.1625884622335434,
+      "words": [
+        {
+          "word": " It",
+          "start": 360.98,
+          "end": 361.32,
+          "probability": 0.3440173864364624
+        },
+        {
+          "word": " can",
+          "start": 361.32,
+          "end": 361.48,
+          "probability": 0.9131219983100891
+        },
+        {
+          "word": " place",
+          "start": 361.48,
+          "end": 361.76,
+          "probability": 0.9870803952217102
+        },
+        {
+          "word": " each",
+          "start": 361.76,
+          "end": 362.18,
+          "probability": 0.9856327772140503
+        },
+        {
+          "word": " life",
+          "start": 362.18,
+          "end": 362.56,
+          "probability": 0.9924474954605103
+        },
+        {
+          "word": " back",
+          "start": 362.56,
+          "end": 363.04,
+          "probability": 0.9668259024620056
+        },
+        {
+          "word": " into",
+          "start": 363.04,
+          "end": 363.34,
+          "probability": 0.9838123917579651
+        },
+        {
+          "word": " geography,",
+          "start": 363.34,
+          "end": 363.94,
+          "probability": 0.9753552079200745
+        },
+        {
+          "word": " back",
+          "start": 364.9,
+          "end": 365.14,
+          "probability": 0.9849244952201843
+        },
+        {
+          "word": " into",
+          "start": 365.14,
+          "end": 365.36,
+          "probability": 0.9986913800239563
+        },
+        {
+          "word": " history,",
+          "start": 365.36,
+          "end": 365.86,
+          "probability": 0.9958471655845642
+        },
+        {
+          "word": " and",
+          "start": 366.64,
+          "end": 367.0,
+          "probability": 0.9777187705039978
+        },
+        {
+          "word": " back",
+          "start": 367.0,
+          "end": 367.26,
+          "probability": 0.9953504800796509
+        },
+        {
+          "word": " into",
+          "start": 367.26,
+          "end": 367.54,
+          "probability": 0.9979357719421387
+        },
+        {
+          "word": " relationship",
+          "start": 367.54,
+          "end": 368.12,
+          "probability": 0.933333158493042
+        },
+        {
+          "word": " with",
+          "start": 368.12,
+          "end": 368.42,
+          "probability": 0.996834933757782
+        },
+        {
+          "word": " the",
+          "start": 368.42,
+          "end": 368.52,
+          "probability": 0.9847586154937744
+        },
+        {
+          "word": " generations",
+          "start": 368.52,
+          "end": 368.94,
+          "probability": 0.9864951372146606
+        },
+        {
+          "word": " that",
+          "start": 368.94,
+          "end": 369.32,
+          "probability": 0.9967165589332581
+        },
+        {
+          "word": " followed.",
+          "start": 369.32,
+          "end": 369.7,
+          "probability": 0.9847855567932129
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "seek": 36000,
+      "start": 370.3,
+      "end": 372.72,
+      "text": " The story you have heard is only the beginning.",
+      "tokens": [
+        50864,
+        440,
+        1657,
+        291,
+        362,
+        2198,
+        307,
+        787,
+        264,
+        2863,
+        13,
+        51014
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.0925797448642012,
+      "compression_ratio": 1.6373626373626373,
+      "no_speech_prob": 0.1625884622335434,
+      "words": [
+        {
+          "word": " The",
+          "start": 370.3,
+          "end": 370.96,
+          "probability": 0.9865386486053467
+        },
+        {
+          "word": " story",
+          "start": 370.96,
+          "end": 371.18,
+          "probability": 0.9344384074211121
+        },
+        {
+          "word": " you",
+          "start": 371.18,
+          "end": 371.4,
+          "probability": 0.9851570129394531
+        },
+        {
+          "word": " have",
+          "start": 371.4,
+          "end": 371.54,
+          "probability": 0.976624071598053
+        },
+        {
+          "word": " heard",
+          "start": 371.54,
+          "end": 371.78,
+          "probability": 0.9969082474708557
+        },
+        {
+          "word": " is",
+          "start": 371.78,
+          "end": 371.94,
+          "probability": 0.9750899076461792
+        },
+        {
+          "word": " only",
+          "start": 371.94,
+          "end": 372.2,
+          "probability": 0.9943318367004395
+        },
+        {
+          "word": " the",
+          "start": 372.2,
+          "end": 372.36,
+          "probability": 0.9904416799545288
+        },
+        {
+          "word": " beginning.",
+          "start": 372.36,
+          "end": 372.72,
+          "probability": 0.9984423518180847
+        }
+      ]
+    },
+    {
+      "id": 74,
+      "seek": 36000,
+      "start": 373.72,
+      "end": 378.86,
+      "text": " The people are here. The places are here. The evidence is waiting.",
+      "tokens": [
+        51014,
+        440,
+        561,
+        366,
+        510,
+        13,
+        440,
+        3190,
+        366,
+        510,
+        13,
+        440,
+        4467,
+        307,
+        3806,
+        13,
+        51314
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.0925797448642012,
+      "compression_ratio": 1.6373626373626373,
+      "no_speech_prob": 0.1625884622335434,
+      "words": [
+        {
+          "word": " The",
+          "start": 373.72,
+          "end": 373.8,
+          "probability": 0.9865380525588989
+        },
+        {
+          "word": " people",
+          "start": 373.8,
+          "end": 374.1,
+          "probability": 0.9928217530250549
+        },
+        {
+          "word": " are",
+          "start": 374.1,
+          "end": 374.28,
+          "probability": 0.9969742298126221
+        },
+        {
+          "word": " here.",
+          "start": 374.28,
+          "end": 374.58,
+          "probability": 0.9957321286201477
+        },
+        {
+          "word": " The",
+          "start": 375.54,
+          "end": 375.7,
+          "probability": 0.9961532950401306
+        },
+        {
+          "word": " places",
+          "start": 375.7,
+          "end": 376.04,
+          "probability": 0.9965125918388367
+        },
+        {
+          "word": " are",
+          "start": 376.04,
+          "end": 376.28,
+          "probability": 0.998936116695404
+        },
+        {
+          "word": " here.",
+          "start": 376.28,
+          "end": 376.54,
+          "probability": 0.9988429546356201
+        },
+        {
+          "word": " The",
+          "start": 377.46,
+          "end": 377.8,
+          "probability": 0.9944317936897278
+        },
+        {
+          "word": " evidence",
+          "start": 377.8,
+          "end": 378.18,
+          "probability": 0.994441568851471
+        },
+        {
+          "word": " is",
+          "start": 378.18,
+          "end": 378.54,
+          "probability": 0.9987208247184753
+        },
+        {
+          "word": " waiting.",
+          "start": 378.54,
+          "end": 378.86,
+          "probability": 0.9845789670944214
+        }
+      ]
+    },
+    {
+      "id": 75,
+      "seek": 36000,
+      "start": 379.94,
+      "end": 384.4,
+      "text": " Now enter the atlas and explore the journey for yourself.",
+      "tokens": [
+        51314,
+        823,
+        3242,
+        264,
+        412,
+        7743,
+        293,
+        6839,
+        264,
+        4671,
+        337,
+        1803,
+        13,
+        51614
+      ],
+      "temperature": 0.0,
+      "avg_logprob": -0.0925797448642012,
+      "compression_ratio": 1.6373626373626373,
+      "no_speech_prob": 0.1625884622335434,
+      "words": [
+        {
+          "word": " Now",
+          "start": 379.94,
+          "end": 380.38,
+          "probability": 0.9890005588531494
+        },
+        {
+          "word": " enter",
+          "start": 380.38,
+          "end": 381.16,
+          "probability": 0.5116868019104004
+        },
+        {
+          "word": " the",
+          "start": 381.16,
+          "end": 381.42,
+          "probability": 0.9967316389083862
+        },
+        {
+          "word": " atlas",
+          "start": 381.42,
+          "end": 381.88,
+          "probability": 0.8481767177581787
+        },
+        {
+          "word": " and",
+          "start": 381.88,
+          "end": 382.86,
+          "probability": 0.7958869338035583
+        },
+        {
+          "word": " explore",
+          "start": 382.86,
+          "end": 383.32,
+          "probability": 0.997779905796051
+        },
+        {
+          "word": " the",
+          "start": 383.32,
+          "end": 383.52,
+          "probability": 0.9976892471313477
+        },
+        {
+          "word": " journey",
+          "start": 383.52,
+          "end": 383.82,
+          "probability": 0.9944297671318054
+        },
+        {
+          "word": " for",
+          "start": 383.82,
+          "end": 384.02,
+          "probability": 0.998095691204071
+        },
+        {
+          "word": " yourself.",
+          "start": 384.02,
+          "end": 384.4,
+          "probability": 0.9946849346160889
+        }
+      ]
+    }
+  ],
+  "language": "en"
+}

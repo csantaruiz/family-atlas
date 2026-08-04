@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { isNarrowStage, isShortStage } from '../utils/stageBreakpoints'
 
 export function useStageDimensions() {
   const ref = useRef<HTMLDivElement>(null)
@@ -15,5 +16,10 @@ export function useStageDimensions() {
     return () => ro.disconnect()
   }, [])
 
-  return { ref, ...size }
+  return {
+    ref,
+    ...size,
+    isNarrow: isNarrowStage(size.width),
+    isShort: isShortStage(size.height),
+  }
 }

@@ -1,9 +1,13 @@
-import { PLOT_EDGE } from './timelineMath'
 import type { CalloutLayoutProfile } from './chapterPresentation'
 import type { SemanticZoomMode } from './semanticZoom'
+import {
+  DESKTOP_AXIS_RATIO,
+  plotEdgeForWidth,
+  timelineAxisRatioForStage,
+} from './stageBreakpoints'
 
-/** Shared ratio for the primary timeline axis within the stage. */
-export const TIMELINE_AXIS_RATIO = 0.54
+/** Shared ratio for the primary timeline axis within the stage (desktop default). */
+export const TIMELINE_AXIS_RATIO = DESKTOP_AXIS_RATIO
 
 /** Raise chapter plaque slightly above layout-derived anchor. */
 export const CHAPTER_PLAQUE_TOP_OFFSET_PX = 20
@@ -160,10 +164,11 @@ function scaledValue(min: number, target: number, viewportHeight: number): numbe
   return min + (target - min) * scale
 }
 
-/** Visible plot canvas inside the stage (excludes PLOT_EDGE padding). */
+/** Visible plot canvas inside the stage (excludes plot-edge padding). */
 export function visibleTimelineViewport(stageWidth: number): VisibleTimelineViewport {
-  const left = PLOT_EDGE
-  const right = stageWidth - PLOT_EDGE
+  const edge = plotEdgeForWidth(stageWidth)
+  const left = edge
+  const right = stageWidth - edge
   const width = Math.max(1, right - left)
   return {
     left,
@@ -196,8 +201,8 @@ export type MeasuredPlaqueAnchor = {
   width: number
 }
 
-export function timelineAxisY(viewportHeight: number): number {
-  return snapPx(viewportHeight * TIMELINE_AXIS_RATIO)
+export function timelineAxisY(viewportHeight: number, viewportWidth = 1200): number {
+  return snapPx(viewportHeight * timelineAxisRatioForStage(viewportWidth, viewportHeight))
 }
 
 export function resolveChapterVerticalLayout(
@@ -208,7 +213,7 @@ export function resolveChapterVerticalLayout(
 ): ChapterVerticalLayout {
   const spec = ZOOM_VERTICAL[zoomMode]
   const visibleTimeline = visibleTimelineViewport(viewportWidth)
-  const axisY = timelineAxisY(viewportHeight)
+  const axisY = timelineAxisY(viewportHeight, viewportWidth)
 
   const bracketOffset = snapPx(
     Math.max(
@@ -380,3 +385,39 @@ export function isCalloutCenterDebugEnabled(): boolean {
 
 /** Legacy export — medium-zoom default before layout resolver. */
 export const CHAPTER_CALLOUT_TOP_LEGACY = 76
+
+/** Matches `--story-sidenote-width` and `--story-plaque-gap` in index.css. */
+const STORY_SIDENOTE_WIDTH_PX = 340
+const STORY_PLAQUE_GAP_PX = 60
+
+function calloutPlaqueHalfPx(viewportWidth: number): number {
+  return Math.min(260, Math.max(160, viewportWidth * 0.29))
+}
+
+export type EditorialObstacle = {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
+
+/** Reserved screen bands for Featured Story (left) and Atlas Thinking (right). */
+export function estimateEditorialSidenoteObstacles(viewportWidth: number): EditorialObstacle[] {
+  if (viewportWidth <= 760) return []
+
+  const alignTop = storyLayerAlignTop(viewportWidth)
+  const plaqueHalf = calloutPlaqueHalfPx(viewportWidth)
+  const sidenoteWidth = Math.min(STORY_SIDENOTE_WIDTH_PX, viewportWidth - 24)
+  const panelBottom = alignTop + 210
+
+  const featuredRight = viewportWidth / 2 - plaqueHalf - STORY_PLAQUE_GAP_PX
+  const featuredLeft = Math.max(12, featuredRight - sidenoteWidth)
+
+  const thinkingLeft = viewportWidth / 2 + plaqueHalf + STORY_PLAQUE_GAP_PX
+  const thinkingRight = Math.min(viewportWidth - 12, thinkingLeft + sidenoteWidth)
+
+  return [
+    { left: featuredLeft, right: featuredRight, top: alignTop, bottom: panelBottom },
+    { left: thinkingLeft, right: thinkingRight, top: alignTop, bottom: panelBottom },
+  ]
+}

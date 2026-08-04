@@ -1,5 +1,6 @@
 import type { FamilyEvent } from '../types'
 import { canonicalEventId } from './canonicalEvent'
+import { isNearGeneration } from './familyPriority'
 import type { LabelAlignment } from './labelMeasure'
 import type { SemanticZoomMode } from './semanticZoom'
 
@@ -23,13 +24,34 @@ const ZONE_CENTER_MAX = 0.66
 const ZONES: TemporalZone[] = ['left', 'center', 'right']
 
 let state: StabilityState = { key: '', ids: [], placements: new Map() }
+let interactionFrozenKey: string | null = null
 
 export function resetLandmarkStability(): void {
   state = { key: '', ids: [], placements: new Map() }
+  interactionFrozenKey = null
+}
+
+function spanStabilityBucket(span: number): number {
+  if (span <= 14) return Math.round(span * 10) / 10
+  if (span <= 40) return Math.round(span / 4) * 4
+  if (span <= 120) return Math.round(span / 8) * 8
+  return Math.round(span / 15) * 15
 }
 
 export function landmarkStabilityKey(mode: SemanticZoomMode, span: number): string {
-  return `${mode}:${span.toFixed(3)}`
+  return `${mode}:${spanStabilityBucket(span)}`
+}
+
+export function freezeLandmarkStability(mode: SemanticZoomMode, span: number): void {
+  interactionFrozenKey = landmarkStabilityKey(mode, span)
+}
+
+export function unfreezeLandmarkStability(): void {
+  interactionFrozenKey = null
+}
+
+function resolveStabilityKey(mode: SemanticZoomMode, span: number): string {
+  return interactionFrozenKey ?? landmarkStabilityKey(mode, span)
 }
 
 function ensureStabilityKey(key: string): void {
@@ -101,7 +123,8 @@ function balanceLandmarkSelection(
   const merged: FamilyEvent[] = []
   const mergedIds = new Set<string>()
 
-  const addEvent = (event: FamilyEvent | undefined): boolean => {
+  /** Sticky markers already on-screen get first claim on slots (within the limit). */
+  const addSticky = (event: FamilyEvent | undefined): boolean => {
     if (!event || merged.length >= limit) return false
     const id = canonicalEventId(event)
     if (mergedIds.has(id)) return false
@@ -110,9 +133,18 @@ function balanceLandmarkSelection(
     return true
   }
 
-  // Phase 1 — keep every marker from the last frame that is still in view.
+  const addFresh = (event: FamilyEvent | undefined): boolean => {
+    if (!event || merged.length >= limit) return false
+    const id = canonicalEventId(event)
+    if (mergedIds.has(id)) return false
+    merged.push(event)
+    mergedIds.add(id)
+    return true
+  }
+
+  // Phase 1 — keep markers from the last frame that are still in view (capped).
   for (const id of previousIds) {
-    addEvent(visibleById.get(id))
+    addSticky(visibleById.get(id))
   }
 
   if (merged.length >= limit) {
@@ -130,14 +162,69 @@ function balanceLandmarkSelection(
     const need = Math.max(0, target - have)
     if (need <= 0) continue
 
-    const zoneFresh = fresh.filter(
-      (event) =>
-        zoneForYear(event.year, start, end) === zone && !mergedIds.has(canonicalEventId(event)),
-    )
+    const zoneFresh = fresh
+      .filter(
+        (event) =>
+          zoneForYear(event.year, start, end) === zone && !mergedIds.has(canonicalEventId(event)),
+      )
+      .sort((a, b) => {
+        const ga = a.person.generation ?? 99
+        const gb = b.person.generation ?? 99
+        if (ga !== gb) return ga - gb
+        const nearA = isNearGeneration(a.person) ? 0 : 1
+        const nearB = isNearGeneration(b.person) ? 0 : 1
+        if (nearA !== nearB) return nearA - nearB
+        return a.year - b.year
+      })
 
     for (let i = 0; i < need && merged.length < limit; i++) {
-      addEvent(zoneFresh[i])
+      addFresh(zoneFresh[i])
     }
+  }
+
+  // Phase 2b — if a nearer-generation event was crowded out, swap in for a farther one.
+  const missingNear = fresh
+    .filter(
+      (event) =>
+        isNearGeneration(event.person, 1) && !mergedIds.has(canonicalEventId(event)),
+    )
+    .sort((a, b) => (a.person.generation ?? 99) - (b.person.generation ?? 99))
+
+  for (const candidate of missingNear) {
+    if (merged.length < limit) {
+      addFresh(candidate)
+      continue
+    }
+    // Replace the farthest-generation merged event in the same temporal zone when possible.
+    const zone = zoneForYear(candidate.year, start, end)
+    let victimIndex = -1
+    let victimGen = -1
+    for (let i = 0; i < merged.length; i++) {
+      const event = merged[i]
+      if (isNearGeneration(event.person, 1)) continue
+      const g = event.person.generation ?? 99
+      if (zoneForYear(event.year, start, end) === zone && g > victimGen) {
+        victimGen = g
+        victimIndex = i
+      }
+    }
+    if (victimIndex < 0) {
+      for (let i = 0; i < merged.length; i++) {
+        const event = merged[i]
+        const g = event.person.generation ?? 99
+        if (isNearGeneration(event.person, 1)) continue
+        if (g > victimGen) {
+          victimGen = g
+          victimIndex = i
+        }
+      }
+    }
+    if (victimIndex < 0) continue
+    const victim = merged[victimIndex]
+    if ((victim.person.generation ?? 99) <= (candidate.person.generation ?? 99)) continue
+    mergedIds.delete(canonicalEventId(victim))
+    merged[victimIndex] = candidate
+    mergedIds.add(canonicalEventId(candidate))
   }
 
   // Phase 3 — fill open slots, prioritising underrepresented zones.
@@ -156,7 +243,7 @@ function balanceLandmarkSelection(
     }
     next ??= fresh.find((event) => !mergedIds.has(canonicalEventId(event)))
     if (!next) break
-    addEvent(next)
+    addFresh(next)
   }
 
   if (merged.length === 0) {
@@ -189,6 +276,8 @@ export function rememberStableLandmarkPlacement(
  *
  * Persistence: markers from the previous frame stay while still in view.
  * Balance: any open slots are filled with zone-aware fresh picks.
+ * Near-generation (root/parents) from `fresh` are never displaced by
+ * more distant relatives when the viewport still has room.
  */
 export function stabilizeLandmarkSelection(
   visible: FamilyEvent[],
@@ -201,8 +290,23 @@ export function stabilizeLandmarkSelection(
 ): FamilyEvent[] {
   if (mode === 'detail' || limit <= 0) return fresh
 
-  const key = landmarkStabilityKey(mode, span)
-  const balanced = balanceLandmarkSelection(visible, fresh, state.key === key ? state.ids : [], start, end, limit)
+  const key = resolveStabilityKey(mode, span)
+
+  if (interactionFrozenKey) {
+    const visibleById = new Map(visible.map((event) => [canonicalEventId(event), event]))
+    const kept = (state.key === key ? state.ids : [])
+      .map((id) => visibleById.get(id))
+      .filter((event): event is FamilyEvent => event != null)
+
+    if (kept.length > 0) {
+      state.ids = kept.map((event) => canonicalEventId(event))
+      prunePlacements(new Set(state.ids))
+      return sortEvents(kept)
+    }
+  }
+
+  let balanced = balanceLandmarkSelection(visible, fresh, state.key === key ? state.ids : [], start, end, limit)
+  balanced = enforceNearGenerationSeats(balanced, fresh, start, end, limit)
 
   if (state.key !== key) ensureStabilityKey(key)
 
@@ -210,4 +314,52 @@ export function stabilizeLandmarkSelection(
   prunePlacements(new Set(state.ids))
 
   return balanced
+}
+
+/** Guarantee gen ≤ 1 landmarks from the fresh selection survive stabilization. */
+function enforceNearGenerationSeats(
+  merged: FamilyEvent[],
+  fresh: FamilyEvent[],
+  start: number,
+  end: number,
+  limit: number,
+): FamilyEvent[] {
+  const result = [...merged]
+  const ids = new Set(result.map((event) => canonicalEventId(event)))
+  const missing = fresh
+    .filter(
+      (event) =>
+        event.year >= start &&
+        event.year <= end &&
+        isNearGeneration(event.person, 1) &&
+        !ids.has(canonicalEventId(event)),
+    )
+    .sort((a, b) => (a.person.generation ?? 99) - (b.person.generation ?? 99))
+
+  for (const candidate of missing) {
+    if (result.length < limit) {
+      result.push(candidate)
+      ids.add(canonicalEventId(candidate))
+      continue
+    }
+
+    let victimIndex = -1
+    let victimGen = -1
+    for (let i = 0; i < result.length; i++) {
+      const event = result[i]
+      if (isNearGeneration(event.person, 1)) continue
+      const g = event.person.generation ?? 99
+      if (g > victimGen) {
+        victimGen = g
+        victimIndex = i
+      }
+    }
+    if (victimIndex < 0) continue
+    if (victimGen <= (candidate.person.generation ?? 99)) continue
+    ids.delete(canonicalEventId(result[victimIndex]))
+    result[victimIndex] = candidate
+    ids.add(canonicalEventId(candidate))
+  }
+
+  return sortEvents(result)
 }

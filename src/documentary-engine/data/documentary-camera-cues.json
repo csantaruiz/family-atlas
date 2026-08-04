@@ -1,0 +1,197 @@
+{
+  "source": "whisper-base transcript analysis",
+  "transcriptPath": "public/documentary/transcript/santa-ruiz-story.json",
+  "durationMs": 384400,
+  "cues": [
+    {
+      "id": "opening",
+      "timeMs": 0,
+      "sceneId": "opening",
+      "chapter": "Opening",
+      "matchedText": "Every family leaves a trail. Most of it disappears."
+    },
+    {
+      "id": "span-of-time",
+      "timeMs": 38980,
+      "sceneId": "opening-time",
+      "chapter": "Opening",
+      "matchedText": "This story reaches across more than 500 years."
+    },
+    {
+      "id": "cheshire-intro",
+      "timeMs": 43200,
+      "sceneId": "cheshire-records",
+      "chapter": "Origins in Cheshire",
+      "matchedText": "The earliest surviving thread begins in Cheshire, England.",
+      "placeId": "cheshire"
+    },
+    {
+      "id": "william-lowndes",
+      "timeMs": 46660,
+      "sceneId": "gawsworth-william",
+      "chapter": "Origins in Cheshire",
+      "matchedText": "The oldest dated life in this archive is William Lounds, recorded in 1473.",
+      "placeId": "gawsworth"
+    },
+    {
+      "id": "gawsworth-parishes",
+      "timeMs": 74760,
+      "sceneId": "cheshire-hold",
+      "chapter": "Origins in Cheshire",
+      "matchedText": "Gawzworth, Aspery, Sandbach, North Road.",
+      "placeId": "gawsworth"
+    },
+    {
+      "id": "cheshire-timeline",
+      "timeMs": 92120,
+      "sceneId": "cheshire-timeline",
+      "chapter": "Origins in Cheshire",
+      "matchedText": "Their world is local, but history beyond it is accelerating.",
+      "placeId": "cheshire"
+    },
+    {
+      "id": "spain-branch",
+      "timeMs": 110720,
+      "sceneId": "spain-branch",
+      "chapter": "Spain & Chihuahua",
+      "matchedText": "Elsewhere, another part of the story is taking shape.",
+      "placeId": "spain"
+    },
+    {
+      "id": "chihuahua",
+      "timeMs": 121300,
+      "sceneId": "chihuahua-arrival",
+      "chapter": "Spain & Chihuahua",
+      "matchedText": "By the early 18th century, the loyal line appears in Chihuahua.",
+      "placeId": "chihuahua"
+    },
+    {
+      "id": "ojinaga-frontier",
+      "timeMs": 131320,
+      "sceneId": "ojinaga-town",
+      "chapter": "Spain & Chihuahua",
+      "matchedText": "Later generations appear in Tienega, Santa Isabel, Cuiteco, and Oginaga.",
+      "placeId": "ojinaga"
+    },
+    {
+      "id": "ojinaga-rooted",
+      "timeMs": 149600,
+      "sceneId": "ojinaga-town",
+      "chapter": "Spain & Chihuahua",
+      "matchedText": "For generations, the family remained rooted there,",
+      "placeId": "ojinaga"
+    },
+    {
+      "id": "migration-begin",
+      "timeMs": 161900,
+      "sceneId": "migration-border",
+      "chapter": "Migration",
+      "matchedText": "Then, the geography begins to move.",
+      "placeId": "ojinaga"
+    },
+    {
+      "id": "ojinaga-manuel",
+      "timeMs": 165520,
+      "sceneId": "ojinaga-town",
+      "chapter": "Migration",
+      "matchedText": "Manuel Loya Ruiz was born in Oginaga, Chihuahua in 1873.",
+      "placeId": "ojinaga"
+    },
+    {
+      "id": "el-paso-crossing",
+      "timeMs": 171820,
+      "sceneId": "migration-border",
+      "chapter": "Migration",
+      "matchedText": "His life ends across the border in El Paso, Texas in 1932.",
+      "placeId": "el-paso"
+    },
+    {
+      "id": "mexico-to-us",
+      "timeMs": 177800,
+      "sceneId": "migration-el-paso",
+      "chapter": "Migration",
+      "matchedText": "In the records of a single life, the family story crosses from Mexico into the United States.",
+      "placeId": "el-paso"
+    },
+    {
+      "id": "texas-california",
+      "timeMs": 184600,
+      "sceneId": "migration-california",
+      "chapter": "Migration",
+      "matchedText": "The next generations become increasingly connected to Texas and eventually California.",
+      "placeId": "california"
+    },
+    {
+      "id": "california-monrovia",
+      "timeMs": 195600,
+      "sceneId": "migration-california",
+      "chapter": "Migration",
+      "matchedText": "would live into the 21st century and die in Manrovia, California.",
+      "placeId": "california"
+    },
+    {
+      "id": "england-stubbs-branch",
+      "timeMs": 209700,
+      "sceneId": "convergence-threads",
+      "chapter": "Convergence",
+      "matchedText": "At roughly the same time, other branches were following different routes.",
+      "placeId": "england"
+    },
+    {
+      "id": "multi-branch",
+      "timeMs": 256240,
+      "sceneId": "convergence-threads",
+      "chapter": "Convergence",
+      "matchedText": "Lounds and Stubbs in England.",
+      "placeId": "england"
+    },
+    {
+      "id": "convergence-phrase",
+      "timeMs": 275780,
+      "sceneId": "convergence-threads",
+      "chapter": "Convergence",
+      "matchedText": "But family history is a story of convergence.",
+      "placeId": "california"
+    },
+    {
+      "id": "california-meet",
+      "timeMs": 291160,
+      "sceneId": "convergence-present",
+      "chapter": "Convergence",
+      "matchedText": "By the late 20th century, these once-distant branches meet in California.",
+      "placeId": "california"
+    },
+    {
+      "id": "santa-clara",
+      "timeMs": 297200,
+      "sceneId": "convergence-present",
+      "chapter": "Convergence",
+      "matchedText": "The archive reaches Craig Ruiz, born in Santa Clara in 1975.",
+      "placeId": "santa-clara"
+    },
+    {
+      "id": "five-centuries",
+      "timeMs": 307380,
+      "sceneId": "atlas-timeline",
+      "chapter": "Enter the Atlas",
+      "matchedText": "More than five centuries separate the earliest dated record from the family alive today.",
+      "placeId": "gawsworth"
+    },
+    {
+      "id": "atlas-intro",
+      "timeMs": 341500,
+      "sceneId": "atlas-timeline",
+      "chapter": "Enter the Atlas",
+      "matchedText": "This atlas cannot recover everything that has been lost.",
+      "placeId": "santa-clara"
+    },
+    {
+      "id": "enter-atlas",
+      "timeMs": 379940,
+      "sceneId": "atlas-closing",
+      "chapter": "Enter the Atlas",
+      "matchedText": "Now enter the atlas and explore the journey for yourself.",
+      "placeId": "santa-clara"
+    }
+  ]
+}

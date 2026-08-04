@@ -11,7 +11,7 @@ export function TimelineAxisPulse({ width, height }: TimelineAxisPulseProps) {
 
   if (width <= 0 || height <= 0) return null
 
-  const axisY = timelineAxisY(height)
+  const axisY = timelineAxisY(height, width)
   const rings: { key: string; x: number; delay: number }[] = []
 
   if (pulse.historyKey && pulse.pulseX != null) {

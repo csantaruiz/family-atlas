@@ -4,6 +4,8 @@ export type PersonImage = {
   caption?: string
   credit?: string
   isPlaceholder?: boolean
+  /** True when the image was uploaded in this browser and stored locally. */
+  isUserUpload?: boolean
 }
 
 export type Person = {

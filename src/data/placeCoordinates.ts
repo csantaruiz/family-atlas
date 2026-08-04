@@ -35,6 +35,7 @@ const PLACE_GEO_OVERRIDES: Record<string, PlaceGeo> = {
   'Cheshire, England': { lat: 53.2, lon: -2.4, region: 'England' },
   'Latheron, Caithness, , Scotland': { lat: 58.3, lon: -3.4, region: 'Scotland' },
   'Carretas, Chihuahua, Mexico': { lat: 28.0, lon: -105.6, region: 'Mexico' },
+  'Ojinaga, Chihuahua, Mexico': { lat: 29.55, lon: -104.45, region: 'Mexico' },
   'Chihuahua, Chihuahua, Mexico': { lat: 28.6, lon: -106.1, region: 'Mexico' },
   'Santa Clara, California': { lat: 37.4, lon: -122.0, region: 'United States', displayRegion: 'California' },
   'Los Angeles, Los Angeles, California, USA': { lat: 34.1, lon: -118.2, region: 'United States', displayRegion: 'California' },

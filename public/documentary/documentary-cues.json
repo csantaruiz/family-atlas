@@ -1,0 +1,11 @@
+[
+  { "time": 0, "scene": "opening" },
+  { "time": 18, "scene": "england" },
+  { "time": 44, "scene": "lowndes" },
+  { "time": 66, "scene": "cheshire_map" },
+  { "time": 94, "scene": "spain" },
+  { "time": 120, "scene": "chihuahua" },
+  { "time": 150, "scene": "migration" },
+  { "time": 210, "scene": "convergence" },
+  { "time": 250, "scene": "atlas" }
+]

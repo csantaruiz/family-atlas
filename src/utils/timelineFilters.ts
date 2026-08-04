@@ -1,5 +1,9 @@
 import type { FamilyEvent, Person } from '../types'
 import type { TimelineFilters } from '../types/timelineFilters'
+import {
+  personLineageSides,
+  type LineagePalette,
+} from './lineageColors'
 
 function isMilitaryServiceEvent(event: FamilyEvent): boolean {
   if (event.kind !== 'service') return false
@@ -47,7 +51,23 @@ export function familyEventFilterCategories(event: FamilyEvent): Set<keyof Timel
   return cats
 }
 
-export function familyEventPassesFilters(event: FamilyEvent, filters: TimelineFilters): boolean {
+export function personPassesBranchFilter(
+  personId: string,
+  filters: TimelineFilters,
+  palette: LineagePalette,
+  byId: Map<string, Person>,
+): boolean {
+  if (!filters.paternal && !filters.maternal) return false
+  if (filters.paternal && filters.maternal) return true
+
+  const sides = personLineageSides(personId, palette, byId)
+  if (sides.size === 0) return false
+  if (filters.paternal && sides.has('paternal')) return true
+  if (filters.maternal && sides.has('maternal')) return true
+  return false
+}
+
+function familyEventPassesKindFilter(event: FamilyEvent, filters: TimelineFilters): boolean {
   switch (event.kind) {
     case 'birth':
       return filters.births
@@ -65,12 +85,35 @@ export function familyEventPassesFilters(event: FamilyEvent, filters: TimelineFi
   }
 }
 
-export function applyFamilyEventFilters(events: FamilyEvent[], filters: TimelineFilters): FamilyEvent[] {
-  return events.filter((e) => familyEventPassesFilters(e, filters))
+export function familyEventPassesFilters(
+  event: FamilyEvent,
+  filters: TimelineFilters,
+  palette?: LineagePalette,
+  byId?: Map<string, Person>,
+): boolean {
+  if (!familyEventPassesKindFilter(event, filters)) return false
+  if (!palette || !byId) return true
+  return personPassesBranchFilter(event.person.id, filters, palette, byId)
 }
 
-export function personPassesBirthFilter(_person: Person, filters: TimelineFilters): boolean {
-  return filters.births
+export function applyFamilyEventFilters(
+  events: FamilyEvent[],
+  filters: TimelineFilters,
+  palette?: LineagePalette,
+  byId?: Map<string, Person>,
+): FamilyEvent[] {
+  return events.filter((e) => familyEventPassesFilters(e, filters, palette, byId))
+}
+
+export function personPassesBirthFilter(
+  person: Person,
+  filters: TimelineFilters,
+  palette?: LineagePalette,
+  byId?: Map<string, Person>,
+): boolean {
+  if (!filters.births) return false
+  if (!palette || !byId) return true
+  return personPassesBranchFilter(person.id, filters, palette, byId)
 }
 
 export function showHistoricalEvents(filters: TimelineFilters): boolean {

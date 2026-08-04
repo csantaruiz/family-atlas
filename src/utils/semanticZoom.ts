@@ -38,7 +38,7 @@ export const ZOOM_THRESHOLDS = {
 } as const
 
 /** Minimum family and history markers to aim for at every zoom level when data allows. */
-export const MIN_VIEWPORT_EVENTS = 4
+export const MIN_VIEWPORT_EVENTS = 3
 
 export type SemanticZoomMode = 'far' | 'medium' | 'near' | 'detail'
 

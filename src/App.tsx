@@ -12,8 +12,15 @@ import { TreeView } from './components/views/TreeView'
 import { useAppNavigation } from './context/AppNavigationContext'
 import { usePreventBrowserZoom } from './hooks/usePreventBrowserZoom'
 import { useAtlasPageTransition } from './hooks/useAtlasPageTransition'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { DOCUMENTARY_ENTER_ATLAS_IN_MS } from './documentary-engine/data/playbackConfig'
+import {
+  DocumentaryEngineProvider,
+  DocumentaryEngineRoot,
+  useDocumentaryEngine,
+} from './documentary-engine'
 import type { AppView } from './types/navigation'
-import type { CSSProperties, ReactNode } from 'react'
+import { DocumentaryV3Player } from './documentary-v3'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -57,7 +64,7 @@ function AppViews() {
   )
 }
 
-function AppShell() {
+function AtlasAppShell() {
   const { activeView } = useAppNavigation()
   usePreventBrowserZoom()
 
@@ -72,12 +79,60 @@ function AppShell() {
   )
 }
 
+function AppGate() {
+  const { phase, transition } = useDocumentaryEngine()
+  const [atlasVisible, setAtlasVisible] = useState(false)
+
+  // Never dual-mount Atlas during enter-atlas — mounting it blocks the fade for seconds.
+  const showDocumentary = phase !== 'complete'
+  const showAtlas = phase === 'complete'
+  const showBlackout = transition === 'enter-atlas' || (showAtlas && !atlasVisible)
+
+  useEffect(() => {
+    if (!showAtlas) {
+      setAtlasVisible(false)
+      return
+    }
+    // One frame at opacity 0, then fade in — keeps the CSS transition reliable.
+    const frame = requestAnimationFrame(() => setAtlasVisible(true))
+    return () => cancelAnimationFrame(frame)
+  }, [showAtlas])
+
+  const atlasEntryStyle: CSSProperties = {
+    ['--atlas-entry-fade-ms' as string]: `${DOCUMENTARY_ENTER_ATLAS_IN_MS}ms`,
+    ['--atlas-entry-fade-delay-ms' as string]: '0ms',
+  }
+
+  return (
+    <>
+      {showAtlas ? (
+        <div
+          className={['atlas-entry', atlasVisible ? 'atlas-entry--visible' : '']
+            .filter(Boolean)
+            .join(' ')}
+          style={atlasEntryStyle}
+        >
+          <AtlasAppShell />
+        </div>
+      ) : null}
+      {showDocumentary ? <DocumentaryEngineRoot /> : null}
+      {showBlackout ? <div className="atlas-blackout" aria-hidden="true" /> : null}
+    </>
+  )
+}
+
 function App() {
+  if (window.location.pathname === '/documentary-v3') {
+    return <DocumentaryV3Player />
+  }
+
   return (
     <TimelineProvider>
       <AppNavigationProvider>
         <JourneyIntroProvider>
-          <AppShell />
+          <DocumentaryEngineProvider>
+            <AppGate />
+          </DocumentaryEngineProvider>
         </JourneyIntroProvider>
       </AppNavigationProvider>
     </TimelineProvider>

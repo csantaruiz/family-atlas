@@ -146,6 +146,133 @@ export function cameraTransform(camera: MapCamera): string {
   return `translate(${tx}%, ${ty}%) scale(${scale})`
 }
 
+/**
+ * Slice-aware camera transform for containers using preserveAspectRatio="xMidYMid slice".
+ * Centers `camera.cx/cy` on the viewport; falls back to percentage transform when size is unknown.
+ */
+export function cameraTransformForContainer(
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+): string {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return cameraTransform(camera)
+  }
+
+  const scale = effectiveMapScale(camera)
+  const focal = viewBoxPointToContainerPercent(
+    camera.cx,
+    camera.cy,
+    containerWidth,
+    containerHeight,
+  )
+  const focalX = (focal.left / 100) * containerWidth
+  const focalY = (focal.top / 100) * containerHeight
+  const tx = -scale * (focalX - containerWidth / 2)
+  const ty = -scale * (focalY - containerHeight / 2)
+
+  return `translate(${tx}px, ${ty}px) scale(${scale})`
+}
+
+/** Visible SVG viewBox region — vector zoom without CSS scale rasterization. */
+export type ViewBoxCamera = {
+  minX: number
+  minY: number
+  width: number
+  height: number
+}
+
+/** Derive a slice-aware viewBox that centers `camera.cx/cy` at the requested zoom. */
+export function viewBoxCameraForContainer(
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+  fullWidth = MAP_VIEW_BOX.width,
+  fullHeight = MAP_VIEW_BOX.height,
+): ViewBoxCamera {
+  const zoom = effectiveMapScale(camera)
+  const aspect = containerWidth / Math.max(containerHeight, 1)
+
+  let width: number
+  let height: number
+  if (aspect >= 1) {
+    width = fullWidth / zoom
+    height = width / aspect
+  } else {
+    height = fullHeight / zoom
+    width = height * aspect
+  }
+
+  return {
+    minX: camera.cx - width / 2,
+    minY: camera.cy - height / 2,
+    width,
+    height,
+  }
+}
+
+/** Project atlas coords to viewport % using a dynamic SVG viewBox (no CSS scale). */
+export function projectPointInViewBoxCamera(
+  x: number,
+  y: number,
+  viewBox: ViewBoxCamera,
+  containerWidth: number,
+  containerHeight: number,
+): { left: number; top: number } {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return { left: 50, top: 50 }
+  }
+
+  const scale = Math.max(containerWidth / viewBox.width, containerHeight / viewBox.height)
+  const renderedWidth = viewBox.width * scale
+  const renderedHeight = viewBox.height * scale
+  const offsetX = (containerWidth - renderedWidth) / 2
+  const offsetY = (containerHeight - renderedHeight) / 2
+  const px = (x - viewBox.minX) * scale + offsetX
+  const py = (y - viewBox.minY) * scale + offsetY
+
+  return {
+    left: (px / containerWidth) * 100,
+    top: (py / containerHeight) * 100,
+  }
+}
+
+/** Map viewBox coords to viewport % after slice + camera transform. */
+export function projectViewBoxPointThroughCamera(
+  x: number,
+  y: number,
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+): { left: number; top: number } {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return projectMapPoint(x, y, camera)
+  }
+
+  const scale = effectiveMapScale(camera)
+  const local = viewBoxPointToContainerPercent(x, y, containerWidth, containerHeight)
+  const localX = (local.left / 100) * containerWidth
+  const localY = (local.top / 100) * containerHeight
+  const focal = viewBoxPointToContainerPercent(
+    camera.cx,
+    camera.cy,
+    containerWidth,
+    containerHeight,
+  )
+  const focalX = (focal.left / 100) * containerWidth
+  const focalY = (focal.top / 100) * containerHeight
+  const tx = -scale * (focalX - containerWidth / 2)
+  const ty = -scale * (focalY - containerHeight / 2)
+
+  const screenX = containerWidth / 2 + scale * (localX - containerWidth / 2) + tx
+  const screenY = containerHeight / 2 + scale * (localY - containerHeight / 2) + ty
+
+  return {
+    left: (screenX / containerWidth) * 100,
+    top: (screenY / containerHeight) * 100,
+  }
+}
+
 export type MapLayerVisibility = {
   showMajorHalos: boolean
   showMajorMarkers: boolean

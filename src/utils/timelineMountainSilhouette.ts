@@ -1,4 +1,5 @@
-import { PLOT_EDGE, yearX } from './timelineMath'
+import { plotEdgeForWidth } from './stageBreakpoints'
+import { yearX } from './timelineMath'
 
 type MountainPathInput = {
   start: number
@@ -7,11 +8,14 @@ type MountainPathInput = {
   width: number
   axisY: number
   maxHeight: number
+  /** Multiplier on sample spacing; higher = fewer path points (cheaper). */
+  stepPxScale?: number
 }
 
 function xToYear(x: number, start: number, span: number, width: number): number {
-  const usable = Math.max(1, width - PLOT_EDGE * 2)
-  return start + ((x - PLOT_EDGE) / usable) * span
+  const edge = plotEdgeForWidth(width)
+  const usable = Math.max(1, width - edge * 2)
+  return start + ((x - edge) / usable) * span
 }
 
 function hash01(n: number): number {
@@ -59,6 +63,7 @@ export function buildMountainSilhouettePath({
   width,
   axisY,
   maxHeight,
+  stepPxScale = 1,
 }: MountainPathInput): string {
   if (width <= 0 || maxHeight <= 0) return ''
 
@@ -67,7 +72,7 @@ export function buildMountainSilhouettePath({
   const sampleEnd = end + padYears
   const left = yearX(sampleStart, start, span, width)
   const right = yearX(sampleEnd, start, span, width)
-  const stepPx = Math.max(4, Math.min(7, width / 220))
+  const stepPx = Math.max(4, Math.min(7, width / 220)) * Math.max(1, stepPxScale)
 
   const ridge: string[] = []
   for (let x = left; x <= right; x += stepPx) {

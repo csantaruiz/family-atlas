@@ -1,4 +1,6 @@
 export type TimelineFilterKey =
+  | 'paternal'
+  | 'maternal'
   | 'births'
   | 'deaths'
   | 'marriages'
@@ -13,6 +15,8 @@ export type TimelineFilterKey =
 export type TimelineFilters = Record<TimelineFilterKey, boolean>
 
 export const DEFAULT_TIMELINE_FILTERS: TimelineFilters = {
+  paternal: true,
+  maternal: true,
   births: true,
   deaths: true,
   marriages: true,
@@ -31,6 +35,8 @@ export type TimelineFilterGroup = {
 }
 
 export const TIMELINE_FILTER_LABELS: Record<TimelineFilterKey, string> = {
+  paternal: 'Paternal',
+  maternal: 'Maternal',
   births: 'Births',
   deaths: 'Deaths',
   marriages: 'Marriages',
@@ -44,6 +50,7 @@ export const TIMELINE_FILTER_LABELS: Record<TimelineFilterKey, string> = {
 }
 
 export const TIMELINE_FILTER_GROUPS: TimelineFilterGroup[] = [
+  { title: 'Main branches', keys: ['paternal', 'maternal'] },
   { title: 'Life events', keys: ['births', 'deaths', 'marriages'] },
   { title: 'Movement & place', keys: ['migrations', 'residences'] },
   { title: 'Records', keys: ['military', 'occupations', 'photos'] },

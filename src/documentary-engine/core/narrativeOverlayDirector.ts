@@ -2,7 +2,6 @@ import type { ApprovedPerson, NarrativeOverlaySpec, SceneChoreography } from '..
 import { getCanonicalPlace } from '../data/canonicalPlaceRegistry'
 import {
   consumeNarrativeSpec,
-  isNarrativeRevealed,
   isNarrativeSpecConsumed,
   markNarrativeRevealed,
   markNarrativeSpecPlayed,

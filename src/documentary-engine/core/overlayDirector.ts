@@ -2,7 +2,6 @@ import {
   NARRATIVE_FADE_IN_MS,
   NARRATIVE_FADE_OUT_MS,
   NARRATIVE_HOLD_MS,
-  NARRATIVE_OVERLAY_LIFECYCLE_MS,
 } from '../data/playbackConfig'
 
 const FADE = 0.1

@@ -79,9 +79,6 @@ describe('display reveal registry', () => {
   })
 
   it('does not repeat atlas timeline copy across later audio cues', () => {
-    const atlasScene = DOCUMENTARY_MANIFEST.find((scene) => scene.id === 'atlas-timeline')!
-    const choreography = atlasScene.choreography!
-
     const firstCue = resolveDocumentaryFrame(DOCUMENTARY_MANIFEST, 320_000, DURATION_MS)
     expect(firstCue?.narrativeOverlay?.title).toBe('Every generation — waiting in the timeline')
 

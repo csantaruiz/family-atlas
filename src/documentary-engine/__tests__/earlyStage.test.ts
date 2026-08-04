@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveDocumentaryFrame } from '../core/cameraDirector'
 import {
-  EARLY_PREVIEW_PLACE_IDS,
   isEarlyDocumentaryStage,
   resolveEarlyPreviewMarkers,
 } from '../core/earlyStageDirector'

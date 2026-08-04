@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildFamilyEvents } from '../../data/buildFamilyEvents'
 import { familyDatabase } from '../../data/familyDatabase'
 import { dedupeFamilyEvents } from '../../utils/canonicalEvent'
-import {
-  buildMigrationSegments,
-  buildPlaceIndex,
-} from '../../utils/placeIndex'
+import { buildMigrationSegments } from '../../utils/placeIndex'
 import {
   buildCanonicalMigrationCorridors,
   clearGedcomRouteCache,

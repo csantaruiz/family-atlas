@@ -420,8 +420,7 @@ function opacityForCorridor(
     base = emphasized ? (documented ? 0.46 : 0.4) : documented ? 0.4 : 0.34
   }
 
-  const moveCount = 'moveCount' in corridor ? corridor.moveCount : corridor.segments.length
-  const weight = Math.min(1.1, 0.94 + Math.log2(Math.max(1, moveCount)) * 0.05)
+  const weight = Math.min(1.1, 0.94 + Math.log2(Math.max(1, corridor.moveCount)) * 0.05)
   return base * weight
 }
 

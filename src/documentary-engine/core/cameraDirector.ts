@@ -50,11 +50,11 @@ import {
   canDriveLocalCamera,
   getCanonicalPlace,
   scaleAtZoom,
-  type GeographicScale,
 } from '../data/canonicalPlaceRegistry'
 import type {
   CameraDebugInfo,
   DocumentaryFrame,
+  GeographicScale,
   ResolvedMarker,
   ResolvedRoute,
   SceneChoreography,

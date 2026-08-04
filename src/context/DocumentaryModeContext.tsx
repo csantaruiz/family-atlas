@@ -21,7 +21,7 @@ import {
 import { sceneShowsAtlas, shouldShowNarration } from '../data/cinemaGrammar'
 import { useDocumentaryPlayback } from '../hooks/useDocumentaryPlayback'
 import type { DocumentaryPhase, DocumentaryScene, DocumentaryStats } from '../types/documentary'
-import { readDocumentarySeen, writeDocumentarySeen } from '../constants/documentarySession'
+import { writeDocumentarySeen } from '../constants/documentarySession'
 
 type DocumentaryModeContextValue = {
   phase: DocumentaryPhase
@@ -68,9 +68,8 @@ export function DocumentaryModeProvider({ children }: { children: ReactNode }) {
   const { completeIntro } = useJourneyIntro()
   const stats = useMemo(() => getDocumentaryStats(), [])
 
-  const [phase, setPhase] = useState<DocumentaryPhase>(() =>
-    readDocumentarySeen() ? 'complete' : 'welcome',
-  )
+  // Match DocumentaryEngine: always start at the welcome fork on load/reload.
+  const [phase, setPhase] = useState<DocumentaryPhase>('welcome')
   const [sceneIndex, setSceneIndex] = useState(0)
   const [sceneElapsedMs, setSceneElapsedMs] = useState(0)
   const [isPaused, setIsPaused] = useState(false)

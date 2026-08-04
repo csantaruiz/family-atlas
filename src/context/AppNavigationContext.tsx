@@ -41,9 +41,11 @@ export function AppNavigationProvider({ children }: { children: ReactNode }) {
   const isRestoringRef = useRef(false)
   const enterTreeFromTimelineRef = useRef(false)
 
+  // Keep first paint on `#/` so the address bar matches the welcome fork.
+  // `#/journey` is set only when the user enters the Atlas (see prepareAtlasEntry).
   useEffect(() => {
     if (!window.location.hash) {
-      window.history.replaceState({ view: 'journey' }, '', '#/journey')
+      window.history.replaceState({ view: 'welcome' }, '', '#/')
     }
   }, [])
 

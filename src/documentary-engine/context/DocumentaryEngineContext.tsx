@@ -57,13 +57,25 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
   const stats = useMemo(() => getDocumentaryStats(), [])
   const { navigateToView } = useAppNavigation()
   const { completeIntro } = useJourneyIntro()
-  // Always show the documentary welcome on load/reload. The session flag only
-  // coordinates Journey intro after the user enters Atlas in this tab.
+  // Always show the fork/welcome screen on cold load and hard reload.
+  // sessionStorage is only for Journey intro after the user enters Atlas.
   const [phase, setPhase] = useState<DocumentaryEnginePhase>('welcome')
   const [transition, setTransition] = useState<DocumentaryTransition>('idle')
   const [atlasHandoff, setAtlasHandoff] = useState(false)
   const exploreOutTimerRef = useRef<number | null>(null)
   const exploreDoneTimerRef = useRef<number | null>(null)
+
+  // Back-forward cache can restore a prior "complete" tree; force the road screen again.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      setPhase('welcome')
+      setTransition('idle')
+      setAtlasHandoff(false)
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
 
   const clockActive = phase === 'playing'
   const { state, play, pause, toggle, seek: seekClock, reset } = useNarrationClock(clockActive)

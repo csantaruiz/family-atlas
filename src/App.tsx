@@ -83,7 +83,8 @@ function AppGate() {
   const { phase, transition } = useDocumentaryEngine()
   const [atlasVisible, setAtlasVisible] = useState(false)
 
-  // Never dual-mount Atlas during enter-atlas — mounting it blocks the fade for seconds.
+  // First load / reload always stays on DocumentaryEngineRoot (welcome fork)
+  // until the user chooses Begin Documentary or Explore the Atlas.
   const showDocumentary = phase !== 'complete'
   const showAtlas = phase === 'complete'
   const showBlackout = transition === 'enter-atlas' || (showAtlas && !atlasVisible)

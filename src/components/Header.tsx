@@ -4,8 +4,8 @@ import { useTimeline } from '../context/TimelineContext'
 import type { AppView } from '../types/navigation'
 
 const NAV_ITEMS: { label: string; view: AppView }[] = [
-  { label: 'Journey', view: 'journey' },
-  { label: 'Map', view: 'map' },
+  { label: 'Timeline', view: 'journey' },
+  { label: 'Journeys', view: 'map' },
   { label: 'Tree', view: 'tree' },
   { label: 'People', view: 'people' },
   { label: 'About', view: 'about' },

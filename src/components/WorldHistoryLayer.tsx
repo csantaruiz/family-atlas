@@ -45,24 +45,27 @@ function rankHistoryEvents(events: HistoryEvent[], center: number): HistoryEvent
 
 function historyTargetCount(span: number, viewportWidth = 1200): number {
   let cap = 12
-  if (span > 320) cap = 6
-  else if (span > 150) cap = 8
+  if (span > 320) cap = 8
+  else if (span > 150) cap = 9
   else if (span > 55) cap = 10
+  if (viewportWidth >= 1100 && span > 180) {
+    cap = Math.max(cap, Math.min(10, Math.floor((viewportWidth - 280) / 130)))
+  }
   return stageLayoutProfile(viewportWidth, 800).historyEventCap(cap)
 }
 
 function minHistoryYearGap(span: number, viewportWidth = 1200): number {
   const narrow = isNarrowStage(viewportWidth)
-  if (span > 320) return narrow ? 64 : 48
-  if (span > 150) return narrow ? 36 : 28
+  if (span > 320) return narrow ? 48 : 36
+  if (span > 150) return narrow ? 28 : 22
   if (span > 55) return narrow ? 18 : 14
   return narrow ? 10 : 8
 }
 
 function minHistoryPixelGap(span: number, viewportWidth = 1200): number {
   const narrow = isNarrowStage(viewportWidth)
-  if (span > 320) return narrow ? 160 : 250
-  if (span > 150) return narrow ? 120 : 190
+  if (span > 320) return narrow ? 120 : 160
+  if (span > 150) return narrow ? 100 : 140
   if (span > 55) return narrow ? 95 : 140
   return narrow ? 72 : 95
 }

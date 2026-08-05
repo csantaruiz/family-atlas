@@ -68,6 +68,27 @@ export function chapterDensity(
   const yearSpan = Math.max(1, yearEnd - yearStart)
   const eventsPerYear = count / yearSpan
 
+  // Absolute counts only apply in short windows. Longer views with many events
+  // still have room to spread — match far-view density semantics everywhere.
+  if (yearSpan > 180) {
+    if (eventsPerYear >= 1.1) return 'very_dense'
+    if (eventsPerYear >= 0.65) return 'dense'
+    if (eventsPerYear >= 0.3) return 'moderate'
+    return 'sparse'
+  }
+  if (yearSpan > 55) {
+    if (eventsPerYear >= 1.15 || count >= 90) return 'very_dense'
+    if (eventsPerYear >= 0.7 || count >= 50) return 'dense'
+    if (eventsPerYear >= 0.35 || count >= 18) return 'moderate'
+    return 'sparse'
+  }
+  if (yearSpan > 25) {
+    if (eventsPerYear >= 1.0 || count >= 28) return 'very_dense'
+    if (eventsPerYear >= 0.55 || count >= 16) return 'dense'
+    if (eventsPerYear >= 0.28 || count >= 8) return 'moderate'
+    return 'sparse'
+  }
+
   if (count >= 10 || eventsPerYear >= 0.85) return 'very_dense'
   if (count >= 6 || eventsPerYear >= 0.5) return 'dense'
   if (count >= 4 || eventsPerYear >= 0.25) return 'moderate'

@@ -18,21 +18,24 @@ import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
   buildBirthClusters,
   chooseFocus,
+  conflictClusterZoomSpan,
   estimatedLabelHalfWidth,
+  foldSpatiallyConflictingEvents,
   layoutBirthClustersProgressive,
   layoutFamilyEventsProgressive,
   peopleBudgetForMode,
   placeLabels,
   semanticZoomMode,
   showBirthPeriodClusters,
+  type PlacedEventConflictCluster,
 } from '../utils/clustering'
 import { movementSummary } from '../utils/placeUtils'
 import { eventAccessibleTitle } from '../utils/detailPlacement'
-import { categoryTypeLabel, clampAnchorBelowPlaque, displayName, measureDetailedFootprint, type LabelAlignment } from '../utils/labelMeasure'
+import { categoryTypeLabel, clampAnchorBelowEditorialPanels, clampAnchorBelowPlaque, deconflictFamilyAnchorYs, displayName, measureDetailedFootprint, type LabelAlignment } from '../utils/labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents } from '../utils/canonicalEvent'
 import { freezeLandmarkStability, unfreezeLandmarkStability } from '../utils/landmarkSelectionStability'
 import { admitPersistentMarkers, maxFamilyEventsForSpan, staggerFamilyEventLanes } from '../utils/landmarkSelection'
-import { connectorStemColor, familyEventStemLength } from '../utils/eventConnector'
+import { connectorStemColor, familyEventStemLength, familyLabelCeilingY } from '../utils/eventConnector'
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import type { FamilyEvent } from '../types'
 
@@ -373,34 +376,28 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   const placementCalloutLayout = useMemo(
     () =>
       getCalloutLayoutProfile({
-        zoomMode: useBirthClusters ? 'far' : zoomSemantic,
+        zoomMode: 'far',
         totalVisibleEvents: visibleInViewport.length,
         placedEventCount: visibleInViewport.length,
         viewportWidth: width,
       }),
-    [useBirthClusters, zoomSemantic, visibleInViewport.length, width],
+    [visibleInViewport.length, width],
   )
 
   const placementVerticalLayout = useMemo(
-    () =>
-      resolveChapterVerticalLayout(
-        useBirthClusters ? 'far' : zoomSemantic,
-        width,
-        height,
-        placementCalloutLayout,
-      ),
-    [useBirthClusters, zoomSemantic, width, height, placementCalloutLayout],
+    () => resolveChapterVerticalLayout('far', width, height, placementCalloutLayout),
+    [width, height, placementCalloutLayout],
   )
 
   const estimatedPlaqueAnchor = useMemo((): CalloutLayoutAnchor | null => {
-    if (useBirthClusters || zoomSemantic === 'detail') return null
+    if (useBirthClusters) return null
     return {
       centerX: placementVerticalLayout.chapterCenterX,
       bottomY:
         placementVerticalLayout.cardTop + estimateCardFrameHeight(placementCalloutLayout) + 16,
       width: placementCalloutLayout.maxWidthPx,
     }
-  }, [useBirthClusters, zoomSemantic, placementVerticalLayout, placementCalloutLayout])
+  }, [useBirthClusters, placementVerticalLayout, placementCalloutLayout])
 
   const effectivePlaqueAnchor = plaqueAnchor ?? estimatedPlaqueAnchor
 
@@ -470,21 +467,16 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   const calloutLayout = useMemo(() => {
     return getCalloutLayoutProfile({
-      zoomMode: useBirthClusters ? 'far' : zoomSemantic,
+      zoomMode: 'far',
       totalVisibleEvents: visibleInViewport.length,
       placedEventCount: activeLayout?.events.length ?? 0,
       viewportWidth: width,
     })
-  }, [useBirthClusters, zoomSemantic, visibleInViewport.length, activeLayout?.events.length, width])
+  }, [visibleInViewport.length, activeLayout?.events.length, width])
 
   const chapterVerticalLayout = useMemo(() => {
-    return resolveChapterVerticalLayout(
-      useBirthClusters ? 'far' : zoomSemantic,
-      width,
-      height,
-      calloutLayout,
-    )
-  }, [useBirthClusters, zoomSemantic, width, height])
+    return resolveChapterVerticalLayout('far', width, height, calloutLayout)
+  }, [width, height, calloutLayout])
 
   const calloutCenterX = chapterVerticalLayout.chapterCenterX
 
@@ -589,18 +581,21 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     )
   }, [isZooming, spanBucket, activeLayout?.events, start, end, span])
 
-  const renderEvents = useMemo(() => {
+  const renderLayout = useMemo(() => {
     const zoomFrozen =
       persistEventMarkers && frozenEventsRef.current?.length ? frozenEventsRef.current : null
     if (zoomFrozen) {
-      return zoomFrozen
-        .filter(({ event }) => event.year >= start && event.year <= end)
-        .map((entry) => ({
-          ...entry,
-          x: yearX(entry.event.year, start, span, width),
-          nudge: 0,
-          alignment: 'center' as const,
-        }))
+      return {
+        events: zoomFrozen
+          .filter(({ event }) => event.year >= start && event.year <= end)
+          .map((entry) => ({
+            ...entry,
+            x: yearX(entry.event.year, start, span, width),
+            nudge: 0,
+            alignment: 'center' as const,
+          })),
+        clusters: [] as PlacedEventConflictCluster[],
+      }
     }
 
     const byId = new Map<string, (typeof pinnedEventsRef.current)[number]>()
@@ -652,12 +647,19 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       staggered.map((p) => p.event),
       'FamilyLayer.renderEvents',
     )
-    return staggered
+
+    return foldSpatiallyConflictingEvents(staggered, span, width, height)
   }, [activeLayout, persistEventMarkers, isZooming, spanBucket, start, end, span, width, height])
+
+  const renderEvents = renderLayout.events
+  const conflictClusters = renderLayout.clusters
 
   useLayoutEffect(() => {
     if (isZooming) return
-    previousRenderedIdsRef.current = renderEvents.map((entry) => canonicalEventId(entry.event))
+    previousRenderedIdsRef.current = [
+      ...renderEvents.map((entry) => canonicalEventId(entry.event)),
+      ...conflictClusters.flatMap((cluster) => cluster.events.map((event) => canonicalEventId(event))),
+    ]
     // Pin what is actually on screen so pan refreshes keep geometry stable.
     const byId = new Map(
       pinnedEventsRef.current.map((entry) => [canonicalEventId(entry.event), entry] as const),
@@ -671,7 +673,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     if (pinnedSpanBucketRef.current !== spanBucket) {
       pinnedSpanBucketRef.current = spanBucket
     }
-  }, [renderEvents, isZooming, start, end, spanBucket])
+  }, [renderEvents, conflictClusters, isZooming, start, end, spanBucket])
 
   useLayoutEffect(() => {
     if (!persistEventMarkers || !activeLayout?.events?.length) return
@@ -683,13 +685,19 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   registerFamilyPulseTargets(
     useMemo(
-      () =>
-        renderEvents.map(({ event, x }) => ({
+      () => [
+        ...renderEvents.map(({ event, x }) => ({
           key: canonicalEventId(event),
           year: event.year,
           x: Math.round(x),
         })),
-      [renderEvents],
+        ...conflictClusters.map((cluster) => ({
+          key: cluster.id,
+          year: Math.round((cluster.from + cluster.to) / 2),
+          x: Math.round(cluster.x),
+        })),
+      ],
+      [renderEvents, conflictClusters],
     ),
   )
 
@@ -710,17 +718,30 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     nudge = 0,
     compact = false,
   ) => {
-    if (!effectivePlaqueAnchor) return y
-    return clampAnchorBelowPlaque(
+    const ceiling = familyLabelCeilingY(timelineAxisY(height, width))
+    const belowEditorial = clampAnchorBelowEditorialPanels(
       event,
       x,
       y,
       width,
-      effectivePlaqueAnchor,
       alignment,
       nudge,
       compact,
     )
+    const cleared = !effectivePlaqueAnchor
+      ? belowEditorial
+      : clampAnchorBelowPlaque(
+          event,
+          x,
+          belowEditorial,
+          width,
+          effectivePlaqueAnchor,
+          alignment,
+          nudge,
+          compact,
+        )
+    // Never let family markers cross into the history band below the axis.
+    return Math.min(cleared, ceiling)
   }
 
   const axisY = useMemo(() => timelineAxisY(height, width), [height, width])
@@ -731,6 +752,14 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     if (targetSpan >= span * 0.98) return
     setThinkingFocusRange({ start: from, end: to })
     animateView((from + to) / 2, targetSpan, 820)
+  }
+
+  const zoomToConflictCluster = (cluster: PlacedEventConflictCluster) => {
+    completeIntro()
+    unlockChapterScroll()
+    const targetSpan = conflictClusterZoomSpan(cluster.from, cluster.to, span)
+    setThinkingFocusRange({ start: cluster.from, end: cluster.to })
+    animateView((cluster.from + cluster.to) / 2, targetSpan, 820)
   }
 
   const zoomOutFromCluster = (from: number, to: number) => {
@@ -821,36 +850,55 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     )
   }
 
-  const placedFamilyEvents = renderEvents.map(({ event, x, y, alignment, nudge, compact }) => {
-    const eventKey = canonicalEventId(event)
-    const renderY = clampPlaqueY(
-      event,
-      x,
-      resolveEventY(eventKey, y),
-      alignment,
-      nudge,
-      compact,
-    )
-    const stemLength = familyEventStemLength(renderY, axisY)
-    const button = (
-      <FamilyEventButton
-        event={event}
-        x={0}
-        y={0}
-        viewportWidth={width}
-        alignment={alignment}
-        nudge={nudge}
-        compact={compact}
-        stemLength={stemLength}
-        motionEnabled={zoomSemantic === 'detail'}
-        onOpen={handleEventOpen}
-        onExplore={openPerson}
-        onViewTree={viewOnTree}
-      />
-    )
+  const placedFamilyEvents = (() => {
+    const prepared = renderEvents.map(({ event, x, y, alignment, nudge, compact }) => {
+      const eventKey = canonicalEventId(event)
+      const clampedY = clampPlaqueY(
+        event,
+        x,
+        resolveEventY(eventKey, y),
+        alignment,
+        nudge,
+        compact,
+      )
+      const footprint = measureDetailedFootprint(event, width, compact ?? false)
+      return {
+        id: eventKey,
+        event,
+        x,
+        y: clampedY,
+        width: footprint.width,
+        height: footprint.height,
+        alignment,
+        nudge,
+        compact,
+      }
+    })
 
-    return renderPlacedFamilyEvent(eventKey, x, renderY, button, zoomSemantic === 'detail')
-  })
+    const separated = deconflictFamilyAnchorYs(prepared, 16, familyLabelCeilingY(axisY))
+
+    return separated.map(({ id: eventKey, event, x, y: renderY, alignment, nudge, compact }) => {
+      const stemLength = familyEventStemLength(renderY, axisY)
+      const button = (
+        <FamilyEventButton
+          event={event}
+          x={0}
+          y={0}
+          viewportWidth={width}
+          alignment={alignment}
+          nudge={nudge}
+          compact={compact}
+          stemLength={stemLength}
+          motionEnabled={zoomSemantic === 'detail'}
+          onOpen={handleEventOpen}
+          onExplore={openPerson}
+          onViewTree={viewOnTree}
+        />
+      )
+
+      return renderPlacedFamilyEvent(eventKey, x, renderY, button, zoomSemantic === 'detail')
+    })
+  })()
 
   return (
     <>
@@ -899,7 +947,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           primary={primaryCluster}
           clusters={activeClusters}
           verticalLayout={chapterVerticalLayout}
-          zoomMode={zoomSemantic}
+          zoomMode="far"
           totalTimelineStart={earliestYear}
           totalTimelineEnd={totalTimelineEnd}
           viewportWidth={width}
@@ -924,7 +972,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           clusters={activeClusters}
           primaryCluster={null}
           verticalLayout={chapterVerticalLayout}
-          zoomMode={useBirthClusters ? 'far' : zoomSemantic}
+          zoomMode="far"
         />
       )}
 
@@ -936,6 +984,33 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         ) : (
           placedFamilyEvents
         )}
+
+        {conflictClusters.map((cluster) => (
+          <div
+            key={cluster.id}
+            className="family-event-anchor family-event-cluster-anchor"
+            style={{ left: Math.round(cluster.x), top: Math.round(cluster.y) }}
+          >
+            <button
+              type="button"
+              className="family-event-cluster"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                zoomToConflictCluster(cluster)
+              }}
+              aria-label={`${cluster.count} events from ${cluster.from} to ${cluster.to}. Zoom in to reveal.`}
+              title={`Zoom in to reveal ${cluster.count} events`}
+            >
+              <span className="cluster-count">{cluster.count}</span>
+              <span className="cluster-label">Events</span>
+              <span className="cluster-range">
+                {cluster.from === cluster.to ? cluster.from : `${cluster.from}–${cluster.to}`}
+              </span>
+              <span className="cluster-stem" aria-hidden="true" />
+            </button>
+          </div>
+        ))}
 
         {representativeNodes.map(({ person: p, x, y }) => (
           <div

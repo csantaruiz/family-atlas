@@ -60,35 +60,38 @@ export function PeopleView({ active }: PeopleViewProps) {
 
   return (
     <section id="people" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
-      <div className="explore">
-        <div className="eyebrow">Explore the archive</div>
-        <h2>{familyDatabase.stats.people} lives, connected.</h2>
+      <div className="explore people-explore">
+        <div className="people-sticky-chrome">
+          <input
+            className="search"
+            placeholder="Search a name, place, or year…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search people"
+          />
 
-        <input
-          className="search"
-          placeholder="Search a name, place, or year…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search people"
-        />
+          <PeopleFilters
+            branches={branches}
+            places={places}
+            centuries={centuries}
+            sortKey={sortKey}
+            branch={branch}
+            place={place}
+            century={century}
+            directAncestorsOnly={directAncestorsOnly}
+            resultCount={filtered.length}
+            onSortChange={setSortKey}
+            onBranchChange={setBranch}
+            onPlaceChange={setPlace}
+            onCenturyChange={setCentury}
+            onDirectAncestorsChange={setDirectAncestorsOnly}
+          />
+        </div>
 
-        <PeopleFilters
-          branches={branches}
-          places={places}
-          centuries={centuries}
-          sortKey={sortKey}
-          branch={branch}
-          place={place}
-          century={century}
-          directAncestorsOnly={directAncestorsOnly}
-          resultCount={filtered.length}
-          onSortChange={setSortKey}
-          onBranchChange={setBranch}
-          onPlaceChange={setPlace}
-          onCenturyChange={setCentury}
-          onDirectAncestorsChange={setDirectAncestorsOnly}
-        />
-
+        <div className="people-explore-intro">
+          <div className="eyebrow">Explore the archive</div>
+          <h2>{familyDatabase.stats.people} lives, connected.</h2>
+        </div>
         {notableLives.length > 0 && (
           <section className="notable-lives" aria-labelledby="notable-lives-heading">
             <div className="notable-lives-header">

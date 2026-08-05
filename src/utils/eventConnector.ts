@@ -5,6 +5,11 @@ export const TIMELINE_STEM_GAP_PX = 12
 
 export const FAMILY_STEM_MIN_HEIGHT_PX = 18
 
+/** Family anchors must stay above the axis so labels never enter the history band. */
+export function familyLabelCeilingY(timelineAxisY: number): number {
+  return timelineAxisY - FAMILY_STEM_MIN_HEIGHT_PX - TIMELINE_STEM_GAP_PX
+}
+
 /** Vertical stem length from the event anchor down toward the timeline axis. */
 export function familyEventStemLength(anchorY: number, timelineAxisY: number): number {
   return Math.max(FAMILY_STEM_MIN_HEIGHT_PX, timelineAxisY - anchorY - TIMELINE_STEM_GAP_PX)

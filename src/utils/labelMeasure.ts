@@ -1,5 +1,6 @@
 import type { FamilyEvent } from '../types'
-import type { MeasuredPlaqueAnchor } from './chapterCalloutLayout'
+import type { MeasuredPlaqueAnchor, EditorialObstacle } from './chapterCalloutLayout'
+import { estimateEditorialSidenoteObstacles } from './chapterCalloutLayout'
 import { movementSummary } from './placeUtils'
 
 export type LabelAlignment = 'center' | 'left' | 'right'
@@ -279,6 +280,7 @@ export function stemIntersectsBox(
 }
 
 export const PLAQUE_LABEL_CLEARANCE_PX = 36
+export const EDITORIAL_LABEL_CLEARANCE_PX = 14
 
 /** Push an event anchor downward so its label clears a measured chapter plaque. */
 export function clampAnchorBelowPlaque(
@@ -302,4 +304,78 @@ export function clampAnchorBelowPlaque(
   if (bounds.top >= minTop) return anchorY
 
   return anchorY + (minTop - bounds.top)
+}
+
+/** Keep labels below Featured Story / Atlas Thinking when they share that column. */
+export function clampAnchorBelowEditorialPanels(
+  event: FamilyEvent,
+  markerX: number,
+  anchorY: number,
+  viewportWidth: number,
+  alignment: LabelAlignment = 'center',
+  nudge = 0,
+  compact = false,
+  panels?: EditorialObstacle[],
+): number {
+  const editorial = panels ?? estimateEditorialSidenoteObstacles(viewportWidth)
+  if (!editorial.length) return anchorY
+
+  const footprint = measureDetailedFootprint(event, viewportWidth, compact)
+  let y = anchorY
+
+  for (const panel of editorial) {
+    const bounds = footprintBounds(markerX, y, footprint, alignment, nudge, viewportWidth)
+    const overlapsHorizontally = !(
+      bounds.right + 10 < panel.left || bounds.left - 10 > panel.right
+    )
+    if (!overlapsHorizontally) continue
+    const minTop = panel.bottom + EDITORIAL_LABEL_CLEARANCE_PX
+    if (bounds.top >= minTop) continue
+    y += minTop - bounds.top
+  }
+
+  return y
+}
+
+/**
+ * After plaque clamping (or similar Y pushes), separate anchors that would
+ * land on nearly the same band with overlapping labels.
+ * Optional `maxY` keeps family markers above the timeline axis.
+ */
+export function deconflictFamilyAnchorYs<
+  T extends { id: string; x: number; y: number; width: number; height: number },
+>(items: T[], minGap = 16, maxY?: number): T[] {
+  if (items.length <= 1) {
+    if (maxY == null) return items
+    return items.map((item) => ({ ...item, y: Math.min(item.y, maxY) }))
+  }
+
+  const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x)
+  const resolved: T[] = []
+
+  for (const item of sorted) {
+    let y = maxY == null ? item.y : Math.min(item.y, maxY)
+    for (let pass = 0; pass < 10; pass++) {
+      let nudged = false
+      for (const other of resolved) {
+        const hClear =
+          item.x + item.width / 2 + 10 < other.x - other.width / 2 ||
+          other.x + other.width / 2 + 10 < item.x - item.width / 2
+        if (hClear) continue
+        const minDy = (item.height + other.height) / 2 + minGap
+        if (Math.abs(y - other.y) + 0.5 < minDy) {
+          const nextY = other.y + minDy
+          if (maxY != null && nextY > maxY) break
+          y = nextY
+          nudged = true
+        }
+      }
+      if (!nudged) break
+    }
+    if (maxY != null) y = Math.min(y, maxY)
+    resolved.push({ ...item, y })
+  }
+
+  const byId = new Map(resolved.map((item) => [item.id, item]))
+  return items.map((item) => byId.get(item.id) ?? item)
 }

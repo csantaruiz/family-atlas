@@ -20,6 +20,7 @@ import { buildSubregions } from '../../utils/mapSubregions'
 import { FamilyMap } from '../map/FamilyMap'
 import { MapDetailPanel } from '../map/MapDetailPanel'
 import { MapLineageLegend } from '../map/MapLineageLegend'
+import { MapNarrativeCaption } from '../map/MapNarrativeCaption'
 import { MapUnresolvedDisclosure } from '../map/MapUnresolvedDisclosure'
 
 type MapViewProps = {
@@ -88,6 +89,10 @@ function MapViewContent({ active }: MapViewProps) {
   )
 
   const filterKey = `${branch}-${eventType}-${century}-${directAncestorsOnly}`
+  const narrativeFilters = useMemo(
+    () => ({ branch, eventType, century, directAncestorsOnly }),
+    [branch, eventType, century, directAncestorsOnly],
+  )
 
   useEffect(() => {
     if (!selection) return
@@ -219,6 +224,15 @@ function MapViewContent({ active }: MapViewProps) {
           </div>
 
           <MapDetailPanel subregions={subregions} unresolved={unresolved} />
+
+          <MapNarrativeCaption
+            selection={selection}
+            filters={narrativeFilters}
+            summary={summary}
+            regions={regions}
+            places={filteredPlaces}
+          />
+
           <div className="map-page-vignette" aria-hidden="true" />
         </div>
       </div>

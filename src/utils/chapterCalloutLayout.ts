@@ -81,74 +81,39 @@ export type EraBraceGeometry = {
   clipRight: boolean
 }
 
+const PLAQUE_VERTICAL: ZoomVerticalSpec = {
+  cardTopPreferred: 36,
+  cardTopFloor: 28,
+  cardBottomToAxisMin: 170,
+  cardBottomToAxisTarget: 225,
+  cardBottomToAxisMax: 300,
+  cardBottomToBraceMin: 100,
+  cardBottomToBraceTarget: 140,
+  rangeBracketAxisOffset: 48,
+  rangeBracketAxisOffsetMin: 36,
+  minConnectorHeight: 125,
+  maxConnectorHeight: 290,
+  showEraBrace: true,
+  braceCapDrop: 18,
+}
+
+/** Plaque chrome stays fixed; only the era brace width still tracks zoom. */
 const ZOOM_VERTICAL: Record<SemanticZoomMode, ZoomVerticalSpec> = {
-  far: {
-    cardTopPreferred: 36,
-    cardTopFloor: 28,
-    cardBottomToAxisMin: 170,
-    cardBottomToAxisTarget: 225,
-    cardBottomToAxisMax: 300,
-    cardBottomToBraceMin: 100,
-    cardBottomToBraceTarget: 140,
-    rangeBracketAxisOffset: 48,
-    rangeBracketAxisOffsetMin: 36,
-    minConnectorHeight: 125,
-    maxConnectorHeight: 290,
-    showEraBrace: true,
-    braceCapDrop: 18,
-  },
-  medium: {
-    cardTopPreferred: 86,
-    cardTopFloor: 72,
-    cardBottomToAxisMin: 150,
-    cardBottomToAxisTarget: 190,
-    cardBottomToAxisMax: 220,
-    cardBottomToBraceMin: 90,
-    cardBottomToBraceTarget: 120,
-    rangeBracketAxisOffset: 56,
-    rangeBracketAxisOffsetMin: 44,
-    minConnectorHeight: 115,
-    maxConnectorHeight: 250,
-    showEraBrace: true,
-    braceCapDrop: 16,
-  },
-  near: {
-    cardTopPreferred: 48,
-    cardTopFloor: 38,
-    cardBottomToAxisMin: 118,
-    cardBottomToAxisTarget: 142,
-    cardBottomToAxisMax: 175,
-    cardBottomToBraceMin: 70,
-    cardBottomToBraceTarget: 90,
-    rangeBracketAxisOffset: 36,
-    rangeBracketAxisOffsetMin: 28,
-    minConnectorHeight: 92,
-    maxConnectorHeight: 185,
-    showEraBrace: true,
-    braceCapDrop: 14,
-  },
+  far: PLAQUE_VERTICAL,
+  medium: PLAQUE_VERTICAL,
+  near: PLAQUE_VERTICAL,
   detail: {
-    cardTopPreferred: 68,
-    cardTopFloor: 56,
-    cardBottomToAxisMin: 98,
-    cardBottomToAxisTarget: 112,
-    cardBottomToAxisMax: 132,
-    cardBottomToBraceMin: 0,
-    cardBottomToBraceTarget: 0,
-    rangeBracketAxisOffset: 0,
-    rangeBracketAxisOffsetMin: 0,
-    minConnectorHeight: 78,
-    maxConnectorHeight: 145,
-    showEraBrace: false,
-    braceCapDrop: 0,
+    ...PLAQUE_VERTICAL,
+    // Detail still draws a brace when the chapter spans a readable width.
+    showEraBrace: true,
   },
 }
 
 const BRACE_WIDTH: Record<SemanticZoomMode, BraceWidthSpec> = {
   far: { min: 200, preferredRatio: 0.42, maxRatio: 0.55, maxPx: 800 },
-  medium: { min: 260, preferredRatio: 0.42, maxRatio: 0.55, maxPx: 720 },
-  near: { min: 140, preferredRatio: 0.32, maxRatio: 0.42, maxPx: 520 },
-  detail: { min: 0, preferredRatio: 0, maxRatio: 0, maxPx: 0 },
+  medium: { min: 200, preferredRatio: 0.42, maxRatio: 0.55, maxPx: 800 },
+  near: { min: 200, preferredRatio: 0.42, maxRatio: 0.55, maxPx: 800 },
+  detail: { min: 200, preferredRatio: 0.42, maxRatio: 0.55, maxPx: 800 },
 }
 
 function snapPx(value: number): number {
@@ -188,7 +153,7 @@ export const PLAQUE_LAYOUT_MAX_HEIGHT_PX = 280
 
 /** Estimate rendered card frame height from layout profile (hint fallback only). */
 export function estimateCardFrameHeight(layout: CalloutLayoutProfile): number {
-  let content = 104
+  let content = 110
   if (layout.showNarrative) content += 52
   if (layout.showMeta) content += 22
   if (layout.showCta) content += 56
@@ -408,7 +373,8 @@ export function estimateEditorialSidenoteObstacles(viewportWidth: number): Edito
   const alignTop = storyLayerAlignTop(viewportWidth)
   const plaqueHalf = calloutPlaqueHalfPx(viewportWidth)
   const sidenoteWidth = Math.min(STORY_SIDENOTE_WIDTH_PX, viewportWidth - 24)
-  const panelBottom = alignTop + 210
+  // Header + title + 2-line narrative + CTA — keep events clear of this band.
+  const panelBottom = alignTop + 248
 
   const featuredRight = viewportWidth / 2 - plaqueHalf - STORY_PLAQUE_GAP_PX
   const featuredLeft = Math.max(12, featuredRight - sidenoteWidth)

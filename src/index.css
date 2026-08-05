@@ -1187,7 +1187,7 @@
   overflow: visible;
   --callout-vivid: 1;
   --callout-title-size: 24px;
-  --callout-years-size: 14px;
+  --callout-years-size: 21px;
   --callout-narrative-size: 12px;
   --callout-meta-size: 11px;
   --callout-cta-size: 11px;
@@ -1196,24 +1196,16 @@
 
 .chapter-callout-layer--sparse,
 .chapter-callout-layer--dense,
-.chapter-callout-layer--balanced {
-  --callout-title-size: 25px;
-  --callout-years-size: 14px;
-  --callout-narrative-size: 12px;
-}
-
+.chapter-callout-layer--balanced,
 .chapter-callout-layer--near,
-.chapter-callout-layer--detail {
-  --callout-title-size: 21px;
-  --callout-years-size: 13px;
-  --callout-narrative-size: 11px;
+.chapter-callout-layer--detail,
+.chapter-callout-layer--medium,
+.chapter-callout-layer--far {
+  --callout-title-size: 25px;
+  --callout-years-size: 22px;
+  --callout-narrative-size: 12px;
   --callout-meta-size: 11px;
-  --callout-cta-size: 10px;
-}
-
-.chapter-callout-layer--medium {
-  --callout-title-size: 23px;
-  --callout-years-size: 13px;
+  --callout-cta-size: 11px;
 }
 
 .chapter-callout-halo {
@@ -1449,6 +1441,7 @@
 
 .chapter-callout-title {
   --callout-ribbon: #e8d9b8;
+  --callout-ribbon-center: #ffffff;
   --callout-ribbon-overlap: 12px;
   --callout-ribbon-wing: 34px;
   display: block;
@@ -1463,7 +1456,7 @@
   margin-inline: calc(
     -1 * (var(--callout-pad-x, 26px) + var(--callout-inner-pad-x, 0px) + var(--callout-ribbon-overlap))
   );
-  margin-block: 6px 14px;
+  margin-block: 6px 6px;
   padding: 8px 28px 9px;
   border: 0;
   border-radius: 0;
@@ -1472,14 +1465,21 @@
   letter-spacing: 0.006em;
   color: #100e0c;
   background-color: var(--callout-ribbon);
-  background-image: none;
+  background-image: linear-gradient(
+    90deg,
+    var(--callout-ribbon) 0%,
+    var(--callout-ribbon-center) 42%,
+    var(--callout-ribbon-center) 58%,
+    var(--callout-ribbon) 100%
+  );
   opacity: 1;
   isolation: isolate;
   box-shadow: none;
   clip-path: none;
   transition:
     color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1),
-    background-color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
+    background-color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1),
+    background-image 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
 
 /* Classic folded ribbon wings — same fill, dropped, swallowtail notches. */
@@ -1510,7 +1510,7 @@
 .chapter-callout-divider {
   height: 0;
   width: 0;
-  margin: 10px 0 0;
+  margin: 0;
   overflow: hidden;
   opacity: 0;
   visibility: hidden;
@@ -1525,10 +1525,10 @@
   display: block;
   position: relative;
   z-index: 3;
-  margin-top: 9px;
-  font: 500 var(--callout-years-size) / 1.15 Georgia, 'Times New Roman', serif;
+  margin-top: 2px;
+  font: 500 var(--callout-years-size) / 1.1 Georgia, 'Times New Roman', serif;
   color: #f3e2b0;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   transition: color 0.55s cubic-bezier(0.22, 0.8, 0.2, 1);
 }
@@ -1774,7 +1774,7 @@
 @media (max-width: 900px) {
   .chapter-callout-layer {
     --callout-title-size: 21px;
-    --callout-years-size: 13px;
+    --callout-years-size: 18px;
     --callout-narrative-size: 11px;
     --callout-narrative-width: 400px;
   }
@@ -1792,7 +1792,7 @@
   }
 
   .chapter-callout-divider {
-    margin-top: 8px;
+    margin: 0;
   }
 
   .chapter-callout-narrative {
@@ -1831,6 +1831,85 @@
   position: absolute;
   pointer-events: none;
   z-index: 5;
+}
+
+.family-event-cluster-anchor {
+  z-index: 6;
+}
+
+.family-event-cluster {
+  position: relative;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.family-event-cluster .cluster-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  margin: auto;
+  /* Georgia numerals sit optically low — pad bottom so the glyph centers in the orb. */
+  padding: 0 0 5px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(214, 181, 108, 0.88);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(214, 181, 108, 0.22), rgba(16, 18, 20, 0.94) 64%);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.32),
+    0 0 18px rgba(214, 181, 108, 0.14);
+  font: 22px / 1 Georgia, 'Times New Roman', serif;
+  color: rgba(243, 236, 220, 0.96);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.family-event-cluster .cluster-label {
+  display: block;
+  margin-top: 8px;
+  font: 9px Inter, system-ui, sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(214, 181, 108, 0.82);
+  white-space: nowrap;
+}
+
+.family-event-cluster .cluster-range {
+  display: block;
+  margin-top: 4px;
+  font: 11px Georgia, 'Times New Roman', serif;
+  color: rgba(170, 167, 159, 0.78);
+  white-space: nowrap;
+}
+
+.family-event-cluster .cluster-stem {
+  display: block;
+  width: 1px;
+  height: 24px;
+  margin: 7px auto 0;
+  background: rgba(214, 181, 108, 0.42);
+}
+
+.family-event-cluster:hover .cluster-count,
+.family-event-cluster:focus-visible .cluster-count {
+  transform: scale(1.08);
+  border-color: rgba(232, 212, 168, 0.98);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(214, 181, 108, 0.3), rgba(16, 18, 20, 0.94) 64%);
+}
+
+.family-event-cluster:focus-visible {
+  outline: none;
 }
 
 .family-event-wrap {
@@ -3277,7 +3356,35 @@
 }
 
 .people-filters {
-  margin-bottom: 28px;
+  margin-bottom: 0;
+}
+
+#people .people-explore {
+  padding-top: 12px;
+}
+
+.people-explore-intro {
+  margin: 8px 0 22px;
+}
+
+.people-explore-intro h2 {
+  margin: 6px 0 0;
+}
+
+.people-sticky-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  margin: -12px -46px 18px;
+  padding: 14px 46px 16px;
+  background: rgba(9, 11, 13, 0.97);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+}
+
+.people-sticky-chrome .search {
+  margin: 0 0 18px;
 }
 
 .people-filters-row {
@@ -4038,6 +4145,77 @@
   left: 30px;
   bottom: 22px;
   color: rgba(170, 167, 159, 0.42);
+}
+
+#map .map-narrative-caption {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  width: min(580px, calc(100% - 2 * (var(--map-sidebar-width, 320px) + 48px)));
+  max-width: min(580px, 48vw);
+  pointer-events: none;
+  text-align: center;
+}
+
+#map .map-narrative-caption-text {
+  margin: 0;
+  padding: 14px 22px 15px;
+  border-radius: 4px;
+  border: 1px solid rgba(120, 92, 52, 0.28);
+  background:
+    linear-gradient(
+      165deg,
+      rgba(248, 236, 208, 0.82) 0%,
+      rgba(236, 216, 176, 0.78) 48%,
+      rgba(222, 198, 152, 0.74) 100%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(110, 78, 42, 0.025) 3px,
+      rgba(110, 78, 42, 0.025) 4px
+    );
+  box-shadow:
+    0 1px 0 rgba(255, 248, 230, 0.4) inset,
+    0 10px 26px rgba(0, 0, 0, 0.28);
+  font: italic 400 15px / 1.55 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.012em;
+  color: rgba(42, 32, 20, 0.9);
+  text-wrap: pretty;
+  opacity: 1;
+  transition: opacity 0.28s ease;
+}
+
+#map .map-narrative-caption-text.is-fading {
+  opacity: 0;
+}
+
+@media (max-width: 1200px) {
+  #map .map-narrative-caption {
+    bottom: 44px;
+    width: min(500px, calc(100% - 2 * (var(--map-sidebar-width, 300px) + 36px)));
+    max-width: min(500px, 54vw);
+  }
+
+  #map .map-narrative-caption-text {
+    font-size: 14px;
+    padding: 12px 18px;
+  }
+}
+
+@media (max-width: 1024px) {
+  #map .map-narrative-caption {
+    bottom: 36px;
+    width: min(440px, 72vw);
+    max-width: 72vw;
+  }
+
+  #map .map-narrative-caption-text {
+    font-size: 13.5px;
+  }
 }
 
 @media (max-width: 1200px) {
@@ -5293,6 +5471,11 @@
     font-size: 1.5px;
   }
 
+  .people-sticky-chrome {
+    margin: -12px -25px 16px;
+    padding: 12px 25px 14px;
+  }
+
   .people-filters-row {
     flex-direction: column;
     align-items: stretch;
@@ -6165,7 +6348,7 @@
   z-index: 100;
   height: 100%;
   opacity: 0;
-  transition: opacity var(--atlas-entry-fade-ms, 320ms) ease
+  transition: opacity var(--atlas-entry-fade-ms, 2000ms) ease
     var(--atlas-entry-fade-delay-ms, 0ms);
 }
 

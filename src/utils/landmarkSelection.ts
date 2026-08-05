@@ -28,6 +28,7 @@ import {
   stageLayoutProfile,
 } from './stageBreakpoints'
 import { isNearGeneration, generationDistance } from './familyPriority'
+import { familyLabelCeilingY } from './eventConnector'
 import {
   chapterCenterX,
   computeEraBraceGeometry,
@@ -78,6 +79,27 @@ const HYBRID_H_GAP = 44
 const HYBRID_V_GAP = 28
 const PLACEMENT_PROBE_GAP = 32
 
+/** Century views: keep plaque card clearance without reserving half the timeline. */
+function softenCalloutObstaclesForWideAtlas(
+  obstacles: CalloutObstacles | CollisionObstacle | null | undefined,
+  wideAtlas: boolean,
+  width: number,
+): CalloutObstacles | CollisionObstacle | null | undefined {
+  if (!wideAtlas || !obstacles || !('frame' in obstacles)) return obstacles
+
+  const frameHalf = Math.min((obstacles.frame.right - obstacles.frame.left) / 2, width * 0.16)
+  const cx = (obstacles.frame.left + obstacles.frame.right) / 2
+  return {
+    frame: {
+      ...obstacles.frame,
+      left: cx - frameHalf,
+      right: cx + frameHalf,
+    },
+    connector: obstacles.connector,
+    brace: null,
+  }
+}
+
 function hybridLaneOffsets(viewportWidth: number): number[] {
   return isNarrowStage(viewportWidth) ? HYBRID_LANE_OFFSETS_NARROW : HYBRID_LANE_OFFSETS_DESKTOP
 }
@@ -89,23 +111,24 @@ function hybridMaxLanes(viewportWidth: number): number {
 /** Vertical stem offsets for family labels — mirrors history-event lane staggering. */
 function familyLaneOffsets(span: number, viewportWidth = 1200): number[] {
   if (isNarrowStage(viewportWidth)) {
-    if (span > 320) return [60, 118, 176]
-    if (span > 180) return [54, 108, 162]
-    if (span > 90) return [48, 96, 144, 192]
-    return [44, 88, 132, 176]
+    if (span > 320) return [64, 132, 200, 268]
+    if (span > 180) return [58, 120, 182, 244]
+    if (span > 90) return [52, 110, 168, 226]
+    return [48, 100, 152, 204]
   }
-  if (span > 320) return [72, 148, 224, 300]
-  if (span > 180) return [64, 132, 200, 268]
-  if (span > 90) return [58, 120, 182, 244, 306]
-  return [54, 112, 170, 228, 286, 344]
+  // Keep steps ≥ ~72px so stacked Georgia labels clear each other.
+  if (span > 320) return [78, 160, 242, 324, 400]
+  if (span > 180) return [72, 152, 232, 312, 392]
+  if (span > 90) return [68, 144, 220, 296, 372]
+  return [64, 138, 212, 286, 360, 434]
 }
 
 /** Padding between label boxes on the same lane. */
 function familyLanePad(span: number): number {
-  if (span > 320) return 36
-  if (span > 180) return 28
-  if (span > 90) return 24
-  return 20
+  if (span > 320) return 28
+  if (span > 180) return 26
+  if (span > 90) return 28
+  return 24
 }
 
 function familyEventStaggerScore(event: FamilyEvent): number {
@@ -130,17 +153,30 @@ function familyEventStaggerScore(event: FamilyEvent): number {
 
 /** Hard cap on how many family labels may appear in one viewport. */
 export function maxFamilyEventsForSpan(span: number, viewportWidth = 1200): number {
-  let cap = 8
-  if (span > 320) cap = 5
-  else if (span > 180) cap = 6
-  else if (span > 90) cap = 7
-  else if (span > 40) cap = 8
-  else cap = 9
-
-  // Roomy mid-century views: more markers when years are wide on screen.
   const pxPerYear = viewportWidth / Math.max(1, span)
-  if (pxPerYear >= 16 && span <= 120) cap += 1
-  if (pxPerYear >= 22 && span <= 90) cap += 1
+  let cap = 9
+  if (span > 320) cap = 8
+  else if (span > 180) cap = 9
+  else if (span > 90) cap = 11
+  else if (span > 40) cap = 13
+  else cap = 14
+
+  // Fill empty axis when years are wide on screen.
+  if (pxPerYear >= 12) cap += 1
+  if (pxPerYear >= 18) cap += 2
+  if (pxPerYear >= 28) cap += 2
+  if (pxPerYear >= 40) cap += 2
+
+  // Wide century views still have horizontal room for more landmarks.
+  if (span > 180 && viewportWidth >= 900) {
+    const farBudget = Math.floor(Math.max(400, viewportWidth - 280) / 110)
+    cap = Math.max(cap, Math.min(farBudget, 12))
+  }
+
+  // Roughly one readable staggered label per ~100px of usable width.
+  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / 100)
+  cap = Math.max(cap, Math.min(spaceBudget, 16))
+  cap = Math.min(cap, 16)
 
   return stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
 }
@@ -216,22 +252,35 @@ export function staggerFamilyEventLanes<
   const compact = span > 90 || isNarrowStage(viewportWidth)
   const axisY = timelineAxisY(height, viewportWidth)
   const floorY = familyLabelFloorY(viewportWidth, height)
+  // Century views: render-time clamps clear sidenotes; packing should fill the axis.
+  const editorialPanels =
+    span >= 40 ? [] : estimateEditorialSidenoteObstacles(viewportWidth)
+  const wideAtlas = span >= 40
 
   const assigned = new Map<string, T>()
-  const lastRight = offsets.map(() => -1e9)
+  // Interval occupancy per lane — must not assume left-to-right insertion order.
+  const laneIntervals: Array<Array<{ left: number; right: number }>> = offsets.map(() => [])
+
+  const fitsLane = (laneIndex: number, left: number, right: number): boolean => {
+    for (const iv of laneIntervals[laneIndex]) {
+      if (!(right + pad < iv.left || left > iv.right + pad)) return false
+    }
+    return true
+  }
 
   const placeEntry = (entry: T, force: boolean): boolean => {
     const id = canonicalEventId(entry.event)
     if (assigned.has(id)) return true
     if (!force && assigned.size >= maxKeep) return false
 
-    const half = measureDetailedFootprint(entry.event, viewportWidth, compact).width / 2
+    const footprint = measureDetailedFootprint(entry.event, viewportWidth, compact)
+    const half = footprint.width / 2
     const left = entry.x - half
     const right = entry.x + half
 
     let laneIndex = -1
     for (let i = 0; i < offsets.length; i++) {
-      if (left >= lastRight[i] + pad) {
+      if (fitsLane(i, left, right)) {
         laneIndex = i
         break
       }
@@ -240,23 +289,54 @@ export function staggerFamilyEventLanes<
     // Never force-overlap: sticky keep cannot violate zero-overlap.
     if (laneIndex < 0) return false
 
-    lastRight[laneIndex] = Math.max(lastRight[laneIndex], right)
+    let y = Math.max(floorY, axisY - offsets[laneIndex])
+    const ceiling = familyLabelCeilingY(axisY)
+    for (const panel of editorialPanels) {
+      const bounds = footprintBounds(entry.x, y, footprint, 'center', 0, viewportWidth)
+      const overlapsHorizontally = !(
+        bounds.right + 10 < panel.left || bounds.left - 10 > panel.right
+      )
+      if (!overlapsHorizontally) continue
+      const minTop = panel.bottom + 14
+      if (bounds.top < minTop) y += minTop - bounds.top
+    }
+    // Family labels belong above the timeline — never spill into history space.
+    y = Math.min(y, ceiling)
+
+    laneIntervals[laneIndex].push({ left, right })
     assigned.set(id, {
       ...entry,
       lane: laneIndex,
-      y: Math.max(floorY, axisY - offsets[laneIndex]),
+      y,
       nudge: 0,
       compact,
     })
     return true
   }
 
-  const ranked = [...placed].sort(
-    (a, b) =>
+  // Wide atlas: prefer temporal spread over near-gen score so eras keep seats.
+  const ranked = [...placed].sort((a, b) => {
+    if (wideAtlas) {
+      const spreadA = Math.min(
+        ...placed.map((other) =>
+          other === a ? Infinity : Math.abs(other.event.year - a.event.year),
+        ),
+      )
+      const spreadB = Math.min(
+        ...placed.map((other) =>
+          other === b ? Infinity : Math.abs(other.event.year - b.event.year),
+        ),
+      )
+      // Prefer markers that are farther from their nearest neighbor (era anchors).
+      if (spreadB !== spreadA) return spreadB - spreadA
+      return a.x - b.x || familyEventStaggerScore(b.event) - familyEventStaggerScore(a.event)
+    }
+    return (
       familyEventStaggerScore(b.event) - familyEventStaggerScore(a.event) ||
       a.x - b.x ||
-      a.event.year - b.event.year,
-  )
+      a.event.year - b.event.year
+    )
+  })
 
   if (mustKeepIds?.size) {
     for (const entry of ranked) {
@@ -267,8 +347,6 @@ export function staggerFamilyEventLanes<
   }
 
   for (const entry of ranked) {
-    const id = canonicalEventId(entry.event)
-    if (assigned.has(id)) continue
     if (assigned.size >= maxKeep) break
     placeEntry(entry, false)
   }
@@ -310,24 +388,39 @@ export function targetVisibleEventCount(
   span = 100,
 ): number {
   const caps: Record<ChapterDensity, { far: number; medium: number; near: number }> = {
-    sparse: { far: 5, medium: 6, near: 7 },
-    moderate: { far: 4, medium: 6, near: 7 },
-    dense: { far: 4, medium: 5, near: 6 },
-    very_dense: { far: 3, medium: 4, near: 5 },
+    sparse: { far: 8, medium: 9, near: 10 },
+    moderate: { far: 7, medium: 9, near: 10 },
+    dense: { far: 7, medium: 8, near: 9 },
+    very_dense: { far: 6, medium: 7, near: 8 },
   }
 
-  let limit = mode === 'detail' ? Math.min(available, 8) : Math.min(available, caps[density][mode])
+  let limit = mode === 'detail' ? Math.min(available, 12) : Math.min(available, caps[density][mode])
 
-  // When nowhere near present density and the axis has room, show more of the near family.
+  // When the axis has room, fill gaps instead of leaving sparse landmarks.
   const pxPerYear = viewportWidth / Math.max(1, span)
-  if (pxPerYear >= 14 && (density === 'sparse' || density === 'moderate')) {
+  if (pxPerYear >= 12 && (density === 'sparse' || density === 'moderate')) {
     limit += 2
-  } else if (pxPerYear >= 18) {
-    limit += 1
+  } else if (pxPerYear >= 16) {
+    limit += 2
   }
-  if (pxPerYear >= 24 && mode !== 'far') {
-    limit += 1
+  if (pxPerYear >= 22 && mode !== 'far') {
+    limit += 2
   }
+  if (pxPerYear >= 32 && mode !== 'far') {
+    limit += 2
+  }
+
+  // Far/generation+ views: budget by horizontal room (far has tiny px/year;
+  // mid zooms still have empty axis to fill).
+  if (mode === 'far' || span >= 40) {
+    const roomBudget = Math.floor(Math.max(400, viewportWidth - 280) / 105)
+    limit = Math.max(limit, Math.min(available, roomBudget))
+  }
+
+  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / 105)
+  const modeCap = mode === 'far' ? 12 : mode === 'detail' ? 14 : 13
+  limit = Math.max(limit, Math.min(available, spaceBudget))
+  limit = Math.min(available, limit, modeCap)
 
   if (isNarrowStage(viewportWidth)) {
     limit = Math.min(available, Math.max(2, Math.round(limit * 0.75)))
@@ -500,12 +593,28 @@ function passesTypeDiversity(
   const nearBirthCount = picked.filter(
     (e) => e.kind === 'birth' && isNearGeneration(e.person),
   ).length
+  const span = Math.max(1, end - start)
+  // Generation / roomy-axis windows need births across the range.
+  const roomyView = span >= 40
 
   if (candidate.kind === 'birth' && birthCount >= 1) {
     // Parents/self/children: allow several births when the viewport still has room.
     if (isNearGeneration(candidate.person)) {
+      // Keep room for both parents on generation+ views; still cap household stacks.
+      if (roomyView && nearBirthCount >= 3) return false
       if (density === 'very_dense' && nearBirthCount >= 3) return false
       if (nearBirthCount >= 4) return false
+      return true
+    }
+
+    if (roomyView) {
+      const zone = zoneForYear(candidate.year, start, end)
+      const birthZones = new Set(
+        picked.filter((e) => e.kind === 'birth').map((e) => zoneForYear(e.year, start, end)),
+      )
+      // Prefer spreading births across zones; allow several when eras have room.
+      if (birthZones.has(zone) && birthCount >= Math.max(2, Math.round(span / 45))) return false
+      if (birthCount >= Math.max(5, Math.round(span / 55))) return false
       return true
     }
 
@@ -515,25 +624,28 @@ function passesTypeDiversity(
         picked.filter((e) => e.kind === 'birth').map((e) => zoneForYear(e.year, start, end)),
       )
       if (birthZones.has(zone)) return false
-      if (birthCount >= 2) return false
+      if (birthCount >= 3) return false
       return true
     }
-    if (density === 'moderate' && birthCount >= 2) return false
-    if (density === 'sparse' && birthCount >= 2 && !kinds.has('move') && !kinds.has('service')) {
+    if (density === 'moderate' && birthCount >= 3) return false
+    if (density === 'sparse' && birthCount >= 3 && !kinds.has('move') && !kinds.has('service')) {
       return false
     }
     if (
       !kinds.has('death') &&
       !kinds.has('move') &&
       !kinds.has('service') &&
-      birthCount >= 1 &&
+      birthCount >= 2 &&
       density !== 'sparse'
     ) {
       return false
     }
   }
 
-  if (candidate.kind === 'death' && deathCount >= 1 && density === 'very_dense') return false
+  if (candidate.kind === 'death' && deathCount >= 1 && density === 'very_dense' && !roomyView) {
+    return false
+  }
+  if (candidate.kind === 'death' && deathCount >= 3 && roomyView) return false
   return true
 }
 
@@ -693,12 +805,20 @@ function pickEraQuotas(
   scoreOf: (event: FamilyEvent) => number,
   eraCount = 5,
 ): void {
-  for (let i = 0; i < eraCount; i++) {
+  const eras = Math.min(eraCount, Math.max(4, Math.round(span / 100)))
+  for (let i = 0; i < eras; i++) {
     if (picked.length >= limit) break
-    const eraStart = start + (span * i) / eraCount
-    const eraEnd = i === eraCount - 1 ? end : start + (span * (i + 1)) / eraCount - 1
-    const best = bestInYearRange(events, eraStart, eraEnd, scoreOf)
-    if (best) tryAddCandidate(best, picked, pickedIds, limit, start, end, span, width, density)
+    const eraStart = start + (span * i) / eras
+    const eraEnd = i === eras - 1 ? end : start + (span * (i + 1)) / eras - 1
+    const ranked = sortByImportance(
+      events.filter((e) => e.year >= eraStart && e.year <= eraEnd),
+      scoreOf,
+    )
+    for (const candidate of ranked) {
+      if (tryAddCandidate(candidate, picked, pickedIds, limit, start, end, span, width, density)) {
+        break
+      }
+    }
   }
 }
 
@@ -784,12 +904,27 @@ function tryAddNearGenerationCandidate(
     const px = yearX(p.year, start, span, width)
     const yearGap = Math.abs(p.year - candidate.year)
     const pxGap = Math.abs(px - cx)
-    // Close household births (spouse/children near the root year) need tighter
-    // spatial blocking only — a 2–3 year gap is normal for a family cluster.
+    // Close household births may share a decade, but still need room for
+    // staggered labels — otherwise stacks collide at the same visual height.
     const bothNear = isNearGeneration(p.person, 1) && isNearGeneration(candidate.person, 1)
     if (bothNear) {
-      if (pxGap < 28 && yearGap < 1) return false
-      if (pxGap < 18) return false
+      // Root household (spouse/children) gets a slightly looser seat so modern
+      // family clusters stay visible; other near-gen pairs need more room.
+      const householdCore =
+        Math.abs(p.person.generation ?? 99) <= 0 ||
+        Math.abs(candidate.person.generation ?? 99) <= 0
+      const minPx = householdCore
+        ? yearGap < 2
+          ? 48
+          : yearGap < 6
+            ? 36
+            : 28
+        : yearGap < 2
+          ? 64
+          : yearGap < 6
+            ? 48
+            : 36
+      if (pxGap < minPx) return false
       continue
     }
     if (pxGap < 52 && yearGap < 3) return false
@@ -803,6 +938,7 @@ function tryAddNearGenerationCandidate(
 /**
  * Guarantee seats for root/parents/grandparents when they fall in-view and the
  * axis has room — generation proximity outranks pure temporal spread.
+ * On century+ views, keep near-gen to a cameo so eras can fill the axis.
  */
 function pickNearGenerationSeats(
   events: FamilyEvent[],
@@ -822,9 +958,14 @@ function pickNearGenerationSeats(
 
   const pxPerYear = width / Math.max(1, span)
   const roomy = pxPerYear >= 12
+  const wideView = span >= 40
   const target = Math.min(
     inView.length,
-    roomy ? Math.max(4, Math.min(6, Math.ceil(limit * 0.7))) : Math.min(3, limit),
+    wideView
+      ? Math.min(span > 180 ? 2 : 4, Math.max(2, Math.ceil(limit * 0.35)))
+      : roomy
+        ? Math.max(4, Math.min(6, Math.ceil(limit * 0.65)))
+        : Math.min(3, limit),
   )
 
   const ranked = [...inView].sort((a, b) => {
@@ -871,11 +1012,29 @@ export function selectDistributedLandmarks(
   const probeContext = pickedProbeContext(start, span, width, calloutObstacle)
 
   // Near-generation first so parents are not crowded out by temporal-spread quotas.
-  pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
-
-  if (mode === 'far' && limit >= 5) {
+  // Far/century views: fill eras first so the present cannot monopolize the atlas.
+  // Generation-scale mid zooms: keep a near-gen cameo, then spread across the axis.
+  if (mode === 'far' || span > 180) {
     pickEraQuotas(events, picked, pickedIds, limit, start, end, span, width, density, scoreOf)
+    pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
+  } else if (span >= 40) {
+    pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
+    pickZoneQuotas(
+      events,
+      picked,
+      pickedIds,
+      limit,
+      start,
+      end,
+      span,
+      width,
+      density,
+      scoreOf,
+      calloutObstacle,
+    )
+    pickEraQuotas(events, picked, pickedIds, limit, start, end, span, width, density, scoreOf, 6)
   } else {
+    pickNearGenerationSeats(events, picked, pickedIds, limit, start, end, span, width, scoreOf)
     pickZoneQuotas(
       events,
       picked,
@@ -1000,7 +1159,11 @@ type PlacedRect = {
 function laneY(height: number, lane: number, viewportWidth = 1200): number {
   const offsets = hybridLaneOffsets(viewportWidth)
   const offset = offsets[Math.min(lane, offsets.length - 1)]
-  return Math.max(familyLabelFloorY(viewportWidth, height), timelineAxisY(height, viewportWidth) - offset)
+  const axis = timelineAxisY(height, viewportWidth)
+  return Math.min(
+    familyLabelCeilingY(axis),
+    Math.max(familyLabelFloorY(viewportWidth, height), axis - offset),
+  )
 }
 
 function rectsCollide(
@@ -1103,6 +1266,9 @@ function tryHybridPlacement(
       anchorY += panel.bottom - boundsProbe.top + 8
     }
   }
+  const ceiling = familyLabelCeilingY(timelineAxisY(height, width))
+  if (anchorY > ceiling) anchorY = ceiling
+
   const bounds = footprintBounds(markerX, anchorY, footprint, alignment, nudge, width)
   const rect: PlacedRect = {
     left: bounds.left,
@@ -1115,7 +1281,8 @@ function tryHybridPlacement(
 
   if (collidesWithObstacles(rect, markerX, obstacles, editorialObstacles)) return null
 
-  const gap = isNearGeneration(event.person) ? Math.min(vGap, 12) : vGap
+  // Near-family pairs may stack closer than distant labels, but not on top of each other.
+  const gap = isNearGeneration(event.person) ? Math.min(vGap, 20) : vGap
 
   for (const other of placed) {
     const hClear =
@@ -1191,6 +1358,7 @@ function placeOneHybridEvent(
   editorialObstacles: EditorialObstacle[],
   minLane = 0,
   forceAlignment?: LabelAlignment,
+  preferCompact = false,
 ): HybridPlacedEvent | null {
   if (markerUnderCallout(markerX, obstacles)) {
     const flank = tryPlaqueFlankPlacement(
@@ -1202,7 +1370,7 @@ function placeOneHybridEvent(
       obstacles,
       editorialObstacles,
       minLane,
-      false,
+      preferCompact || false,
     )
     if (flank) {
       placed.push(flank.rect)
@@ -1236,7 +1404,7 @@ function placeOneHybridEvent(
       : hybridAlignmentOrder(markerX, width, editorialObstacles)
 
   const maxLanes = hybridMaxLanes(width)
-  const compactPasses = isNarrowStage(width) ? [true] : [false, true]
+  const compactPasses = isNarrowStage(width) || preferCompact ? [true] : [false, true]
 
   for (const compact of compactPasses) {
     for (let lane = minLane; lane < maxLanes; lane++) {
@@ -1404,7 +1572,11 @@ export function placeHybridLandmarks(
   const placedIds = new Set<string>()
   const end = start + span
   const stabilityKey = landmarkStabilityKey(mode, span)
-  const editorialObstacles = estimateEditorialSidenoteObstacles(width)
+  const wideAtlas = mode === 'far' || span >= 40
+  // Century views: keep the plaque card reserved, but do not let sidenotes + brace
+  // consume the whole axis — render-time clamps still clear Featured Story / Thinking.
+  const editorialObstacles = wideAtlas ? [] : estimateEditorialSidenoteObstacles(width)
+  const activeObstacles = softenCalloutObstaclesForWideAtlas(obstacles, wideAtlas, width)
 
   const debugRejected: LandmarkDebugSnapshot['rejected'] = []
   const debugReplacements: LandmarkDebugSnapshot['replacements'] = []
@@ -1453,6 +1625,14 @@ export function placeHybridLandmarks(
   }
 
   placementPlan.sort((a, b) => {
+    // On generation+ views, favor temporal spread over near-gen first-claim.
+    if (span >= 40 || mode === 'far') {
+      return (
+        a.event.year - b.event.year ||
+        _scoreOf(b.event) - _scoreOf(a.event) ||
+        a.event.person.name.localeCompare(b.event.person.name)
+      )
+    }
     const ga = generationDistance(a.event.person)
     const gb = generationDistance(b.event.person)
     if (ga !== gb) return ga - gb
@@ -1480,7 +1660,7 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
       )
       if (cachedResult) {
@@ -1496,11 +1676,11 @@ export function placeHybridLandmarks(
       width,
       height,
       placedRects,
-      obstacles,
+      activeObstacles,
       editorialObstacles,
       minLane,
       forceAlignment,
-    )
+      wideAtlas)
     if (result) {
       rememberStableLandmarkPlacement(stabilityKey, eventId, {
         lane: result.lane,
@@ -1523,7 +1703,7 @@ export function placeHybridLandmarks(
     }
   }
 
-  const probeContext = pickedProbeContext(start, span, width, obstacles)
+  const probeContext = pickedProbeContext(start, span, width, activeObstacles)
 
   // Recover near-generation landmarks that lost a lane — displace a farther relative first.
   for (const failed of [...unplaced]) {
@@ -1552,10 +1732,11 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
         0,
-      )
+        undefined,
+        wideAtlas)
 
       if (result) {
         rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(failed), {
@@ -1609,9 +1790,11 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
-      )
+        0,
+        undefined,
+        wideAtlas)
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(replacement), {
         lane: result.lane,
@@ -1628,8 +1811,9 @@ export function placeHybridLandmarks(
   }
 
   // Final near-generation rescue: prefer parents over more distant markers when lanes collide.
+  // Skip on century+ views — temporal spread matters more than household completeness.
   const unresolvedNear = unplaced.filter((event) => isNearGeneration(event.person, 1))
-  if (unresolvedNear.length) {
+  if (unresolvedNear.length && mode !== 'far' && span < 40) {
     const nearPlaced: HybridPlacedEvent[] = []
     const nearRects: PlacedRect[] = []
     const otherPlaced: HybridPlacedEvent[] = []
@@ -1663,7 +1847,8 @@ export function placeHybridLandmarks(
         null,
         [],
         0,
-      )
+        undefined,
+        wideAtlas)
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(failed), {
         lane: result.lane,
@@ -1687,10 +1872,11 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
         0,
-      )
+        undefined,
+        wideAtlas)
       if (!result) {
         unplaced.push(entry.event)
         continue
@@ -1727,9 +1913,11 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
-      )
+        0,
+        undefined,
+        wideAtlas)
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
         lane: result.lane,
@@ -1760,9 +1948,11 @@ export function placeHybridLandmarks(
         width,
         height,
         placedRects,
-        obstacles,
+        activeObstacles,
         editorialObstacles,
-      )
+        0,
+        undefined,
+        wideAtlas)
       if (!result) continue
       rememberStableLandmarkPlacement(stabilityKey, canonicalEventId(event), {
         lane: result.lane,
@@ -1815,11 +2005,13 @@ export function estimateCalloutObstacle(
   span: number,
   width: number,
   axisY = 0,
-  zoomMode: SemanticZoomMode = 'medium',
+  _zoomMode: SemanticZoomMode = 'medium',
   viewportHeight = 720,
 ): CalloutObstacles | null {
   if (!chapters.length || width <= 0) return null
 
+  // Plaque position/style are zoom-invariant — always reserve the far layout box.
+  const zoomMode: SemanticZoomMode = 'far'
   const cx = chapterCenterX(width)
   const visibleTimeline = visibleTimelineViewport(width)
   const layout = getCalloutLayoutProfile({
@@ -1869,12 +2061,28 @@ export function estimateCalloutObstacle(
 
   const braceBand =
     brace && verticalLayout.showEraBrace
-      ? {
-          left: brace.left,
-          right: brace.right,
-          top: brace.bracketY - brace.capDrop - 2,
-          bottom: brace.bracketY + brace.capDrop + 4,
-        }
+      ? (() => {
+          const rawLeft = brace.left
+          const rawRight = brace.right
+          const rawWidth = rawRight - rawLeft
+          // Cap brace collision so a multi-century chapter does not reserve half the axis.
+          const maxBraceCollision = Math.min(width * 0.42, Math.max(halfW * 2 + 48, 320))
+          if (rawWidth <= maxBraceCollision) {
+            return {
+              left: rawLeft,
+              right: rawRight,
+              top: brace.bracketY - brace.capDrop - 2,
+              bottom: brace.bracketY + brace.capDrop + 4,
+            }
+          }
+          const mid = (rawLeft + rawRight) / 2
+          return {
+            left: mid - maxBraceCollision / 2,
+            right: mid + maxBraceCollision / 2,
+            top: brace.bracketY - brace.capDrop - 2,
+            bottom: brace.bracketY + brace.capDrop + 4,
+          }
+        })()
       : null
 
   return {

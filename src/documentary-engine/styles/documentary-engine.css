@@ -26,7 +26,7 @@
 
 .de-root--enter-atlas.de-root--atlas-handoff {
   pointer-events: none;
-  animation: de-atlas-lift var(--de-atlas-fade-in-ms, 320ms) ease
+  animation: de-atlas-lift var(--de-atlas-fade-in-ms, 2000ms) ease
     var(--de-atlas-reveal-delay-ms, 280ms) forwards;
 }
 

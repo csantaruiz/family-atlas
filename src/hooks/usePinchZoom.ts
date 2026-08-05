@@ -13,7 +13,7 @@ type PinchZoomArgs = {
   width: number
 }
 
-const PINCH_STEP_PX = 14
+const PINCH_STEP_PX = 5
 
 /** Map two-finger pinch on a container to zoom callbacks (delta > 0 = zoom out). */
 export function usePinchZoom(

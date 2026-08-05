@@ -68,6 +68,15 @@ type TimelineContextValue = {
 
 const TimelineContext = createContext<TimelineContextValue | null>(null)
 
+/** Exponential friction (higher = stops sooner). Tuned for iOS-like coasting. */
+const INERTIA_FRICTION_PER_MS = 0.0036
+/** Ignore tiny releases — only flick when the hand was still moving. */
+const INERTIA_MIN_RELEASE_PX_PER_MS = 0.2
+const INERTIA_MIN_VELOCITY_YEARS_PER_MS = 0.00035
+const INERTIA_STOP_VELOCITY_YEARS_PER_MS = 0.00012
+const INERTIA_MAX_VELOCITY_YEARS_PER_MS = 0.55
+const INERTIA_SAMPLE_WINDOW_MS = 100
+
 export function TimelineProvider({ children }: { children: ReactNode }) {
   const presentYear = new Date().getFullYear()
   const birthPeople = useMemo(
@@ -144,18 +153,32 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
 
   const dragXRef = useRef<number | null>(null)
   const dragStartXRef = useRef<number | null>(null)
+  const dragStageWidthRef = useRef(1200)
+  const centerRef = useRef(center)
+  const spanRef = useRef(span)
+  const dragSamplesRef = useRef<{ t: number; x: number }[]>([])
   const zoomAnimationRef = useRef<number | null>(null)
   const panAnimationRef = useRef<number | null>(null)
+  const inertiaAnimationRef = useRef<number | null>(null)
 
   const applyView = useCallback(
     (nextCenter: number, nextSpan: number) => {
       const clamped = clampView(nextCenter, nextSpan, minYear, maxYear, fullSpan)
+      centerRef.current = clamped.center
+      spanRef.current = clamped.span
       setCenter(clamped.center)
       setSpan(clamped.span)
       setZoomValue(zoomValueFromSpan(clamped.span, fullSpan))
     },
     [minYear, maxYear, fullSpan],
   )
+
+  const cancelInertia = useCallback(() => {
+    if (inertiaAnimationRef.current) {
+      cancelAnimationFrame(inertiaAnimationRef.current)
+      inertiaAnimationRef.current = null
+    }
+  }, [])
 
   const cancelViewAnimation = useCallback(() => {
     if (zoomAnimationRef.current) {
@@ -166,12 +189,60 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(panAnimationRef.current)
       panAnimationRef.current = null
     }
+    cancelInertia()
     setIsZooming(false)
-  }, [])
+  }, [cancelInertia])
 
   const unlockChapterScroll = useCallback(() => {
     setChapterScrollUnlocked(true)
   }, [])
+
+  const startInertia = useCallback(
+    (velocityYearsPerMs: number) => {
+      cancelInertia()
+      const prefersReducedMotion =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (prefersReducedMotion) return
+
+      let velocity = Math.max(
+        -INERTIA_MAX_VELOCITY_YEARS_PER_MS,
+        Math.min(INERTIA_MAX_VELOCITY_YEARS_PER_MS, velocityYearsPerMs),
+      )
+      if (Math.abs(velocity) < INERTIA_MIN_VELOCITY_YEARS_PER_MS) return
+
+      let lastTime = performance.now()
+      const frame = (now: number) => {
+        const dt = Math.min(48, Math.max(0, now - lastTime))
+        lastTime = now
+        if (dt <= 0) {
+          inertiaAnimationRef.current = requestAnimationFrame(frame)
+          return
+        }
+
+        const currentSpan = spanRef.current
+        const nextCenter = centerRef.current + velocity * dt
+        applyView(nextCenter, currentSpan)
+
+        // Exponential decay — fast flicks coast farther than slow releases.
+        velocity *= Math.exp(-INERTIA_FRICTION_PER_MS * dt)
+
+        const half = currentSpan / 2
+        const atEdge =
+          centerRef.current <= minYear + half + 0.05 ||
+          centerRef.current >= maxYear - half - 0.05
+        if (atEdge) velocity *= 0.55
+
+        if (Math.abs(velocity) < INERTIA_STOP_VELOCITY_YEARS_PER_MS) {
+          inertiaAnimationRef.current = null
+          return
+        }
+        inertiaAnimationRef.current = requestAnimationFrame(frame)
+      }
+      inertiaAnimationRef.current = requestAnimationFrame(frame)
+    },
+    [applyView, cancelInertia, minYear, maxYear],
+  )
 
   const animateView = useCallback(
     (targetCenter: number, targetSpan: number, duration = 680) => {
@@ -279,7 +350,11 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       const { start } = viewport(center, span)
       const frac = clientX / stageWidth
       const anchor = start + frac * span
-      const nextValue = Math.max(0, Math.min(100, zoomValue + (deltaY > 0 ? -7 : 7)))
+      // Touch pinch sends small |deltaY| steps; amplify those so pinch feels responsive.
+      // Mouse/trackpad wheel deltas are usually larger and keep the existing step size.
+      const abs = Math.abs(deltaY)
+      const step = abs > 0 && abs < 40 ? 12 : 7
+      const nextValue = Math.max(0, Math.min(100, zoomValue + (deltaY > 0 ? -step : step)))
       if (nextValue > zoomValue) unlockChapterScroll()
       const targetSpan = spanFromZoomValue(nextValue, fullSpan)
       const targetCenter = anchor + (0.5 - frac) * targetSpan
@@ -296,6 +371,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     cancelViewAnimation()
     dragXRef.current = clientX
     dragStartXRef.current = clientX
+    dragSamplesRef.current = [{ t: performance.now(), x: clientX }]
     setIsDragging(true)
     return true
   }, [cancelViewAnimation])
@@ -303,19 +379,54 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const handlePointerMove = useCallback(
     (clientX: number, stageWidth: number) => {
       if (dragXRef.current == null) return
+      dragStageWidthRef.current = stageWidth
       const dx = clientX - dragXRef.current
-      const nextCenter = center - (dx / stageWidth) * span
-      applyView(nextCenter, span)
+      const nextCenter = centerRef.current - (dx / stageWidth) * spanRef.current
+      applyView(nextCenter, spanRef.current)
       dragXRef.current = clientX
+
+      const now = performance.now()
+      const samples = dragSamplesRef.current
+      samples.push({ t: now, x: clientX })
+      while (samples.length > 1 && now - samples[0].t > INERTIA_SAMPLE_WINDOW_MS) {
+        samples.shift()
+      }
     },
-    [center, span, applyView],
+    [applyView],
   )
 
   const handlePointerUp = useCallback(() => {
+    const samples = dragSamplesRef.current
+    const stageWidth = Math.max(1, dragStageWidthRef.current)
+    const currentSpan = spanRef.current
+
     dragXRef.current = null
     dragStartXRef.current = null
     setIsDragging(false)
-  }, [])
+
+    if (samples.length >= 2) {
+      const newest = samples[samples.length - 1]
+      let oldest = samples[0]
+      for (let i = samples.length - 2; i >= 0; i--) {
+        if (newest.t - samples[i].t >= 32) {
+          oldest = samples[i]
+          break
+        }
+        oldest = samples[i]
+      }
+      const dt = newest.t - oldest.t
+      if (dt > 0) {
+        const velocityPxPerMs = (newest.x - oldest.x) / dt
+        if (Math.abs(velocityPxPerMs) >= INERTIA_MIN_RELEASE_PX_PER_MS) {
+          // Dragging right reveals earlier years (center decreases).
+          const velocityYearsPerMs = -(velocityPxPerMs / stageWidth) * currentSpan
+          startInertia(velocityYearsPerMs)
+        }
+      }
+    }
+
+    dragSamplesRef.current = []
+  }, [startInertia])
 
   const value: TimelineContextValue = {
     minYear,

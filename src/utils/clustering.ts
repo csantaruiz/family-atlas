@@ -72,6 +72,17 @@ export type PlacedSpanCluster = {
   dissolve: number
 }
 
+/** Local stack of conflicting family markers — click to zoom deeper. */
+export type PlacedEventConflictCluster = {
+  id: string
+  events: FamilyEvent[]
+  from: number
+  to: number
+  x: number
+  y: number
+  count: number
+}
+
 type LaneSlot = {
   left: number
   right: number
@@ -647,6 +658,127 @@ export function clusterThresholdForMode(mode: ZoomMode): number {
   if (mode === 'generations') return 165
   if (mode === 'decades') return 140
   return 95
+}
+
+/**
+ * When several important markers sit too close for readable labels, fold them
+ * into a count badge the user can click to zoom deeper.
+ * Roomy zooms keep individuals and only fold true stacks — but the fold radius
+ * must be wide enough that neighboring labels do not visually collide.
+ */
+export function foldSpatiallyConflictingEvents<
+  T extends { event: FamilyEvent; x: number; y: number },
+>(
+  placed: T[],
+  span: number,
+  width: number,
+  height: number,
+): { events: T[]; clusters: PlacedEventConflictCluster[] } {
+  if (placed.length < 2) return { events: placed, clusters: [] }
+
+  const pxPerYear = width / Math.max(1, span)
+  // Deep year zoom: leave individuals alone — there is room to stagger.
+  if (pxPerYear >= 48) return { events: placed, clusters: [] }
+
+  const mode: ZoomMode =
+    span > 280 ? 'eras' : span > 120 ? 'generations' : span > 40 ? 'decades' : 'years'
+  const base = Math.min(128, Math.max(80, clusterThresholdForMode(mode) * 0.78))
+
+  // Far: ~6% of width so an individual cannot sit on top of a conflict badge.
+  // Mid: fold only tight stacks — leave decade-spaced landmarks alone.
+  let threshold: number
+  let maxYearGapToFold: number
+  if (pxPerYear < 8) {
+    threshold = Math.min(96, Math.max(64, width * 0.06))
+    maxYearGapToFold = Math.max(22, Math.round(span * 0.05))
+  } else if (pxPerYear < 12) {
+    threshold = Math.min(100, Math.max(72, base * 0.62))
+    maxYearGapToFold = Math.max(14, Math.round(span * 0.07))
+  } else if (pxPerYear < 22) {
+    threshold = Math.min(96, Math.max(70, base * 0.58))
+    maxYearGapToFold = Math.max(12, Math.round(span * 0.1))
+  } else {
+    threshold = Math.min(88, Math.max(64, base * 0.5))
+    maxYearGapToFold = Math.max(10, Math.round(span * 0.12))
+  }
+
+  const sorted = [...placed].sort((a, b) => a.x - b.x || a.event.year - b.event.year)
+  const groups: T[][] = []
+  let current: T[] = [sorted[0]]
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = current[current.length - 1]
+    const yearGap = Math.abs(sorted[i].event.year - prev.event.year)
+    if (sorted[i].x - prev.x < threshold && yearGap <= maxYearGapToFold) {
+      current.push(sorted[i])
+    } else {
+      groups.push(current)
+      current = [sorted[i]]
+    }
+  }
+  groups.push(current)
+
+  const axisY = timelineAxisY(height, width)
+  const clusterY = Math.max(familyLabelFloorY(width, height) + 24, axisY - 96)
+  const events: T[] = []
+  const clusters: PlacedEventConflictCluster[] = []
+
+  for (const group of groups) {
+    if (group.length < 2) {
+      events.push(...group)
+      continue
+    }
+
+    // If the stack already spans enough width for staggered labels, keep individuals.
+    const spread = group[group.length - 1].x - group[0].x
+    const minSpreadForIndividuals = threshold * Math.max(1.25, group.length * 0.65)
+    if (pxPerYear >= 12 && spread >= minSpreadForIndividuals) {
+      events.push(...group)
+      continue
+    }
+    // On far views, prefer individuals whenever the group is not a true year stack.
+    if (span > 180) {
+      const yearSpread = group[group.length - 1].event.year - group[0].event.year
+      if (yearSpread > maxYearGapToFold) {
+        events.push(...group)
+        continue
+      }
+    }
+
+    const years = group.map((entry) => entry.event.year)
+    const from = Math.min(...years)
+    const to = Math.max(...years)
+    const x = group.reduce((sum, entry) => sum + entry.x, 0) / group.length
+    const ids = group
+      .map((entry) => canonicalEventId(entry.event))
+      .sort()
+      .join('|')
+
+    clusters.push({
+      id: `conflict:${from}-${to}:${ids}`,
+      events: group.map((entry) => entry.event),
+      from,
+      to,
+      x,
+      y: clusterY,
+      count: group.length,
+    })
+  }
+
+  return { events, clusters }
+}
+
+/** Target span after clicking a local conflict cluster. */
+export function conflictClusterZoomSpan(
+  from: number,
+  to: number,
+  currentSpan: number,
+): number {
+  const yearPad = Math.max(5, Math.round((to - from) * 0.4) + 8)
+  const naturalSpan = Math.max(12, to - from + yearPad * 2)
+  const tightened = Math.min(naturalSpan, currentSpan * 0.4)
+  // Always move deeper than the current view when possible.
+  return Math.max(6, Math.min(tightened, currentSpan * 0.92))
 }
 
 export function eventBudgetForMode(mode: ZoomMode): number {

@@ -168,12 +168,9 @@ export function getCalloutLayoutProfile(input: {
         ? 'sparse'
         : 'balanced'
 
-  const showNarrative = zoomMode !== 'detail'
-  const showCta = zoomMode !== 'detail'
-  const showMeta =
-    showNarrative &&
-    placedEventCount < totalVisibleEvents &&
-    zoomMode !== 'far'
+  const showNarrative = true
+  const showCta = true
+  const showMeta = placedEventCount < totalVisibleEvents
 
   return {
     tier: labelDensity,
@@ -199,13 +196,7 @@ export function getChapterPresentation(input: ChapterPresentationInput): Chapter
   const yearRange = yearStart === yearEnd ? String(yearStart) : `${yearStart}–${yearEnd}`
 
   const narrative = subtitle?.trim() || null
-  let displaySummary: string | null = narrative
-  if (!displaySummary && zoomMode !== 'near' && zoomMode !== 'detail') {
-    displaySummary = summary || null
-  }
-  if (zoomMode === 'detail') {
-    displaySummary = null
-  }
+  const displaySummary = narrative || summary || null
 
   const redundantHidden = isRedundantHiddenCount(
     hiddenCount,

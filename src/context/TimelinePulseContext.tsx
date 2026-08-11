@@ -57,6 +57,7 @@ export function TimelinePulseProvider({ active, children }: TimelinePulseProvide
     timelineFilters,
     isDragging,
     isZooming,
+    isInertialScrolling,
   } = useTimeline()
   const { isIntroActive } = useJourneyIntro()
   const prefersReducedMotion = useReducedMotion()
@@ -76,6 +77,7 @@ export function TimelinePulseProvider({ active, children }: TimelinePulseProvide
     !prefersReducedMotion &&
     !isDragging &&
     !isZooming &&
+    !isInertialScrolling &&
     !isIntroActive &&
     !detail &&
     timelineFilters.historicalEvents

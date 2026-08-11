@@ -21,8 +21,8 @@ export function TimelineMountainSilhouette({
   width,
   height,
 }: TimelineMountainSilhouetteProps) {
-  const { isZooming } = useTimeline()
-  const interactionLocked = isZooming
+  const { isZooming, isDragging, isInertialScrolling } = useTimeline()
+  const interactionLocked = isZooming || isDragging || isInertialScrolling
   const axisY = useMemo(() => timelineAxisY(height, width), [height, width])
   const maxHeight = useMemo(() => mountainSilhouetteMaxHeight(height), [height])
 
@@ -35,7 +35,7 @@ export function TimelineMountainSilhouette({
         width,
         axisY,
         maxHeight,
-        // Coarser sampling while zooming keeps animation responsive.
+        // Coarser sampling while the camera moves keeps pan/zoom responsive.
         stepPxScale: interactionLocked ? 2.4 : 1,
       }),
     [start, end, span, width, axisY, maxHeight, interactionLocked],

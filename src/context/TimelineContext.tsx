@@ -33,6 +33,8 @@ type TimelineContextValue = {
   zoomValue: number
   isDragging: boolean
   isZooming: boolean
+  /** True while post-drag inertial coasting is animating the camera. */
+  isInertialScrolling: boolean
   chapterScrollUnlocked: boolean
   detail: DetailContent
   highlightedStoryPersonId: string | null
@@ -149,6 +151,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const [mapHighlightYears, setMapHighlightYears] = useState<{ start: number; end: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isZooming, setIsZooming] = useState(false)
+  const [isInertialScrolling, setIsInertialScrolling] = useState(false)
   const [chapterScrollUnlocked, setChapterScrollUnlocked] = useState(false)
 
   const dragXRef = useRef<number | null>(null)
@@ -178,6 +181,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(inertiaAnimationRef.current)
       inertiaAnimationRef.current = null
     }
+    setIsInertialScrolling(false)
   }, [])
 
   const cancelViewAnimation = useCallback(() => {
@@ -211,6 +215,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       )
       if (Math.abs(velocity) < INERTIA_MIN_VELOCITY_YEARS_PER_MS) return
 
+      setIsInertialScrolling(true)
       let lastTime = performance.now()
       const frame = (now: number) => {
         const dt = Math.min(48, Math.max(0, now - lastTime))
@@ -235,6 +240,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
 
         if (Math.abs(velocity) < INERTIA_STOP_VELOCITY_YEARS_PER_MS) {
           inertiaAnimationRef.current = null
+          setIsInertialScrolling(false)
           return
         }
         inertiaAnimationRef.current = requestAnimationFrame(frame)
@@ -438,6 +444,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     zoomValue,
     isDragging,
     isZooming,
+    isInertialScrolling,
     chapterScrollUnlocked,
     detail,
     highlightedStoryPersonId,

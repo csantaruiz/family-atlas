@@ -226,13 +226,16 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     openFamilyEvent,
     setThinkingFocusRange,
     isZooming,
+    isDragging,
+    isInertialScrolling,
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
 
   const modeLive = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
   const totalTimelineEnd = presentYear
-  const interactionLocked = isZooming
+  // Freeze landmark layout during zoom, drag, and inertial coast — only remap X.
+  const interactionLocked = isZooming || isDragging || isInertialScrolling
   const zoomSemanticRef = useRef(semanticZoomMode(span, fullSpan))
   const useBirthClustersRef = useRef(showBirthPeriodClusters(span) && timelineFilters.births)
   const modeRef = useRef(modeLive)

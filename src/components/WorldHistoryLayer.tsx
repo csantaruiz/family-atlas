@@ -185,11 +185,13 @@ function selectHistoricalEvents(
 }
 
 export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLayerProps) {
-  const { span, center, birthPeople, openHistory, timelineFilters, isZooming } = useTimeline()
+  const { span, center, birthPeople, openHistory, timelineFilters, isZooming, isDragging, isInertialScrolling } =
+    useTimeline()
   const { pulse, registerHistoryPulseTargets } = useTimelinePulse()
   const prefersReducedMotion = useReducedMotion()
   const historyVisible = timelineFilters.historicalEvents
-  const interactionLocked = isZooming
+  // Match FamilyLayer: freeze selection/placement while the camera is in motion.
+  const interactionLocked = isZooming || isDragging || isInertialScrolling
   const persistEventMarkers = interactionLocked
   const eventFadeEnabled = !prefersReducedMotion && !persistEventMarkers
   const frozenHistoryEventsRef = useRef<HistoryEvent[] | null>(null)

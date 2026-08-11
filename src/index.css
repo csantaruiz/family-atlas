@@ -794,6 +794,7 @@
 }
 
 .stage.dragging .timeline-axis-pulse,
+.stage.coasting .timeline-axis-pulse,
 .stage.zooming .timeline-axis-pulse {
   display: none;
 }
@@ -2071,7 +2072,13 @@
 .stage.dragging .family-event-wrap,
 .stage.dragging .family-event,
 .stage.dragging .node,
-.stage.dragging .history-event {
+.stage.dragging .history-event,
+.stage.coasting .family-event-anchor,
+.stage.coasting .history-event-anchor,
+.stage.coasting .family-event-wrap,
+.stage.coasting .family-event,
+.stage.coasting .node,
+.stage.coasting .history-event {
   transition: none !important;
 }
 
@@ -2196,6 +2203,10 @@
 .stage.dragging .history-event-anchor.is-ambient-pulse-anchor .history-label,
 .stage.dragging .family-event.is-ambient-response .event-anchor,
 .stage.dragging .family-event.is-ambient-response .event-stem,
+.stage.coasting .history-event.is-ambient-pulse::before,
+.stage.coasting .history-event-anchor.is-ambient-pulse-anchor .history-label,
+.stage.coasting .family-event.is-ambient-response .event-anchor,
+.stage.coasting .family-event.is-ambient-response .event-stem,
 .stage.zooming .history-event.is-ambient-pulse::before,
 .stage.zooming .history-event-anchor.is-ambient-pulse-anchor .history-label,
 .stage.zooming .family-event.is-ambient-response .event-anchor,

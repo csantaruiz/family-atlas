@@ -31,6 +31,7 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
     presentYear,
     isDragging,
     isZooming,
+    isInertialScrolling,
     mapHighlightYears,
     handleWheel,
     handlePointerDown,
@@ -109,7 +110,7 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
         <div className="timeline-edge-vignette" aria-hidden="true" />
         <div
           ref={ref}
-          className={`stage${isNarrowStage(width) ? ' stage--narrow' : ''}${isDragging ? ' dragging' : ''}${isZooming ? ' zooming' : ''}`}
+          className={`stage${isNarrowStage(width) ? ' stage--narrow' : ''}${isDragging ? ' dragging' : ''}${isInertialScrolling ? ' coasting' : ''}${isZooming ? ' zooming' : ''}`}
           data-stage-layout={isNarrowStage(width) ? 'narrow' : 'desktop'}
           onWheel={(e) => {
             e.preventDefault()

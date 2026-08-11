@@ -1612,10 +1612,48 @@
   white-space: nowrap;
 }
 
+@keyframes chapter-zoom-cta-pulse {
+  0%,
+  100% {
+    color: rgba(228, 205, 158, 0.78);
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    color: rgba(255, 244, 220, 1);
+    transform: scale(1.1);
+    text-shadow: 0 0 18px rgba(228, 205, 158, 0.55);
+    filter: drop-shadow(0 0 10px rgba(214, 181, 108, 0.5));
+  }
+}
+
+.chapter-callout-zoom-btn--cta-pulse {
+  animation: chapter-zoom-cta-pulse 1.45s ease-in-out infinite;
+  will-change: transform, color, filter;
+}
+
+.stage.dragging .chapter-callout-zoom-btn--cta-pulse,
+.stage.coasting .chapter-callout-zoom-btn--cta-pulse,
+.stage.zooming .chapter-callout-zoom-btn--cta-pulse {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chapter-callout-zoom-btn--cta-pulse {
+    animation: none;
+  }
+}
+
 .chapter-callout-zoom-btn:hover:not(:disabled),
 .chapter-callout-zoom-btn:focus-visible:not(:disabled) {
   color: rgba(255, 244, 220, 1);
   transform: translateY(-1px);
+}
+
+.chapter-callout-zoom-btn--cta-pulse:hover:not(:disabled),
+.chapter-callout-zoom-btn--cta-pulse:focus-visible:not(:disabled) {
+  animation: none;
 }
 
 .chapter-callout-zoom-btn:disabled {
@@ -3371,31 +3409,34 @@
 }
 
 #people .people-explore {
-  padding-top: 12px;
+  padding-top: 0;
 }
 
 .people-explore-intro {
-  margin: 8px 0 22px;
+  margin: 6px 0 18px;
 }
 
 .people-explore-intro h2 {
   margin: 6px 0 0;
+  line-height: 1.08;
 }
 
 .people-sticky-chrome {
   position: sticky;
   top: 0;
   z-index: 8;
-  margin: -12px -46px 18px;
-  padding: 14px 46px 16px;
-  background: rgba(9, 11, 13, 0.97);
+  margin: 0 -46px 12px;
+  padding: 6px 46px 12px;
+  background: rgba(9, 11, 13, 0.98);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
 }
 
 .people-sticky-chrome .search {
-  margin: 0 0 18px;
+  margin: 0 0 12px;
+  padding-top: 4px;
+  padding-bottom: 8px;
 }
 
 .people-filters-row {
@@ -5483,8 +5524,8 @@
   }
 
   .people-sticky-chrome {
-    margin: -12px -25px 16px;
-    padding: 12px 25px 14px;
+    margin: 0 -25px 12px;
+    padding: 8px 25px 12px;
   }
 
   .people-filters-row {

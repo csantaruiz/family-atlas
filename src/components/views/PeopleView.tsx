@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { familyDatabase } from '../../data'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
@@ -23,6 +23,7 @@ type PeopleViewProps = {
 export function PeopleView({ active }: PeopleViewProps) {
   const { familyEvents, openPerson } = useTimeline()
   const { viewOnTimeline, viewOnTree } = useAppNavigation()
+  const exploreRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [sortKey, setSortKey] = useState<PersonSortKey>('birthYear')
   const [branch, setBranch] = useState('')
@@ -30,6 +31,11 @@ export function PeopleView({ active }: PeopleViewProps) {
   const [century, setCentury] = useState('')
   const [directAncestorsOnly, setDirectAncestorsOnly] = useState(false)
   const [notableLivesExplanationOpen, setNotableLivesExplanationOpen] = useState(false)
+
+  useEffect(() => {
+    if (!active) return
+    exploreRef.current?.scrollTo({ top: 0 })
+  }, [active])
 
   const people = familyDatabase.people
   const branches = useMemo(() => branchOptions(familyDatabase.stats.surnames), [])
@@ -60,7 +66,7 @@ export function PeopleView({ active }: PeopleViewProps) {
 
   return (
     <section id="people" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
-      <div className="explore people-explore">
+      <div className="explore people-explore" ref={exploreRef}>
         <div className="people-sticky-chrome">
           <input
             className="search"

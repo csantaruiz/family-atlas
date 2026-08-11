@@ -1,6 +1,15 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from 'react'
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { resolveChapterPlaqueBackground } from '../data/chapterPlaqueImagery'
 import {
   getChapterPresentation,
@@ -21,6 +30,7 @@ import { TimelineHint } from './TimelineHint'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
 const CALLOUT_CROSSFADE_S = 0.58
+const ZOOM_CTA_PULSE_SESSION_KEY = 'atlas-zoom-cta-pulse-dismissed'
 
 const calloutCrossfadeTransition = { duration: CALLOUT_CROSSFADE_S, ease: motionEase }
 
@@ -345,6 +355,36 @@ export function ChapterViewportCallout({
   const frameRef = externalFrameRef ?? localFrameRef
   const layerRef = useRef<HTMLDivElement>(null)
   const { chapterCenterX } = verticalLayout
+  const { isIntroActive } = useJourneyIntro()
+  const prefersReducedMotion = useReducedMotion()
+  const [zoomCtaPulseDismissed, setZoomCtaPulseDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(ZOOM_CTA_PULSE_SESSION_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const [zoomCtaPulseReady, setZoomCtaPulseReady] = useState(false)
+
+  useEffect(() => {
+    if (!isWideTimelineView || isIntroActive || zoomCtaPulseDismissed || prefersReducedMotion) {
+      setZoomCtaPulseReady(false)
+      return
+    }
+    const timer = window.setTimeout(() => setZoomCtaPulseReady(true), 480)
+    return () => window.clearTimeout(timer)
+  }, [isWideTimelineView, isIntroActive, zoomCtaPulseDismissed, prefersReducedMotion])
+
+  const dismissZoomCtaPulse = () => {
+    if (zoomCtaPulseDismissed) return
+    setZoomCtaPulseDismissed(true)
+    setZoomCtaPulseReady(false)
+    try {
+      sessionStorage.setItem(ZOOM_CTA_PULSE_SESSION_KEY, '1')
+    } catch {
+      /* ignore private mode / storage failures */
+    }
+  }
 
   const handleScrollPrev = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
@@ -390,8 +430,12 @@ export function ChapterViewportCallout({
     e.preventDefault()
     e.stopPropagation()
     if (!canZoomIn) return
+    if (isWideTimelineView) dismissZoomCtaPulse()
     onZoomIn(cluster)
   }
+
+  const showZoomCtaPulse =
+    isWideTimelineView && zoomCtaPulseReady && !zoomCtaPulseDismissed && !isIntroActive
 
   const handleZoomOut = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
@@ -448,7 +492,7 @@ export function ChapterViewportCallout({
           ) : null}
           <button
             type="button"
-            className={`chapter-callout-zoom-btn chapter-callout-zoom-btn--in${isWideTimelineView ? ' chapter-callout-zoom-btn--wide' : ''}`}
+            className={`chapter-callout-zoom-btn chapter-callout-zoom-btn--in${isWideTimelineView ? ' chapter-callout-zoom-btn--wide' : ''}${showZoomCtaPulse ? ' chapter-callout-zoom-btn--cta-pulse' : ''}`}
             aria-label={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
             title={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
             disabled={!canZoomIn}

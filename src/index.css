@@ -1630,7 +1630,7 @@
 
 .chapter-callout-zoom-btn--cta-pulse {
   animation: chapter-zoom-cta-pulse 1.45s ease-in-out infinite;
-  will-change: transform, color, filter;
+  transition: none;
 }
 
 .stage.dragging .chapter-callout-zoom-btn--cta-pulse,

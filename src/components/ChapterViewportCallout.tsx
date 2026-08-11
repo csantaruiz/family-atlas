@@ -30,7 +30,6 @@ import { TimelineHint } from './TimelineHint'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
 const CALLOUT_CROSSFADE_S = 0.58
-const ZOOM_CTA_PULSE_SESSION_KEY = 'atlas-zoom-cta-pulse-dismissed'
 
 const calloutCrossfadeTransition = { duration: CALLOUT_CROSSFADE_S, ease: motionEase }
 
@@ -357,34 +356,16 @@ export function ChapterViewportCallout({
   const { chapterCenterX } = verticalLayout
   const { isIntroActive } = useJourneyIntro()
   const prefersReducedMotion = useReducedMotion()
-  const [zoomCtaPulseDismissed, setZoomCtaPulseDismissed] = useState(() => {
-    try {
-      return sessionStorage.getItem(ZOOM_CTA_PULSE_SESSION_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
   const [zoomCtaPulseReady, setZoomCtaPulseReady] = useState(false)
 
   useEffect(() => {
-    if (!isWideTimelineView || isIntroActive || zoomCtaPulseDismissed || prefersReducedMotion) {
+    if (!isWideTimelineView || isIntroActive || prefersReducedMotion === true) {
       setZoomCtaPulseReady(false)
       return
     }
-    const timer = window.setTimeout(() => setZoomCtaPulseReady(true), 480)
+    const timer = window.setTimeout(() => setZoomCtaPulseReady(true), 320)
     return () => window.clearTimeout(timer)
-  }, [isWideTimelineView, isIntroActive, zoomCtaPulseDismissed, prefersReducedMotion])
-
-  const dismissZoomCtaPulse = () => {
-    if (zoomCtaPulseDismissed) return
-    setZoomCtaPulseDismissed(true)
-    setZoomCtaPulseReady(false)
-    try {
-      sessionStorage.setItem(ZOOM_CTA_PULSE_SESSION_KEY, '1')
-    } catch {
-      /* ignore private mode / storage failures */
-    }
-  }
+  }, [isWideTimelineView, isIntroActive, prefersReducedMotion])
 
   const handleScrollPrev = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
@@ -430,12 +411,10 @@ export function ChapterViewportCallout({
     e.preventDefault()
     e.stopPropagation()
     if (!canZoomIn) return
-    if (isWideTimelineView) dismissZoomCtaPulse()
     onZoomIn(cluster)
   }
 
-  const showZoomCtaPulse =
-    isWideTimelineView && zoomCtaPulseReady && !zoomCtaPulseDismissed && !isIntroActive
+  const showZoomCtaPulse = isWideTimelineView && zoomCtaPulseReady && !isIntroActive
 
   const handleZoomOut = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()

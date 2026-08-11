@@ -9,6 +9,7 @@ function fakeEvent(id: string, year: number, name: string): FamilyEvent {
   return {
     kind: 'birth',
     year,
+    title: name,
     person: {
       id,
       name,
@@ -16,8 +17,8 @@ function fakeEvent(id: string, year: number, name: string): FamilyEvent {
       generation: 1,
       birthYear: year,
       deathYear: null,
-      birthPlace: null,
-      deathPlace: null,
+      birthPlace: undefined,
+      deathPlace: undefined,
       places: [],
       focus: false,
     },

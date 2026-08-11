@@ -159,7 +159,7 @@ export function getCalloutLayoutProfile(input: {
   placedEventCount: number
   viewportWidth: number
 }): CalloutLayoutProfile {
-  const { zoomMode, totalVisibleEvents, placedEventCount, viewportWidth } = input
+  const { totalVisibleEvents, placedEventCount, viewportWidth } = input
   const maxWidthPx = getPlaqueWidthPx(viewportWidth)
   const labelDensity: CalloutLayoutTier =
     placedEventCount >= 4 || (placedEventCount >= 2 && totalVisibleEvents >= 8)

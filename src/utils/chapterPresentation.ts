@@ -144,8 +144,20 @@ export type CalloutLayoutProfile = {
 export const PLAQUE_MAX_WIDTH_PX = 520
 export const PLAQUE_MIN_WIDTH_PX = 320
 export const PLAQUE_WIDTH_VIEWPORT_RATIO = 0.58
+export const TABLET_PLAQUE_MAX_WIDTH_PX = 400
+export const TABLET_PLAQUE_MIN_WIDTH_PX = 280
+export const TABLET_PLAQUE_WIDTH_VIEWPORT_RATIO = 0.4
 
 export function getPlaqueWidthPx(viewportWidth: number): number {
+  if (viewportWidth <= 760) {
+    return Math.min(360, Math.max(260, viewportWidth * 0.72))
+  }
+  if (viewportWidth <= 1180) {
+    return Math.min(
+      TABLET_PLAQUE_MAX_WIDTH_PX,
+      Math.max(TABLET_PLAQUE_MIN_WIDTH_PX, viewportWidth * TABLET_PLAQUE_WIDTH_VIEWPORT_RATIO),
+    )
+  }
   return Math.min(
     PLAQUE_MAX_WIDTH_PX,
     Math.max(PLAQUE_MIN_WIDTH_PX, viewportWidth * PLAQUE_WIDTH_VIEWPORT_RATIO),
@@ -168,7 +180,8 @@ export function getCalloutLayoutProfile(input: {
         ? 'sparse'
         : 'balanced'
 
-  const showNarrative = true
+  const tablet = viewportWidth > 760 && viewportWidth <= 1180
+  const showNarrative = !(tablet && labelDensity === 'dense')
   const showCta = true
   const showMeta = placedEventCount < totalVisibleEvents
 

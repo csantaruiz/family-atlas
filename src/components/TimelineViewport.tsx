@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { tickStep, viewport, yearX } from '../utils/timelineMath'
-import { isNarrowStage } from '../utils/stageBreakpoints'
+import { isNarrowStage, isTabletStage } from '../utils/stageBreakpoints'
 import { useStageDimensions } from '../hooks/useStageDimensions'
 import { usePinchZoom } from '../hooks/usePinchZoom'
 import { FamilyLayer } from './FamilyLayer'
@@ -110,8 +110,10 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
         <div className="timeline-edge-vignette" aria-hidden="true" />
         <div
           ref={ref}
-          className={`stage${isNarrowStage(width) ? ' stage--narrow' : ''}${isDragging ? ' dragging' : ''}${isInertialScrolling ? ' coasting' : ''}${isZooming ? ' zooming' : ''}`}
-          data-stage-layout={isNarrowStage(width) ? 'narrow' : 'desktop'}
+          className={`stage${isNarrowStage(width) ? ' stage--narrow' : ''}${isTabletStage(width) ? ' stage--tablet' : ''}${isDragging ? ' dragging' : ''}${isInertialScrolling ? ' coasting' : ''}${isZooming ? ' zooming' : ''}`}
+          data-stage-layout={
+            isNarrowStage(width) ? 'narrow' : isTabletStage(width) ? 'tablet' : 'desktop'
+          }
           onWheel={(e) => {
             e.preventDefault()
             if (isIntroActive) completeIntro()

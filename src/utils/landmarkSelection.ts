@@ -24,7 +24,9 @@ import {
 import { yearX } from './timelineMath'
 import {
   familyLabelFloorY,
+  isCompactStage,
   isNarrowStage,
+  isTabletStage,
   stageLayoutProfile,
 } from './stageBreakpoints'
 import { isNearGeneration, generationDistance } from './familyPriority'
@@ -101,7 +103,11 @@ function softenCalloutObstaclesForWideAtlas(
 }
 
 function hybridLaneOffsets(viewportWidth: number): number[] {
-  return isNarrowStage(viewportWidth) ? HYBRID_LANE_OFFSETS_NARROW : HYBRID_LANE_OFFSETS_DESKTOP
+  if (isNarrowStage(viewportWidth)) return HYBRID_LANE_OFFSETS_NARROW
+  if (isTabletStage(viewportWidth)) {
+    return [70, 148, 226, 304, 382]
+  }
+  return HYBRID_LANE_OFFSETS_DESKTOP
 }
 
 function hybridMaxLanes(viewportWidth: number): number {
@@ -115,6 +121,13 @@ function familyLaneOffsets(span: number, viewportWidth = 1200): number[] {
     if (span > 180) return [58, 120, 182, 244]
     if (span > 90) return [52, 110, 168, 226]
     return [48, 100, 152, 204]
+  }
+  if (isTabletStage(viewportWidth)) {
+    // Larger steps than desktop-at-tablet-width so Georgia labels clear each other.
+    if (span > 320) return [86, 176, 266, 356]
+    if (span > 180) return [80, 168, 256, 344]
+    if (span > 90) return [76, 160, 244, 328]
+    return [72, 154, 236, 318, 400]
   }
   // Keep steps ≥ ~72px so stacked Georgia labels clear each other.
   if (span > 320) return [78, 160, 242, 324, 400]
@@ -170,15 +183,15 @@ export function maxFamilyEventsForSpan(span: number, viewportWidth = 1200): numb
   if (pxPerYear >= 40) cap += 2
 
   // Wide century views still have horizontal room for more landmarks.
-  if (span > 180 && viewportWidth >= 900) {
+  if (span > 180 && viewportWidth > 1180) {
     const farBudget = Math.floor(Math.max(400, viewportWidth - 280) / 110)
     cap = Math.max(cap, Math.min(farBudget, 12))
   }
 
   // Roughly one readable staggered label per ~100px of usable width.
-  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / 100)
-  cap = Math.max(cap, Math.min(spaceBudget, 16))
-  cap = Math.min(cap, 16)
+  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / (isCompactStage(viewportWidth) ? 120 : 100))
+  cap = Math.max(cap, Math.min(spaceBudget, isCompactStage(viewportWidth) ? 10 : 16))
+  cap = Math.min(cap, isTabletStage(viewportWidth) ? 9 : isNarrowStage(viewportWidth) ? 7 : 16)
 
   return stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
 }
@@ -426,6 +439,8 @@ export function targetVisibleEventCount(
 
   if (isNarrowStage(viewportWidth)) {
     limit = Math.min(available, Math.max(2, Math.round(limit * 0.75)))
+  } else if (isTabletStage(viewportWidth)) {
+    limit = Math.min(available, Math.max(3, Math.round(limit * 0.82)))
   }
   return Math.min(available, limit)
 }
@@ -1406,7 +1421,7 @@ function placeOneHybridEvent(
       : hybridAlignmentOrder(markerX, width, editorialObstacles)
 
   const maxLanes = hybridMaxLanes(width)
-  const compactPasses = isNarrowStage(width) || preferCompact ? [true] : [false, true]
+  const compactPasses = isCompactStage(width) || preferCompact ? [true] : [false, true]
 
   for (const compact of compactPasses) {
     for (let lane = minLane; lane < maxLanes; lane++) {

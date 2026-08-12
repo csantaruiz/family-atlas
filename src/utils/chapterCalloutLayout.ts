@@ -18,7 +18,7 @@ export const STORY_PANEL_SAFE_TOP = 20
 /** Matches `--story-layer-align-top` in index.css (story-layer-top + 6px). */
 export function storyLayerAlignTop(viewportWidth: number): number {
   if (viewportWidth <= 760) return 20
-  if (viewportWidth <= 1100) return 28
+  if (viewportWidth <= 1180) return 28
   return 34
 }
 
@@ -189,7 +189,10 @@ export function resolveChapterVerticalLayout(
 
   const preferredTop = scaledValue(spec.cardTopFloor, spec.cardTopPreferred, viewportHeight)
   let cardTop = Math.max(STORY_PANEL_SAFE_TOP, storyLayerAlignTop(viewportWidth), preferredTop)
-  const maxTop = axisY - spec.cardBottomToAxisMin - PLAQUE_LAYOUT_MAX_HEIGHT_PX
+  const tablet = viewportWidth > 760 && viewportWidth <= 1180
+  const cardBottomClearance = tablet ? Math.max(spec.cardBottomToAxisMin, 200) : spec.cardBottomToAxisMin
+  const plaqueHeightBudget = tablet ? 220 : PLAQUE_LAYOUT_MAX_HEIGHT_PX
+  const maxTop = axisY - cardBottomClearance - plaqueHeightBudget
   cardTop = Math.min(cardTop, maxTop)
 
   const shortViewport = viewportHeight < 640
@@ -352,10 +355,19 @@ export function isCalloutCenterDebugEnabled(): boolean {
 export const CHAPTER_CALLOUT_TOP_LEGACY = 76
 
 /** Matches `--story-sidenote-width` and `--story-plaque-gap` in index.css. */
-const STORY_SIDENOTE_WIDTH_PX = 340
-const STORY_PLAQUE_GAP_PX = 60
+function storySidenoteWidthPx(viewportWidth: number): number {
+  if (viewportWidth <= 1180) return Math.min(220, Math.max(160, viewportWidth * 0.2))
+  return 340
+}
+
+function storyPlaqueGapPx(viewportWidth: number): number {
+  if (viewportWidth <= 1180) return 28
+  return 60
+}
 
 function calloutPlaqueHalfPx(viewportWidth: number): number {
+  if (viewportWidth <= 760) return Math.min(180, Math.max(130, viewportWidth * 0.36))
+  if (viewportWidth <= 1180) return Math.min(200, Math.max(140, viewportWidth * 0.2))
   return Math.min(260, Math.max(160, viewportWidth * 0.29))
 }
 
@@ -372,18 +384,27 @@ export function estimateEditorialSidenoteObstacles(viewportWidth: number): Edito
 
   const alignTop = storyLayerAlignTop(viewportWidth)
   const plaqueHalf = calloutPlaqueHalfPx(viewportWidth)
-  const sidenoteWidth = Math.min(STORY_SIDENOTE_WIDTH_PX, viewportWidth - 24)
+  const gap = storyPlaqueGapPx(viewportWidth)
+  const sidenoteWidth = storySidenoteWidthPx(viewportWidth)
   // Header + title + 2-line narrative + CTA — keep events clear of this band.
-  const panelBottom = alignTop + 248
+  const panelBottom = alignTop + (viewportWidth <= 1180 ? 200 : 248)
 
-  const featuredRight = viewportWidth / 2 - plaqueHalf - STORY_PLAQUE_GAP_PX
-  const featuredLeft = Math.max(12, featuredRight - sidenoteWidth)
+  const featuredRight = Math.max(12 + sidenoteWidth * 0.5, viewportWidth / 2 - plaqueHalf - gap)
+  const featuredLeft = Math.max(12, Math.min(featuredRight - sidenoteWidth, featuredRight - 80))
 
-  const thinkingLeft = viewportWidth / 2 + plaqueHalf + STORY_PLAQUE_GAP_PX
+  const thinkingLeft = Math.min(
+    viewportWidth - 12 - sidenoteWidth * 0.5,
+    viewportWidth / 2 + plaqueHalf + gap,
+  )
   const thinkingRight = Math.min(viewportWidth - 12, thinkingLeft + sidenoteWidth)
 
-  return [
-    { left: featuredLeft, right: featuredRight, top: alignTop, bottom: panelBottom },
-    { left: thinkingLeft, right: thinkingRight, top: alignTop, bottom: panelBottom },
-  ]
+  // Drop a panel that no longer fits beside the plaque.
+  const obstacles: EditorialObstacle[] = []
+  if (featuredRight - featuredLeft >= 96 && featuredRight < viewportWidth / 2 - 24) {
+    obstacles.push({ left: featuredLeft, right: featuredRight, top: alignTop, bottom: panelBottom })
+  }
+  if (thinkingRight - thinkingLeft >= 96 && thinkingLeft > viewportWidth / 2 + 24) {
+    obstacles.push({ left: thinkingLeft, right: thinkingRight, top: alignTop, bottom: panelBottom })
+  }
+  return obstacles
 }

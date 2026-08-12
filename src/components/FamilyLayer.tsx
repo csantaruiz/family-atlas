@@ -910,7 +910,11 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       }
     })
 
-    const separated = deconflictFamilyAnchorYs(prepared, 16, familyLabelCeilingY(axisY))
+    const separated = deconflictFamilyAnchorYs(
+      prepared,
+      width <= 1180 ? 22 : 16,
+      familyLabelCeilingY(axisY),
+    )
 
     return separated.map(({ id: eventKey, event, x, y: renderY, alignment, nudge, compact }) => {
       const stemLength = familyEventStemLength(renderY, axisY)

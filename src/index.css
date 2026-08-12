@@ -171,15 +171,27 @@
   --menu-beige-text-active: rgba(243, 235, 218, 0.98);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
   :root {
     --story-layer-top: 22px;
+    --story-sidenote-width: 220px;
+    --story-sidenote-title-size: 15px;
+    --story-sidenote-body-size: 10px;
+    --story-sidenote-kicker-size: 7px;
+    --story-sidenote-cta-size: 8px;
+    --story-sidenote-pad-y: 8px;
+    --story-sidenote-pad-x: 12px;
+    --story-plaque-gap: 28px;
+    --callout-plaque-half: min(200px, max(140px, 20vw));
   }
 }
 
 @media (max-width: 760px) {
   :root {
     --story-layer-top: 14px;
+    --story-sidenote-width: min(280px, calc(100vw - 24px));
+    --story-plaque-gap: 16px;
+    --callout-plaque-half: min(180px, max(130px, 36vw));
   }
 }
 
@@ -476,6 +488,48 @@
       rgba(191, 165, 110, 0.02) 45%,
       rgba(191, 165, 110, 0) 72%
     );
+}
+
+/* Tablet (iPad) — keep sidenotes + plaque inside the stage without phone layout */
+#timeline .stage.stage--tablet .chapter-callout-layer {
+  --callout-title-size: 20px;
+  --callout-years-size: 17px;
+  --callout-narrative-size: 11px;
+  --callout-meta-size: 10px;
+  --callout-cta-size: 10px;
+  --callout-narrative-width: min(340px, 52vw);
+}
+
+#timeline .stage.stage--tablet .chapter-callout-frame {
+  max-width: min(400px, 42vw);
+  --callout-pad-x: 18px;
+  padding: 10px var(--callout-pad-x) 10px;
+}
+
+#timeline .stage.stage--tablet .chapter-callout-title {
+  font-size: var(--callout-title-size);
+  line-height: 1.15;
+}
+
+#timeline .stage.stage--tablet .chapter-callout-narrative {
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+#timeline .stage.stage--tablet .family-event .event-copy {
+  max-width: var(--label-width, 148px);
+}
+
+#timeline .stage.stage--tablet .family-event .event-copy b {
+  font-size: 13px;
+}
+
+#timeline .stage.stage--tablet .family-event .event-copy em {
+  font-size: 8px;
+}
+
+#timeline .stage.stage--tablet .history-label {
+  max-width: 148px;
 }
 
 /* Timeline luminance — stronger axis glow, marker contrast, connector halos */
@@ -3034,12 +3088,56 @@
   text-align: center;
 }
 
+@media (max-width: 1180px) {
+  .featured-story {
+    left: 12px;
+    width: min(
+      var(--story-sidenote-width),
+      calc(50% - var(--callout-plaque-half) - var(--story-plaque-gap) - 12px)
+    );
+    max-width: min(
+      var(--story-sidenote-width),
+      calc(50% - var(--callout-plaque-half) - var(--story-plaque-gap) - 12px)
+    );
+  }
+
+  .atlas-thinking {
+    left: auto;
+    right: 12px;
+    width: min(
+      var(--story-sidenote-width),
+      calc(50% - var(--callout-plaque-half) - var(--story-plaque-gap) - 12px)
+    );
+    max-width: min(
+      var(--story-sidenote-width),
+      calc(50% - var(--callout-plaque-half) - var(--story-plaque-gap) - 12px)
+    );
+  }
+
+  .featured-story-headline,
+  .atlas-thinking-headline {
+    font-size: var(--story-sidenote-title-size);
+  }
+
+  .featured-story-narrative,
+  .atlas-thinking-narrative {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+}
+
 @media (max-width: 760px) {
   .featured-story {
     left: 12px;
     right: 12px;
     width: auto;
     max-width: none;
+  }
+
+  .atlas-thinking {
+    display: none;
   }
 
   .featured-story-headline {

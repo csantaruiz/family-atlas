@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { storySeeds } from '../data'
+import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
 import { viewport } from '../utils/timelineMath'
 
@@ -8,6 +9,7 @@ const SWIPE_THRESHOLD_PX = 48
 
 export function FeaturedStory() {
   const { center, span, openPerson, setHighlightedStoryPersonId, timelineFilters } = useTimeline()
+  const { active: followActive } = useFollowPerson()
   const [index, setIndex] = useState(0)
   const candidatesKeyRef = useRef('')
   const swipeStartX = useRef<number | null>(null)
@@ -39,12 +41,13 @@ export function FeaturedStory() {
   }, [candidatesKey, candidates.length])
 
   useEffect(() => {
+    if (followActive) return
     if (!timelineFilters.stories) {
       setHighlightedStoryPersonId(null)
       return
     }
     setHighlightedStoryPersonId(story?.personId ?? null)
-  }, [story, timelineFilters.stories, setHighlightedStoryPersonId])
+  }, [followActive, story, timelineFilters.stories, setHighlightedStoryPersonId])
 
   const move = useCallback(
     (delta: number) => {
@@ -55,6 +58,7 @@ export function FeaturedStory() {
   )
 
   useEffect(() => {
+    if (followActive) return
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       const target = event.target as HTMLElement | null
@@ -64,7 +68,7 @@ export function FeaturedStory() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [move])
+  }, [followActive, move])
 
   const handleSwipeEnd = (clientX: number) => {
     if (swipeStartX.current == null) return
@@ -74,7 +78,7 @@ export function FeaturedStory() {
     move(delta > 0 ? -1 : 1)
   }
 
-  if (!timelineFilters.stories || !story) return null
+  if (followActive || !timelineFilters.stories || !story) return null
 
   const fade = prefersReducedMotion
     ? { duration: 0.01 }

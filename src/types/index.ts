@@ -56,7 +56,7 @@ export type StoryChapter = {
   relatedPersonIds: string[]
 }
 
-export type FamilyEventKind = 'birth' | 'death' | 'move' | 'service'
+export type FamilyEventKind = 'birth' | 'death' | 'move' | 'service' | 'marriage'
 
 export type FamilyEvent = {
   kind: FamilyEventKind
@@ -65,6 +65,8 @@ export type FamilyEvent = {
   detail: string
   person: Person
   importance: number
+  /** Partner on a marriage event. */
+  spouse?: Person
 }
 
 export type HistoryEvent = {

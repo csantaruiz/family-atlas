@@ -165,18 +165,43 @@ def parse_individual(record: dict) -> dict:
 
 
 def parse_family(record: dict) -> dict:
-    family = {"id": record["id"], "husb": None, "wife": None, "children": []}
-    for level, rest in record["lines"]:
+    family = {
+        "id": record["id"],
+        "husb": None,
+        "wife": None,
+        "children": [],
+        "marriageDate": "",
+        "marriagePlace": "",
+        "marriageYear": None,
+    }
+    lines = record["lines"]
+    i = 0
+    while i < len(lines):
+        level, rest = lines[i]
         if level != 1:
+            i += 1
             continue
         if rest.startswith("HUSB "):
             family["husb"] = rest[5:].strip().strip("@")
-        elif rest.startswith("WIFE "):
+            i += 1
+            continue
+        if rest.startswith("WIFE "):
             family["wife"] = rest[5:].strip().strip("@")
-        elif rest.startswith("CHIL "):
+            i += 1
+            continue
+        if rest.startswith("CHIL "):
             child = rest[5:].strip().strip("@")
             if child:
                 family["children"].append(child)
+            i += 1
+            continue
+        if rest == "MARR" or rest.startswith("MARR "):
+            date, place, i = event_fields(lines, i)
+            family["marriageDate"] = date
+            family["marriagePlace"] = place
+            family["marriageYear"] = extract_year(date)
+            continue
+        i += 1
     return family
 
 

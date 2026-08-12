@@ -42,6 +42,8 @@ export function categoryTypeLabel(event: FamilyEvent): string {
       return 'DEATH OF'
     case 'move':
       return 'MIGRATION'
+    case 'marriage':
+      return 'MARRIED'
     case 'service':
       return event.title.length > 28 ? 'FAMILY STORY' : event.title.toUpperCase().slice(0, 24)
     default:
@@ -55,11 +57,13 @@ export function categoryLabel(event: FamilyEvent): string {
 
 export function displayName(event: FamilyEvent, compact = false): string {
   const name =
-    event.kind === 'move' || event.kind === 'service'
-      ? event.person.name
-      : event.kind === 'birth' || event.kind === 'death'
+    event.kind === 'marriage'
+      ? event.title
+      : event.kind === 'move' || event.kind === 'service'
         ? event.person.name
-        : event.title
+        : event.kind === 'birth' || event.kind === 'death'
+          ? event.person.name
+          : event.title
 
   if (!compact) return name
   if (name.length <= 22) return name

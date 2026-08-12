@@ -31,6 +31,7 @@ const EVENT_TYPES = [
   { value: '', label: 'All events' },
   { value: 'birth', label: 'Births' },
   { value: 'death', label: 'Deaths' },
+  { value: 'marriage', label: 'Marriages' },
   { value: 'move', label: 'Migrations' },
   { value: 'service', label: 'Service' },
 ]

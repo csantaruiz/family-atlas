@@ -25,6 +25,8 @@ export function connectorStemColor(kind: FamilyEvent['kind']): string {
       return 'rgba(197, 139, 120, 0.46)'
     case 'service':
       return 'rgba(157, 179, 209, 0.46)'
+    case 'marriage':
+      return 'rgba(196, 150, 160, 0.46)'
     default:
       return 'rgba(214, 181, 108, 0.48)'
   }

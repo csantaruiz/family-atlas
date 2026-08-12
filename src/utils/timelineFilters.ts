@@ -45,6 +45,9 @@ export function familyEventFilterCategories(event: FamilyEvent): Set<keyof Timel
       else if (isStoryServiceEvent(event)) cats.add('stories')
       else cats.add('stories')
       break
+    case 'marriage':
+      cats.add('marriages')
+      break
     default:
       break
   }
@@ -84,6 +87,8 @@ function familyEventPassesKindFilter(event: FamilyEvent, filters: TimelineFilter
       if (isOccupationServiceEvent(event)) return filters.occupations
       if (isStoryServiceEvent(event)) return filters.stories
       return filters.stories
+    case 'marriage':
+      return filters.marriages
     default:
       return true
   }

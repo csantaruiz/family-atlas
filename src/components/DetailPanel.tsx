@@ -1,13 +1,21 @@
 import { useEffect } from 'react'
 import { eventContext } from '../data'
+import { getFamilyEventHeroImage } from '../data/familyEventImagery'
 import { getHistoryEventHeroImage } from '../data/historyEventImagery'
 import { getHistoryEventWikipediaUrl } from '../data/historyEventWikipedia'
 import { useAppNavigation } from '../context/AppNavigationContext'
+import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
 import { usePersonPortraits } from '../hooks/usePersonPortraits'
+import {
+  buildFamilyEventNarrative,
+  buildHistoryNarrative,
+  buildPersonNarrative,
+} from '../utils/buildDetailNarrative'
 import { initials } from '../utils/format'
-import { eventSummaryForPerson, primaryLocations } from '../utils/personDirectory'
-import { movementSummary, peopleRelevantToEvent } from '../utils/placeUtils'
+import { formatAmericanDate } from '../utils/formatDate'
+import { primaryLocations } from '../utils/personDirectory'
+import { peopleRelevantToEvent } from '../utils/placeUtils'
 import { ensurePersonPortraitLoaded } from '../utils/personPortraitStore'
 import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
@@ -16,6 +24,7 @@ import type { FamilyEvent, PersonImage } from '../types'
 export function DetailPanel() {
   const { detail, peopleById, birthPeople, familyEvents, closeDetail, openPerson } = useTimeline()
   const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
+  const { startFollow, journeyForPerson, active: followActive } = useFollowPerson()
   const uploadedPortraits = usePersonPortraits()
 
   const portraitPersonKey = detail?.type === 'person' ? detail.personId : null
@@ -31,6 +40,7 @@ export function DetailPanel() {
   let gen = ''
   let life = ''
   let story = ''
+  let storyParagraphs: string[] = []
   let facts: [string, string][] = []
   let relations: { kind: string; id: string; name: string }[] = []
   let sources: [string, string][] = []
@@ -52,12 +62,14 @@ export function DetailPanel() {
   let showReturnToTimeline = false
   let portraitPersonId: string | undefined
   let portraitPersonName: string | undefined
+  let followCtaLabel: string | null = null
+  let followPersonId: string | null = null
 
   if (detail?.type === 'person') {
     const p = peopleById[detail.personId]
     if (p) {
       personEvents = familyEvents
-        .filter((event) => event.person.id === p.id)
+        .filter((event) => event.person.id === p.id || event.spouse?.id === p.id)
         .sort((a, b) => a.year - b.year)
       showReturnToTimeline = treeReturnViewport != null && activeView === 'tree'
 
@@ -69,29 +81,13 @@ export function DetailPanel() {
           : p.generation != null
             ? `Generation ${p.generation} before Craig`
             : 'Extended family record'
-      life = `${p.birthDate || p.birthYear || 'Birth unknown'} — ${p.deathDate || p.deathYear || 'Living'}`
-      story =
-        `${p.name} enters the documented family record ` +
-        (p.birthYear ? `in ${p.birthYear}` : 'at an uncertain date') +
-        (p.birthPlace ? `, in ${p.birthPlace}` : '') +
-        '. '
-      if (p.deathYear) {
-        story += `The record closes in ${p.deathYear}${p.deathPlace ? ` at ${p.deathPlace}` : ''}. `
-      } else if (p.deathDate) {
-        story += `The record notes death on ${p.deathDate}. `
-      }
-      if (p.occupation?.length) {
-        story += `Occupations recorded: ${p.occupation.join(', ')}. `
-      }
-      if (personEvents.length) {
-        story += eventSummaryForPerson(p, familyEvents) + '. '
-      }
-      story +=
-        'This Atlas preserves known dates, places, and relationships while leaving room for photographs, documents, and verified historical context.'
+      const narrative = buildPersonNarrative(p, peopleById, familyEvents)
+      life = narrative.life
+      storyParagraphs = narrative.paragraphs
       facts = [
-        ['Born', p.birthDate || (p.birthYear != null ? String(p.birthYear) : 'Not recorded')],
+        ['Born', formatAmericanDate(p.birthDate || p.birthYear) || 'Not recorded'],
         ['Birthplace', p.birthPlace || 'Not recorded'],
-        ['Died', p.deathDate || (p.deathYear != null ? String(p.deathYear) : 'Not recorded')],
+        ['Died', formatAmericanDate(p.deathDate || p.deathYear) || 'Not recorded'],
         ['Death place', p.deathPlace || 'Not recorded'],
         ['Sex', p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : p.sex || 'Not recorded'],
         ['Places linked', primaryLocations(p).join(' · ') || 'Not recorded'],
@@ -108,6 +104,11 @@ export function DetailPanel() {
       useArchivalPlaceholder = resolved.isUnavailablePlaceholder
       portraitPersonId = p.id
       portraitPersonName = p.name
+      const follow = journeyForPerson(p.id)
+      if (follow?.eligible) {
+        followCtaLabel = follow.ctaLabel
+        followPersonId = p.id
+      }
     }
   } else if (detail?.type === 'familyEvent') {
     isFamilyEvent = true
@@ -121,22 +122,46 @@ export function DetailPanel() {
         ? 'Migration and place'
         : e.kind === 'service'
           ? 'Featured family story'
-          : 'Family event'
-    life = `${e.year || 'Date uncertain'} · ${p.name}`
-    if (ctx) {
-      story = `${ctx.narrative} ${ctx.context}`
-      sources = ctx.sources
-    } else if (e.kind === 'move') {
-      story = `${p.name} appears in records connected to more than one place. The marker is positioned approximately because the GEDCOM identifies locations but does not necessarily record the exact date of the move. ${movementSummary(e)}.`
-    } else {
-      story = e.detail || 'This event is connected to the documented family record.'
+          : e.kind === 'marriage'
+            ? 'Marriage'
+            : 'Family event'
+    const narrative = buildFamilyEventNarrative(e, peopleById, birthPeople)
+    life = narrative.life
+    storyParagraphs = narrative.paragraphs
+    if (ctx) sources = ctx.sources
+    if (e.kind === 'marriage') {
+      relations = [
+        { kind: 'Spouse', id: p.id, name: p.name },
+        ...(e.spouse ? [{ kind: 'Spouse', id: e.spouse.id, name: e.spouse.name }] : []),
+      ]
     }
-    facts = [
-      ['Event year', String(e.year || 'Approximate')],
-      ['Person', p.name],
-      ['Event type', e.kind === 'move' ? 'Migration / movement' : 'Family story'],
-      ['Record detail', e.detail || 'Not yet documented'],
-    ]
+    const eventTypeLabel =
+      e.kind === 'move' ? 'Migration / movement' : e.kind === 'marriage' ? 'Marriage' : 'Family story'
+    facts =
+      e.kind === 'marriage'
+        ? [
+            ['Event year', String(e.year || 'Approximate')],
+            ['Husband', p.name],
+            ['Wife', e.spouse?.name || 'Not recorded'],
+            ['Event type', eventTypeLabel],
+            ['Record detail', e.detail || 'Not yet documented'],
+          ]
+        : [
+            ['Event year', String(e.year || 'Approximate')],
+            ['Person', p.name],
+            ['Event type', eventTypeLabel],
+            ['Record detail', e.detail || 'Not yet documented'],
+          ]
+    if (e.kind === 'birth' || e.kind === 'death') {
+      const resolved = resolvePersonPortrait(p, uploadedPortraits[p.id])
+      portraitImage = resolved.image
+      useArchivalPlaceholder = resolved.isUnavailablePlaceholder
+      portraitPersonId = p.id
+      portraitPersonName = p.name
+    } else {
+      portraitImage = getFamilyEventHeroImage(e)
+      portraitVariant = portraitImage ? 'history-hero' : 'portrait'
+    }
   } else if (detail?.type === 'history') {
     const ev = detail.event
     historyRelated = peopleRelevantToEvent(ev, birthPeople)
@@ -146,8 +171,9 @@ export function DetailPanel() {
     initialsText = String(ev.year).slice(-2)
     name = ev.title
     gen = `Historical context · ${ev.country}`
-    life = String(ev.year)
-    story = ev.summary
+    const historyNarrative = buildHistoryNarrative(ev, birthPeople)
+    life = historyNarrative.life
+    storyParagraphs = historyNarrative.paragraphs
     facts = [
       ['Region', ev.country],
       [
@@ -211,11 +237,28 @@ export function DetailPanel() {
             <div className="life" id="personLife">
               {life}
             </div>
+            {followCtaLabel && followPersonId && !followActive && (
+              <button
+                type="button"
+                className="detail-follow-journey"
+                onClick={() => startFollow(followPersonId)}
+              >
+                {followCtaLabel} →
+              </button>
+            )}
             {!isThinking && (
               <>
-                <p className="story" id="personStory">
-                  {story}
-                </p>
+                {(storyParagraphs.length ? storyParagraphs : story ? [story] : []).map(
+                  (paragraph, index) => (
+                    <p
+                      key={`${index}-${paragraph.slice(0, 24)}`}
+                      className="story"
+                      id={index === 0 ? 'personStory' : undefined}
+                    >
+                      {paragraph}
+                    </p>
+                  ),
+                )}
                 {detail?.type === 'history' && historyWikipediaUrl ? (
                   <a
                     className="history-wikipedia-link"
@@ -261,6 +304,20 @@ export function DetailPanel() {
               <div className="eyebrow">Family connections</div>
               {isFamilyEvent ? (
                 <div id="relations" style={{ marginTop: 12 }}>
+                  {relations.length > 0 && (
+                    <div className="chips" style={{ marginBottom: 14 }}>
+                      {relations.map((r) => (
+                        <button
+                          key={`${r.kind}-${r.id}`}
+                          type="button"
+                          className="chip"
+                          onClick={() => openPerson(r.id)}
+                        >
+                          {r.kind} · {r.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {sources.length > 0 && (
                     <div className="event-source-list">
                       <h3>Historical context sources</h3>

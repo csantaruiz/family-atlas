@@ -68,6 +68,7 @@ export function PeopleView({ active }: PeopleViewProps) {
     <section id="people" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
       <div className="explore people-explore" ref={exploreRef}>
         <div className="people-sticky-chrome">
+          <div className="people-sticky-chrome-top" aria-hidden="true" />
           <input
             className="search"
             placeholder="Search a name, place, or year…"

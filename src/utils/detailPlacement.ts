@@ -455,7 +455,7 @@ export function eventAccessibleTitle(event: FamilyEvent): string {
   const cat = categoryLabel(event)
   const name = displayName(event)
   const meta =
-    event.kind === 'move' || event.kind === 'service'
+    event.kind === 'move' || event.kind === 'service' || event.kind === 'marriage'
       ? ` · ${event.detail || movementSummary(event)}`
       : event.person.birthPlace
         ? ` · ${event.person.birthPlace}`

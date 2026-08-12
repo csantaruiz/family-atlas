@@ -51,7 +51,16 @@ const PLACE_GEO_OVERRIDES: Record<string, PlaceGeo> = {
   'Jackson, Butler, Pennsylvania, USA': { lat: 41.0, lon: -79.9, region: 'United States' },
   ', Monroe, Pennsylvania, USA': { lat: 41.0, lon: -75.4, region: 'United States' },
   'Jackson, Monroe, Pennsylvania, USA': { lat: 41.0, lon: -75.4, region: 'United States' },
-  'El Paso, El Paso, Texas': { lat: 31.8, lon: -106.5, region: 'United States' },
+  'El Paso, El Paso, Texas': { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' },
+  'El Paso, Texas, USA': { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' },
+  'El Paso Precinct 3, El Paso, Texas': { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' },
+  'Los Angeles, California, USA': { lat: 34.1, lon: -118.2, region: 'United States', displayRegion: 'California' },
+  'Monrovia, Los Angeles, California, United States of America': {
+    lat: 34.15,
+    lon: -118.0,
+    region: 'United States',
+    displayRegion: 'California',
+  },
   'New Jersey': { lat: 40.2, lon: -74.7, region: 'United States' },
   Pennsylvania: { lat: 40.9, lon: -77.8, region: 'United States' },
   Texas: { lat: 31.0, lon: -100.0, region: 'United States' },
@@ -65,8 +74,25 @@ const PLACE_GEO_OVERRIDES: Record<string, PlaceGeo> = {
 
 function geoFromPatterns(place: string): PlaceGeo | null {
   const s = place.toLowerCase()
-  if (/california|santa clara|los angeles|san luis|rescue|rosemead|placerville|san jose/.test(s)) {
+
+  // Specific places before coarse regions — order matters.
+  if (/\bel paso\b/.test(s)) {
+    return { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' }
+  }
+  if (/\bmonrovia\b/.test(s)) {
+    return { lat: 34.15, lon: -118.0, region: 'United States', displayRegion: 'California' }
+  }
+  if (/los angeles|anaheim|san diego|orange, california|westminster, orange/.test(s)) {
+    return { lat: 34.1, lon: -118.2, region: 'United States', displayRegion: 'California' }
+  }
+  if (/santa clara|san jose|san luis|rescue|placerville|rosemead/.test(s)) {
     return { lat: 37.4, lon: -122.0, region: 'United States', displayRegion: 'California' }
+  }
+  if (/california/.test(s)) {
+    return { lat: 36.5, lon: -119.5, region: 'United States', displayRegion: 'California' }
+  }
+  if (/texas|arizona|new mexico|colorado/.test(s)) {
+    return { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' }
   }
   if (/chihuahua|carretas|coahuila|durango|zacatecas|ojinaga|mexico/.test(s)) {
     return { lat: 28.6, lon: -106.1, region: 'Mexico', displayRegion: 'Mexico' }
@@ -82,9 +108,6 @@ function geoFromPatterns(place: string): PlaceGeo | null {
   }
   if (/pennsylvania|new jersey|virginia|maryland|ohio|illinois|missouri|new york|wyoming|susquehanna|glou/.test(s)) {
     return { lat: 40.5, lon: -75.0, region: 'United States', displayRegion: 'Eastern United States' }
-  }
-  if (/texas|el paso|arizona|new mexico|colorado/.test(s)) {
-    return { lat: 31.8, lon: -106.5, region: 'United States', displayRegion: 'Southwest United States' }
   }
   if (/usa|united states/.test(s)) {
     return { lat: 39.8, lon: -98.6, region: 'United States', displayRegion: 'United States' }

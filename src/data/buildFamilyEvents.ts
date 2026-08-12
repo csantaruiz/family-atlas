@@ -1,6 +1,33 @@
 import type { FamilyEvent, Person } from '../types'
+import { familyMarriages } from './familyMarriages'
 import { featuredNames } from './featuredNames'
 import { placeRegion } from '../utils/placeUtils'
+
+const HOUSE_SURNAMES = [
+  'Ruiz',
+  'Hendry',
+  'Santa',
+  'Loya',
+  'Stubbs',
+  'Lowndes',
+  'Pinon',
+  'Henshaw',
+  'Wade',
+  'Riley',
+]
+
+function lastName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  return parts[parts.length - 1] ?? ''
+}
+
+function marriageHouseName(husband: Person, wife: Person): string {
+  const tokens = `${husband.name} ${wife.name}`.split(/\s+/)
+  const house = HOUSE_SURNAMES.find((surname) =>
+    tokens.some((token) => token.toLowerCase() === surname.toLowerCase()),
+  )
+  return house ?? (lastName(husband.name) || lastName(wife.name) || 'Family')
+}
 
 const SPECIAL_EVENTS = [
   {
@@ -75,6 +102,35 @@ export function buildFamilyEvents(people: Person[]): FamilyEvent[] {
       events.push({ kind: 'service', year, title, detail, person, importance: 12 })
     }
   })
+
+  const byId = new Map(people.map((person) => [person.id, person]))
+  for (const marriage of familyMarriages) {
+    const husband = byId.get(marriage.husbandId)
+    const wife = byId.get(marriage.wifeId)
+    if (!husband || !wife) continue
+
+    const house = marriageHouseName(husband, wife)
+    const gen = Math.min(husband.generation ?? 99, wife.generation ?? 99)
+    const featured = featuredNames.has(husband.name) || featuredNames.has(wife.name)
+    let importance = 4
+    if (gen <= 2) importance += 8
+    else if (gen <= 4) importance += 5
+    else if (gen <= 6) importance += 2
+    if (featured) importance += 4
+    if (husband.focus || wife.focus) importance += 2
+
+    const place = marriage.place.trim()
+    const couple = `${husband.name} · ${wife.name}`
+    events.push({
+      kind: 'marriage',
+      year: marriage.year,
+      title: `${house} marriage`,
+      detail: place ? `${couple} · ${place}` : couple,
+      person: husband,
+      spouse: wife,
+      importance,
+    })
+  }
 
   return events
 }

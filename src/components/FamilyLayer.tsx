@@ -13,6 +13,7 @@ import { assignEventsToChapters, buildStoryChaptersForViewport } from '../data/b
 import { useTimeline } from '../context/TimelineContext'
 import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
+import { useFollowPerson } from '../context/FollowPersonContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
@@ -66,6 +67,13 @@ const CrossIcon = () => (
   </svg>
 )
 
+const RingsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" aria-hidden="true">
+    <circle cx="9.5" cy="12" r="4.2" />
+    <circle cx="14.5" cy="12" r="4.2" />
+  </svg>
+)
+
 function eventIntroOpacity(eventsProgress: number, staggerDelayMs: number): number {
   const threshold = staggerDelayMs / 420
   if (eventsProgress <= threshold) return 0
@@ -90,6 +98,7 @@ function EventCategoryLabel({ event }: { event: FamilyEvent }) {
     <>
       {event.kind === 'birth' ? <SunriseIcon /> : null}
       {event.kind === 'death' ? <CrossIcon /> : null}
+      {event.kind === 'marriage' ? <RingsIcon /> : null}
       <span className="event-copy-type">{categoryTypeLabel(event)}</span>
       <span className="event-copy-year">({event.year})</span>
     </>
@@ -138,6 +147,10 @@ function FamilyEventButton({
     label = <EventCategoryLabel event={event} />
     title = displayName(event, compact)
     sub = compact ? '' : movementSummary(event)
+  } else if (event.kind === 'marriage') {
+    label = <EventCategoryLabel event={event} />
+    title = displayName(event, compact)
+    sub = ''
   } else {
     label = <EventCategoryLabel event={event} />
     title = compact ? displayName(event, true) : event.title
@@ -153,18 +166,31 @@ function FamilyEventButton({
     '--label-width': `${labelWidth}px`,
   } as React.CSSProperties
 
+  const { pulse } = useTimelinePulse()
+  const { active: followActive, journey, beat } = useFollowPerson()
+  const eventKey = canonicalEventId(event)
+  const followRelated =
+    followActive &&
+    Boolean(journey && (event.person.id === journey.personId || event.spouse?.id === journey.personId))
+  const followFocus =
+    followRelated &&
+    Boolean(
+      beat &&
+        (beat.eventId === eventKey ||
+          (event.person.id === journey?.personId && Math.abs(event.year - beat.year) <= 1)),
+    )
   const className = [
     'family-event',
     event.kind,
     `align-${alignment}`,
     compact ? 'compact' : '',
     motionEnabled ? 'placement-animated' : '',
+    followActive && followFocus ? 'is-follow-focus' : '',
+    followActive && followRelated && !followFocus ? 'is-follow-related' : '',
+    followActive && !followRelated ? 'is-follow-muted' : '',
   ]
     .filter(Boolean)
     .join(' ')
-
-  const { pulse } = useTimelinePulse()
-  const eventKey = canonicalEventId(event)
   const isAmbientResponse = pulse.familyEventIds.includes(eventKey)
   const ambientResponseDelay = pulse.familyDelays[eventKey] ?? 0
 
@@ -230,6 +256,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     isInertialScrolling,
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
+  const { active: followActive, journey } = useFollowPerson()
 
   const modeLive = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
@@ -634,11 +661,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         (entry.event.importance ?? 0) * 12 +
         (entry.event.kind === 'move' || entry.event.kind === 'service'
           ? 40
-          : entry.event.kind === 'birth'
-            ? 20
-            : entry.event.kind === 'death'
-              ? 10
-              : 0) +
+          : entry.event.kind === 'marriage'
+            ? 36
+            : entry.event.kind === 'birth'
+              ? 20
+              : entry.event.kind === 'death'
+                ? 10
+                : 0) +
         (entry.event.person.focus ? 30 : 0),
       limit,
     )
@@ -793,8 +822,11 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   const handleEventOpen = (event: FamilyEvent) => {
     completeIntro()
-    if (event.kind === 'move' || event.kind === 'service') openFamilyEvent(event)
-    else openPerson(event.person.id)
+    if (event.kind === 'move' || event.kind === 'service' || event.kind === 'marriage') {
+      openFamilyEvent(event)
+    } else {
+      openPerson(event.person.id)
+    }
   }
 
   const opacityFadeTransition = motionEnabled
@@ -1028,7 +1060,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
             />
             <button
               type="button"
-              className="node representative"
+              className={`node representative${
+                followActive && journey?.personId === p.id
+                  ? ' is-follow-focus'
+                  : followActive
+                    ? ' is-follow-muted'
+                    : ''
+              }`}
               title={`${p.name} · ${p.birthYear}`}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {

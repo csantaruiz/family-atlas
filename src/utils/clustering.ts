@@ -106,6 +106,8 @@ export function eventKindPriority(kind: FamilyEventKind): number {
       return 6
     case 'service':
       return 5
+    case 'marriage':
+      return 6
     default:
       return 1
   }
@@ -155,6 +157,7 @@ export function eventImportanceScore(
     if (event.kind === 'birth') score += 35
     else if (event.kind === 'death') score += 15
     else if (event.kind === 'move') score += 45
+    else if (event.kind === 'marriage') score += 38
     else if (event.kind === 'service') score += 30
     if (event.person.focus) score += 25
     return score
@@ -170,6 +173,10 @@ export function eventImportanceScore(
     if (event.year >= 1900) score += 45
     else if (event.year >= 1600 && event.year <= 1899) score += 35
     return score
+  }
+
+  if (event.kind === 'marriage') {
+    return 660 + generationProximityScore(event.person) + (event.spouse ? 10 : 0)
   }
 
   if (marriageJoinsBranches(event)) return 680 + generationProximityScore(event.person)

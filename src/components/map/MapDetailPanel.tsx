@@ -337,7 +337,17 @@ export function MapDetailPanel({
             {place.events.slice(0, 12).map((e, i) => (
               <li key={`${e.person.id}-${e.kind}-${e.year}-${i}`}>
                 <button type="button" onClick={() => openFamilyEvent(e)}>
-                  {e.year} · {e.kind === 'birth' ? 'Birth' : e.kind === 'death' ? 'Death' : e.kind === 'move' ? 'Migration' : 'Service'} · {e.person.name}
+                  {e.year} ·{' '}
+                  {e.kind === 'birth'
+                    ? 'Birth'
+                    : e.kind === 'death'
+                      ? 'Death'
+                      : e.kind === 'move'
+                        ? 'Migration'
+                        : e.kind === 'marriage'
+                          ? 'Marriage'
+                          : 'Service'}{' '}
+                  · {e.kind === 'marriage' ? e.title : e.person.name}
                 </button>
               </li>
             ))}

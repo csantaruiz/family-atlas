@@ -1,7 +1,9 @@
 import { AppNavigationProvider } from './context/AppNavigationContext'
+import { FollowPersonProvider, useFollowPerson } from './context/FollowPersonContext'
 import { JourneyIntroProvider } from './context/JourneyIntroContext'
 import { TimelineProvider } from './context/TimelineContext'
 import { DetailPanel } from './components/DetailPanel'
+import { FollowPersonOverlay } from './components/follow-person/FollowPersonOverlay'
 import { AtlasMapBackdrop } from './components/AtlasMapBackdrop'
 import { Header } from './components/Header'
 import { TimelineViewport } from './components/TimelineViewport'
@@ -66,14 +68,16 @@ function AppViews() {
 
 function AtlasAppShell() {
   const { activeView } = useAppNavigation()
+  const { active: followActive } = useFollowPerson()
   usePreventBrowserZoom()
 
   return (
-    <div className={`app app--view-${activeView}`}>
+    <div className={`app app--view-${activeView}${followActive ? ' app--follow-person' : ''}`}>
       <AtlasMapBackdrop />
       <div className="grain" aria-hidden="true" />
       <Header />
       <AppViews />
+      <FollowPersonOverlay />
       <DetailPanel />
     </div>
   )
@@ -131,9 +135,11 @@ function App() {
     <TimelineProvider>
       <AppNavigationProvider>
         <JourneyIntroProvider>
-          <DocumentaryEngineProvider>
-            <AppGate />
-          </DocumentaryEngineProvider>
+          <FollowPersonProvider>
+            <DocumentaryEngineProvider>
+              <AppGate />
+            </DocumentaryEngineProvider>
+          </FollowPersonProvider>
         </JourneyIntroProvider>
       </AppNavigationProvider>
     </TimelineProvider>

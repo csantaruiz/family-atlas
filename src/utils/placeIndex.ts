@@ -83,6 +83,11 @@ function eventPlace(event: FamilyEvent): string | null {
     }
     return event.person.places?.[event.person.places.length - 1]?.trim() ?? null
   }
+  if (event.kind === 'marriage') {
+    const parts = event.detail.split('·').map((part) => part.trim())
+    const place = parts.length >= 3 ? parts.slice(2).join(' · ') : ''
+    return place && isValidPlace(place) ? place : null
+  }
   const pl = event.person.places?.[0] ?? event.person.birthPlace
   return pl?.trim() || null
 }

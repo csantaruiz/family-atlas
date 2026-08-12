@@ -135,11 +135,13 @@ function familyEventStaggerScore(event: FamilyEvent): number {
   const kindBoost =
     event.kind === 'move' || event.kind === 'service'
       ? 40
-      : event.kind === 'birth'
-        ? 20
-        : event.kind === 'death'
-          ? 10
-          : 0
+      : event.kind === 'marriage'
+        ? 36
+        : event.kind === 'birth'
+          ? 20
+          : event.kind === 'death'
+            ? 10
+            : 0
   const genBoost =
     event.person.generation != null ? Math.max(0, 50 - Math.abs(event.person.generation) * 12) : 0
   return (

@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useReducedMotion } from 'framer-motion'
+import { useFollowPerson } from './FollowPersonContext'
 import { useJourneyIntro } from './JourneyIntroContext'
 import { useTimeline } from './TimelineContext'
 import {
@@ -60,6 +61,7 @@ export function TimelinePulseProvider({ active, children }: TimelinePulseProvide
     isInertialScrolling,
   } = useTimeline()
   const { isIntroActive } = useJourneyIntro()
+  const { active: followActive } = useFollowPerson()
   const prefersReducedMotion = useReducedMotion()
 
   const [pulse, setPulse] = useState<TimelinePulseState>(idlePulse)
@@ -79,6 +81,7 @@ export function TimelinePulseProvider({ active, children }: TimelinePulseProvide
     !isZooming &&
     !isInertialScrolling &&
     !isIntroActive &&
+    !followActive &&
     !detail &&
     timelineFilters.historicalEvents
 

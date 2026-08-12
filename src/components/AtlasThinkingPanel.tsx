@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
 import { familyDatabase } from '../data/familyDatabase'
 import { placeholderAtlasThinking } from '../data/placeholderAtlasThinking'
+import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
 import { buildAtlasThinkingObservations } from '../utils/buildAtlasThinkingObservations'
 import { selectAtlasThinking } from '../utils/selectAtlasThinking'
@@ -19,6 +20,7 @@ export function AtlasThinkingPanel() {
     filteredFamilyEvents,
     openThinking,
   } = useTimeline()
+  const { active: followActive } = useFollowPerson()
   const prefersReducedMotion = useReducedMotion()
 
   const observations = useMemo(() => {
@@ -49,7 +51,7 @@ export function AtlasThinkingPanel() {
     [observations, center, span, detail, highlightedStoryPersonId, thinkingFocusRange],
   )
 
-  if (!thinking) return null
+  if (followActive || !thinking) return null
 
   const transition = prefersReducedMotion
     ? { duration: 0.01 }

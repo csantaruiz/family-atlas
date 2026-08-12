@@ -4,8 +4,10 @@ export type PersonImage = {
   caption?: string
   credit?: string
   isPlaceholder?: boolean
-  /** True when the image was uploaded in this browser and stored locally. */
+  /** True when the image is a user-managed Atlas media asset (not curated git art). */
   isUserUpload?: boolean
+  /** Cloud media_assets.id when served from private Blob via /api/media/:id */
+  assetId?: string
 }
 
 export type Person = {

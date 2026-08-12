@@ -1,9 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { PersonImage } from '../types'
 import {
-  createPortraitFromFile,
   removePersonPortrait,
-  setPersonPortrait,
+  uploadPersonPortrait,
 } from '../utils/personPortraitStore'
 
 type DetailPortraitProps = {
@@ -16,7 +15,7 @@ type DetailPortraitProps = {
   personName?: string
 }
 
-function downloadPortraitForRepo(personId: string, src: string) {
+function downloadPortrait(personId: string, src: string) {
   const link = document.createElement('a')
   link.href = src
   link.download = `${personId}.jpg`
@@ -57,13 +56,25 @@ export function DetailPortrait({
     setUploadError(null)
     setIsUploading(true)
     try {
-      const portrait = await createPortraitFromFile(file, personName)
-      setPersonPortrait(personId, portrait)
+      await uploadPersonPortrait(personId, personName, file)
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Upload failed.')
     } finally {
       setIsUploading(false)
       if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  const handleRemove = async () => {
+    if (!personId) return
+    setUploadError(null)
+    setIsUploading(true)
+    try {
+      await removePersonPortrait(personId)
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Remove failed.')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -90,9 +101,9 @@ export function DetailPortrait({
             type="button"
             className="detail-portrait-upload-btn"
             disabled={isUploading}
-            onClick={() => downloadPortraitForRepo(personId, image.src)}
+            onClick={() => downloadPortrait(personId, image.src)}
           >
-            Download for repo
+            Download
           </button>
         ) : null}
         {isUserUpload ? (
@@ -100,21 +111,14 @@ export function DetailPortrait({
             type="button"
             className="detail-portrait-upload-btn detail-portrait-upload-btn--ghost"
             disabled={isUploading}
-            onClick={() => {
-              if (!personId) return
-              removePersonPortrait(personId)
-              setUploadError(null)
-            }}
+            onClick={() => void handleRemove()}
           >
             Remove
           </button>
         ) : null}
       </div>
       {isUserUpload ? (
-        <p className="detail-portrait-upload-hint">
-          Local only until you add <code>{personId}.jpg</code> to{' '}
-          <code>src/assets/portraits/people/</code> and push to GitHub.
-        </p>
+        <p className="detail-portrait-upload-hint">Saved to this Atlas · private family media</p>
       ) : null}
       {uploadError ? <p className="detail-portrait-upload-error">{uploadError}</p> : null}
     </div>

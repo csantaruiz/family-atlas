@@ -13,7 +13,7 @@ export type ResolvedPersonPortrait = {
  * Portrait precedence for family people:
  * 1. Person.image on the database record
  * 2. Curated file in src/assets/portraits/people/{id}.*
- * 3. This-browser localStorage upload (staging only)
+ * 3. Private Atlas cloud upload (media_assets → /api/media/:id)
  * 4. Sexed silhouette placeholder
  */
 export function resolvePersonPortrait(

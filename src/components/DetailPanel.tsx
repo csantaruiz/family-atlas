@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { eventContext } from '../data'
 import { getHistoryEventHeroImage } from '../data/historyEventImagery'
 import { getHistoryEventWikipediaUrl } from '../data/historyEventWikipedia'
@@ -7,6 +8,7 @@ import { usePersonPortraits } from '../hooks/usePersonPortraits'
 import { initials } from '../utils/format'
 import { eventSummaryForPerson, primaryLocations } from '../utils/personDirectory'
 import { movementSummary, peopleRelevantToEvent } from '../utils/placeUtils'
+import { ensurePersonPortraitLoaded } from '../utils/personPortraitStore'
 import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
 import type { FamilyEvent, PersonImage } from '../types'
@@ -15,6 +17,12 @@ export function DetailPanel() {
   const { detail, peopleById, birthPeople, familyEvents, closeDetail, openPerson } = useTimeline()
   const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
   const uploadedPortraits = usePersonPortraits()
+
+  const portraitPersonKey = detail?.type === 'person' ? detail.personId : null
+  useEffect(() => {
+    if (!portraitPersonKey) return
+    void ensurePersonPortraitLoaded(portraitPersonKey)
+  }, [portraitPersonKey])
 
   const isOpen = detail !== null
 

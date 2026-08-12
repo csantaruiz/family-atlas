@@ -4,10 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npx vercel env run --environment=production -- vite",
+    "dev:vite": "vite",
+    "dev:vercel": "npx vercel dev --listen 3000",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "db:migrate": "node scripts/db/migrate.mjs",
+    "db:seed": "node scripts/db/migrate.mjs seed",
     "transcribe:documentary": "python3 scripts/transcribe-documentary.py base",
     "build:camera-cues": "python3 scripts/build-camera-cues.py",
     "sync:documentary": "python3 scripts/transcribe-documentary.py base && python3 scripts/build-camera-cues.py",
@@ -15,7 +19,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "@tailwindcss/vite": "^4.3.2",
+    "@vercel/blob": "^2.0.0",
     "d3": "^7.9.0",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.24.0",
@@ -28,6 +34,7 @@
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@vercel/node": "^5.3.26",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",

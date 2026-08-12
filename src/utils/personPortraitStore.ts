@@ -1,35 +1,19 @@
 import type { PersonImage } from '../types'
+import {
+  deleteMediaAsset,
+  fetchPrimaryPortrait,
+  uploadPrimaryPortrait,
+  type CloudPortrait,
+} from './mediaApi'
 
-const STORAGE_KEY = 'atlas.person-portraits.v1'
 const MAX_EDGE_PX = 900
 const JPEG_QUALITY = 0.84
 
 export type PersonPortraitMap = Record<string, PersonImage>
 
 const listeners = new Set<() => void>()
-let snapshot: PersonPortraitMap = readFromStorage()
-
-function readFromStorage(): PersonPortraitMap {
-  if (typeof window === 'undefined') return {}
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as PersonPortraitMap
-    if (!parsed || typeof parsed !== 'object') return {}
-    return parsed
-  } catch {
-    return {}
-  }
-}
-
-function writeToStorage(map: PersonPortraitMap): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
-  } catch {
-    // Quota exceeded or private mode — keep in-memory snapshot only.
-  }
-}
+let snapshot: PersonPortraitMap = {}
+const inflight = new Map<string, Promise<void>>()
 
 function emit(): void {
   for (const listener of listeners) listener()
@@ -50,19 +34,38 @@ export function getPersonPortrait(personId: string): PersonImage | undefined {
   return snapshot[personId]
 }
 
-export function setPersonPortrait(personId: string, image: PersonImage): void {
+function setLocalPortrait(personId: string, image: PersonImage): void {
   snapshot = { ...snapshot, [personId]: image }
-  writeToStorage(snapshot)
   emit()
 }
 
-export function removePersonPortrait(personId: string): void {
+function clearLocalPortrait(personId: string): void {
   if (!(personId in snapshot)) return
   const next = { ...snapshot }
   delete next[personId]
   snapshot = next
-  writeToStorage(snapshot)
   emit()
+}
+
+/** Load primary cloud portrait for a person (no-op if already cached). */
+export function ensurePersonPortraitLoaded(personId: string): Promise<void> {
+  if (snapshot[personId]) return Promise.resolve()
+  const existing = inflight.get(personId)
+  if (existing) return existing
+
+  const task = (async () => {
+    try {
+      const portrait = await fetchPrimaryPortrait(personId)
+      if (portrait) setLocalPortrait(personId, portrait)
+    } catch (error) {
+      console.warn('Portrait load failed', personId, error)
+    } finally {
+      inflight.delete(personId)
+    }
+  })()
+
+  inflight.set(personId, task)
+  return task
 }
 
 function loadImageElement(src: string): Promise<HTMLImageElement> {
@@ -86,11 +89,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
-/** Compress and normalize an uploaded portrait for on-device storage. */
+/** Compress an image file client-side, then upload to private Atlas media storage. */
 export async function createPortraitFromFile(
   file: File,
   personName: string,
-): Promise<PersonImage> {
+): Promise<{ prepared: { dataBase64: string; contentType: string; width: number; height: number }; previewAlt: string }> {
   if (!file.type.startsWith('image/')) {
     throw new Error('Please choose an image file.')
   }
@@ -108,13 +111,53 @@ export async function createPortraitFromFile(
   if (!ctx) throw new Error('Could not prepare that image.')
   ctx.drawImage(source, 0, 0, width, height)
 
-  const src = canvas.toDataURL('image/jpeg', JPEG_QUALITY)
+  const jpegDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY)
+  const dataBase64 = jpegDataUrl.replace(/^data:image\/jpeg;base64,/, '')
+
   return {
-    src,
-    alt: `Portrait of ${personName}`,
-    caption: 'Family photograph',
-    credit: 'Saved on this device',
-    isPlaceholder: false,
-    isUserUpload: true,
+    prepared: {
+      dataBase64,
+      contentType: 'image/jpeg',
+      width,
+      height,
+    },
+    previewAlt: `Portrait of ${personName}`,
   }
+}
+
+export async function uploadPersonPortrait(
+  personId: string,
+  personName: string,
+  file: File,
+): Promise<CloudPortrait> {
+  const { prepared } = await createPortraitFromFile(file, personName)
+  const portrait = await uploadPrimaryPortrait({
+    personId,
+    personName,
+    dataBase64: prepared.dataBase64,
+    contentType: prepared.contentType,
+    width: prepared.width,
+    height: prepared.height,
+    originalFilename: file.name || 'portrait.jpg',
+  })
+  setLocalPortrait(personId, portrait)
+  return portrait
+}
+
+export async function removePersonPortrait(personId: string): Promise<void> {
+  const current = snapshot[personId] as CloudPortrait | undefined
+  const assetId = current && 'assetId' in current ? current.assetId : null
+  if (assetId) {
+    await deleteMediaAsset(assetId)
+  } else {
+    // Attempt refresh-from-server then delete if found.
+    const remote = await fetchPrimaryPortrait(personId)
+    if (remote?.assetId) await deleteMediaAsset(remote.assetId)
+  }
+  clearLocalPortrait(personId)
+}
+
+/** @deprecated localStorage writes removed — kept name for call-site clarity in older notes */
+export function setPersonPortrait(personId: string, image: PersonImage): void {
+  setLocalPortrait(personId, image)
 }

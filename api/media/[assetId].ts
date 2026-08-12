@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireEditAccess } from '../_lib/auth'
-import { deletePrivateMedia, readPrivateMediaByUrl } from '../_lib/blob'
-import { getSql, requireAtlasId } from '../_lib/db'
-import { allowCors, handleOptions, sendError } from '../_lib/http'
+import { requireEditAccess } from '../_lib/auth.js'
+import { deletePrivateMedia, readPrivateMediaByUrl } from '../_lib/blob.js'
+import { getSql, requireAtlasId } from '../_lib/db.js'
+import { allowCors, handleOptions, sendError } from '../_lib/http.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   allowCors(res)

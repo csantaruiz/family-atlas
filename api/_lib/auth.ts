@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { loadLocalEnv } from './loadEnv'
+import { loadLocalEnv } from './loadEnv.js'
 
 loadLocalEnv()
 

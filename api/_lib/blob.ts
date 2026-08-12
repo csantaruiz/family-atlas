@@ -1,5 +1,5 @@
 import { del, get, put } from '@vercel/blob'
-import { loadLocalEnv } from './loadEnv'
+import { loadLocalEnv } from './loadEnv.js'
 
 loadLocalEnv()
 
@@ -42,8 +42,8 @@ export async function readPrivateMediaByUrl(blobUrl: string): Promise<{
     access: 'private',
     ...blobAuth(),
   })
-  if (result.statusCode !== 200 || !result.stream) {
-    throw new Error(`Blob read failed (${result.statusCode})`)
+  if (!result || result.statusCode !== 200 || !result.stream) {
+    throw new Error(`Blob read failed (${result?.statusCode ?? 'no response'})`)
   }
   const body = await new Response(result.stream).arrayBuffer()
   return {

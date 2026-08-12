@@ -5,8 +5,8 @@ import {
   makeEditToken,
   readEditCookie,
   setEditCookie,
-} from '../_lib/auth'
-import { allowCors, handleOptions, sendError } from '../_lib/http'
+} from '../_lib/auth.js'
+import { allowCors, handleOptions, sendError } from '../_lib/http.js'
 
 function readJsonBody(req: VercelRequest): Record<string, unknown> {
   if (!req.body) return {}

@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireEditAccess } from '../_lib/auth'
-import { deletePrivateMedia, mediaPathname, putPrivateMedia } from '../_lib/blob'
-import { getSql, requireAtlasId } from '../_lib/db'
-import { allowCors, handleOptions, sendError } from '../_lib/http'
+import { requireEditAccess } from '../_lib/auth.js'
+import { deletePrivateMedia, mediaPathname, putPrivateMedia } from '../_lib/blob.js'
+import { getSql, requireAtlasId } from '../_lib/db.js'
+import { allowCors, handleOptions, sendError } from '../_lib/http.js'
 
 type MediaKind = 'portrait' | 'photo' | 'document'
 

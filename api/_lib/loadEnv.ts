@@ -33,11 +33,15 @@ function applyEnvFile(path: string): void {
   }
 }
 
-/** Load .env.local into process.env for `vercel dev` (dashboard Development env is incomplete). */
+/** Load .env.local into process.env for local Vite/`vercel dev`. Production uses dashboard env. */
 export function loadLocalEnv(): void {
   if (loaded) return
   loaded = true
-  const cwd = process.cwd()
-  applyEnvFile(join(cwd, '.env'))
-  applyEnvFile(join(cwd, '.env.local'))
+  try {
+    const cwd = process.cwd()
+    applyEnvFile(join(cwd, '.env'))
+    applyEnvFile(join(cwd, '.env.local'))
+  } catch {
+    // Serverless has no local env files; Vercel dashboard env is the source of truth.
+  }
 }

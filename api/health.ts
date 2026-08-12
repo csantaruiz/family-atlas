@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { loadLocalEnv } from './_lib/loadEnv'
+import { loadLocalEnv } from './_lib/loadEnv.js'
 
 loadLocalEnv()
 

@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { atlasApiPlugin } from './vite.atlas-api-plugin'
+import { atlasApiPlugin } from './vite.atlas-api-plugin.ts'
 
 // https://vite.dev/config/
 export default defineConfig({

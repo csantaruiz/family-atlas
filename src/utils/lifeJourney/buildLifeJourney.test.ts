@@ -43,6 +43,16 @@ describe('journey map coordinates', () => {
     expect(birth?.image?.alt).toMatch(/El Paso/i)
     expect(birth?.image?.alt).not.toMatch(/Chihuahua/i)
   })
+
+  it('labels Truman Forkston beats as Pennsylvania, not Wyoming state', () => {
+    const truman = familyDatabase.people.find((person) => person.name === 'Truman Whipple')
+    expect(truman).toBeTruthy()
+    const journey = buildLifeJourney(truman!, events)
+    expect(journey.eligible).toBe(true)
+    const forkstonBeat = journey.beats.find((beat) => /forkston/i.test(beat.locationLabel ?? ''))
+    expect(forkstonBeat?.locationLabel).toBe('Forkston, Pennsylvania')
+    expect(forkstonBeat?.locationLabel).not.toMatch(/Forkston, Wyoming$/)
+  })
 })
 
 describe('buildLifeJourney', () => {

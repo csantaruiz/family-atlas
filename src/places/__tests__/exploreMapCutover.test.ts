@@ -50,7 +50,7 @@ describe('Phase 2A.2 Explore/Map cutover', () => {
     expect(map.resolved).toBe(true)
   })
 
-  it('resolveJourneyCoordinate ignores unified flag (always legacy path)', () => {
+  it('resolveJourneyCoordinate ignores Explore unified flag (?unifiedPlaces=1)', () => {
     const place = 'El Paso, Texas, USA'
     mockUnifiedFlag.mockReturnValue(false)
     const withFlagOff = resolveJourneyCoordinate(place)

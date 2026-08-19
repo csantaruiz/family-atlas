@@ -1,3 +1,6 @@
+import { mapCoordinateFromUnified } from '../places/adapters/exploreMapCoordinate'
+import { isUnifiedPlacesEnabled } from '../places/featureFlag'
+import { resolveCanonicalPlaceSync } from '../places/resolveCanonicalPlace'
 import { placeRegion } from '../utils/placeUtils'
 import { projectGeo } from '../utils/mapProjection'
 
@@ -126,24 +129,98 @@ function projectPlaceGeo(geo: PlaceGeo): MapCoordinate {
   }
 }
 
-export function resolvePlaceCoordinate(place: string): MapCoordinate {
+export type ExplorePlaceDiagnosis = {
+  coordinate: MapCoordinate
+  method: 'empty' | 'exact-override' | 'pattern' | 'region-fallback' | 'unresolved'
+  latitude: number | null
+  longitude: number | null
+  matchedOverrideKey: string | null
+}
+
+function diagnoseExplorePlaceLegacy(place: string): ExplorePlaceDiagnosis {
   const trimmed = place.trim()
   if (!trimmed) {
-    return { x: 50, y: 50, resolved: false, region: '' }
+    return {
+      coordinate: { x: 50, y: 50, resolved: false, region: '' },
+      method: 'empty',
+      latitude: null,
+      longitude: null,
+      matchedOverrideKey: null,
+    }
   }
 
   const override = PLACE_GEO_OVERRIDES[trimmed]
-  if (override) return projectPlaceGeo(override)
+  if (override) {
+    return {
+      coordinate: projectPlaceGeo(override),
+      method: 'exact-override',
+      latitude: override.lat,
+      longitude: override.lon,
+      matchedOverrideKey: trimmed,
+    }
+  }
 
   const inferred = geoFromPatterns(trimmed)
-  if (inferred) return projectPlaceGeo(inferred)
+  if (inferred) {
+    return {
+      coordinate: projectPlaceGeo(inferred),
+      method: 'pattern',
+      latitude: inferred.lat,
+      longitude: inferred.lon,
+      matchedOverrideKey: null,
+    }
+  }
 
   const region = placeRegion(trimmed)
   if (region && REGION_GEO[region]) {
-    return projectPlaceGeo(REGION_GEO[region])
+    const geo = REGION_GEO[region]
+    return {
+      coordinate: projectPlaceGeo(geo),
+      method: 'region-fallback',
+      latitude: geo.lat,
+      longitude: geo.lon,
+      matchedOverrideKey: null,
+    }
   }
 
-  return { x: 50, y: 50, resolved: false, region: region || '' }
+  return {
+    coordinate: { x: 50, y: 50, resolved: false, region: region || '' },
+    method: 'unresolved',
+    latitude: null,
+    longitude: null,
+    matchedOverrideKey: null,
+  }
+}
+
+/**
+ * Observability wrapper — always records the legacy Explore path for Atlas Health.
+ */
+export function diagnoseExplorePlace(place: string): ExplorePlaceDiagnosis {
+  return diagnoseExplorePlaceLegacy(place)
+}
+
+/** Legacy Explore resolver — used by Journey, Follow, Documentary, and health parity. */
+export function resolvePlaceCoordinateLegacy(place: string): MapCoordinate {
+  return diagnoseExplorePlaceLegacy(place).coordinate
+}
+
+/**
+ * @deprecated Prefer resolveExploreMapCoordinate for Map, resolvePlaceCoordinateLegacy elsewhere.
+ * Kept as legacy alias for existing non-Map callers.
+ */
+export function resolvePlaceCoordinate(place: string): MapCoordinate {
+  return resolvePlaceCoordinateLegacy(place)
+}
+
+/**
+ * Phase 2A.2 Map cutover — unified when ?unifiedPlaces=1, else legacy.
+ * Used only by Map place index / pins / map migration segments.
+ */
+export function resolveExploreMapCoordinate(place: string): MapCoordinate {
+  if (!isUnifiedPlacesEnabled()) {
+    return resolvePlaceCoordinateLegacy(place)
+  }
+  return mapCoordinateFromUnified(resolveCanonicalPlaceSync(place))
 }
 
 export function coordinateDistance(a: MapCoordinate, b: MapCoordinate): number {

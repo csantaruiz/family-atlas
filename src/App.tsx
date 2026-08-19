@@ -23,6 +23,8 @@ import {
 } from './documentary-engine'
 import type { AppView } from './types/navigation'
 import { DocumentaryV3Player } from './documentary-v3'
+import { AtlasDebuggerPanel } from './atlas-health/dev/AtlasDebuggerPanel'
+import { isAtlasDebugEnabled } from './atlas-health/dev/atlasDebugEnabled'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -79,6 +81,7 @@ function AtlasAppShell() {
       <AppViews />
       <FollowPersonOverlay />
       <DetailPanel />
+      {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}
     </div>
   )
 }

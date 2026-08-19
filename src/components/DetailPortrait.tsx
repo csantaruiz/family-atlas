@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { PersonImage } from '../types'
 import {
+  reloadPersonPortrait,
   removePersonPortrait,
   uploadPersonPortrait,
 } from '../utils/personPortraitStore'
@@ -25,6 +26,11 @@ function downloadPortrait(personId: string, src: string) {
   link.remove()
 }
 
+function apiPortraitSrc(image: PersonImage | null | undefined): string | null {
+  if (!image?.assetId) return null
+  return `/api/media/${image.assetId}`
+}
+
 export function DetailPortrait({
   image,
   initials,
@@ -37,6 +43,7 @@ export function DetailPortrait({
   const [imageFailed, setImageFailed] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const inputId = useId()
 
@@ -47,9 +54,29 @@ export function DetailPortrait({
 
   const canUpload = Boolean(personId && personName && !isHistoryHero)
   const isUserUpload = Boolean(image?.isUserUpload)
+  const previewSrc =
+    image?.src?.startsWith('blob:') && !image.loadError
+      ? image.src
+      : apiPortraitSrc(image) ?? image?.src ?? null
+  const previewFailed = isUserUpload && Boolean(previewSrc) && (imageFailed || Boolean(image?.loadError))
+  const previewError = image?.loadError ?? (imageFailed ? 'Portrait preview could not be loaded.' : null)
   const isUnavailable =
-    !image?.src || Boolean(useArchivalPlaceholder || image.isPlaceholder) || imageFailed
+    !previewSrc || Boolean(useArchivalPlaceholder || image?.isPlaceholder) || previewFailed
   const showUploadChrome = canUpload && (isUnavailable || isUserUpload)
+
+  const handleRetryPreview = async () => {
+    if (!personId) return
+    setIsRetrying(true)
+    setImageFailed(false)
+    setUploadError(null)
+    try {
+      await reloadPersonPortrait(personId)
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Retry failed.')
+    } finally {
+      setIsRetrying(false)
+    }
+  }
 
   const handleFile = async (file: File | undefined) => {
     if (!file || !personId || !personName) return
@@ -86,74 +113,114 @@ export function DetailPortrait({
         type="file"
         accept="image/*"
         className="detail-portrait-upload-input"
-        disabled={isUploading}
+        disabled={isUploading || isRetrying}
         onChange={(event) => void handleFile(event.target.files?.[0])}
       />
-      <div className="detail-portrait-upload-actions">
+      <div
+        className={`detail-portrait-upload-actions${previewFailed ? ' detail-portrait-upload-actions--wrap' : ''}`}
+      >
         <label
           htmlFor={inputId}
           className={`detail-portrait-upload-btn${isUploading ? ' is-busy' : ''}`}
         >
           {isUploading ? 'Uploading…' : isUserUpload ? 'Replace photo' : 'Upload photo'}
         </label>
-        {isUserUpload && image?.src && personId ? (
+        {isUserUpload && previewSrc && personId ? (
           <button
             type="button"
             className="detail-portrait-upload-btn"
-            disabled={isUploading}
-            onClick={() => downloadPortrait(personId, image.src)}
+            disabled={isUploading || isRetrying}
+            onClick={() => downloadPortrait(personId, previewSrc)}
           >
             Download
+          </button>
+        ) : null}
+        {isUserUpload && previewFailed ? (
+          <button
+            type="button"
+            className="detail-portrait-upload-btn"
+            disabled={isUploading || isRetrying}
+            onClick={() => void handleRetryPreview()}
+          >
+            {isRetrying ? 'Retrying…' : 'Retry preview'}
           </button>
         ) : null}
         {isUserUpload ? (
           <button
             type="button"
             className="detail-portrait-upload-btn detail-portrait-upload-btn--ghost"
-            disabled={isUploading}
+            disabled={isUploading || isRetrying}
             onClick={() => void handleRemove()}
           >
             Remove
           </button>
         ) : null}
       </div>
-      {isUserUpload ? (
-        <p className="detail-portrait-upload-hint">Saved to this Atlas · private family media</p>
+      {previewFailed && previewError ? (
+        <p className="detail-portrait-upload-error">{previewError}</p>
       ) : null}
       {uploadError ? <p className="detail-portrait-upload-error">{uploadError}</p> : null}
     </div>
   ) : null
 
-  if (image?.src && !imageFailed && (useArchivalPlaceholder || image.isPlaceholder)) {
+  const overlayCaption =
+    image?.caption ??
+    (useArchivalPlaceholder || image?.isPlaceholder ? 'Portrait unavailable' : null)
+  const portraitOverlay = overlayCaption ? (
+      <figcaption className="detail-portrait-overlay">
+        <span className="detail-portrait-caption">{overlayCaption}</span>
+      </figcaption>
+    ) : null
+
+  const portraitFrame = (img: React.ReactNode, extraClass = '') => (
+    <div className={`detail-portrait-frame${extraClass ? ` ${extraClass}` : ''}`}>
+      {img}
+      {portraitOverlay}
+    </div>
+  )
+
+  if (previewSrc && !previewFailed && (useArchivalPlaceholder || image?.isPlaceholder)) {
     return (
       <figure className="detail-portrait detail-portrait--placeholder">
-        <img className="detail-portrait-img" src={image.src} alt={image.alt} />
-        <figcaption className="detail-portrait-caption">
-          {image.caption ?? 'Portrait unavailable'}
-        </figcaption>
-        {image.credit && !canUpload ? (
-          <p className="detail-portrait-credit">{image.credit}</p>
-        ) : null}
+        {portraitFrame(
+          <img className="detail-portrait-img" src={previewSrc} alt={image?.alt ?? ''} />,
+        )}
         {uploadControl}
       </figure>
     )
   }
 
-  if (image?.src && !imageFailed) {
+  if (previewSrc && !previewFailed) {
     return (
       <figure className={`detail-portrait${isHistoryHero ? ' detail-portrait--history-hero' : ''}`}>
-        <img
-          className={`detail-portrait-img${isHistoryHero ? ' detail-portrait-img--history-hero' : ''}`}
-          src={image.src}
-          alt={image.alt}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setImageFailed(true)}
-        />
-        {image.caption && (
-          <figcaption className="detail-portrait-caption">{image.caption}</figcaption>
+        {portraitFrame(
+          <img
+            className={`detail-portrait-img${isHistoryHero ? ' detail-portrait-img--history-hero' : ''}`}
+            src={previewSrc}
+            alt={image?.alt ?? ''}
+            loading={isUserUpload ? 'eager' : 'lazy'}
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />,
         )}
-        {image.credit && <p className="detail-portrait-credit">{image.credit}</p>}
+        {uploadControl}
+      </figure>
+    )
+  }
+
+  if (previewSrc && previewFailed) {
+    return (
+      <figure className="detail-portrait detail-portrait--upload-error">
+        <div className="detail-portrait-upload-error-frame">
+          <img
+            className="detail-portrait-img detail-portrait-img--hidden"
+            src={previewSrc}
+            alt=""
+            aria-hidden="true"
+            onError={() => setImageFailed(true)}
+          />
+          <p className="detail-portrait-upload-error-label">Preview unavailable</p>
+        </div>
         {uploadControl}
       </figure>
     )

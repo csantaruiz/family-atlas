@@ -1,7 +1,13 @@
 import type { FamilyEvent, Person } from '../types'
-import { coordinateDistance, resolvePlaceCoordinate, type MapCoordinate } from '../data/placeCoordinates'
+import {
+  coordinateDistance,
+  resolvePlaceCoordinateLegacy,
+  type MapCoordinate,
+} from '../data/placeCoordinates'
 import { placeRegion } from './placeUtils'
 import { surnameOf } from './personDirectory'
+
+export type PlaceCoordinateResolver = (place: string) => MapCoordinate
 
 export type PlaceRecord = {
   id: string
@@ -92,7 +98,11 @@ function eventPlace(event: FamilyEvent): string | null {
   return pl?.trim() || null
 }
 
-export function buildPlaceIndex(people: Person[], events: FamilyEvent[]): PlaceRecord[] {
+export function buildPlaceIndex(
+  people: Person[],
+  events: FamilyEvent[],
+  resolveCoord: PlaceCoordinateResolver = resolvePlaceCoordinateLegacy,
+): PlaceRecord[] {
   const map = new Map<string, PlaceRecord>()
 
   const ensure = (place: string): PlaceRecord => {
@@ -102,7 +112,7 @@ export function buildPlaceIndex(people: Person[], events: FamilyEvent[]): PlaceR
       rec = {
         id: key,
         name: place,
-        coordinate: resolvePlaceCoordinate(place),
+        coordinate: resolveCoord(place),
         people: [],
         events: [],
         yearMin: null,
@@ -145,7 +155,11 @@ export function buildPlaceIndex(people: Person[], events: FamilyEvent[]): PlaceR
   return [...map.values()].sort((a, b) => b.people.length - a.people.length)
 }
 
-export function buildMigrationSegments(people: Person[], events: FamilyEvent[]): MigrationSegment[] {
+export function buildMigrationSegments(
+  people: Person[],
+  events: FamilyEvent[],
+  resolveCoord: PlaceCoordinateResolver = resolvePlaceCoordinateLegacy,
+): MigrationSegment[] {
   const segments: MigrationSegment[] = []
 
   for (const p of people) {
@@ -153,8 +167,8 @@ export function buildMigrationSegments(people: Person[], events: FamilyEvent[]):
     for (let i = 0; i < places.length - 1; i++) {
       const from = places[i]
       const to = places[i + 1]
-      const fromCoord = resolvePlaceCoordinate(from)
-      const toCoord = resolvePlaceCoordinate(to)
+      const fromCoord = resolveCoord(from)
+      const toCoord = resolveCoord(to)
       if (!fromCoord.resolved || !toCoord.resolved) continue
       if (coordinateDistance(fromCoord, toCoord) < 1.5) continue
       const moveEvent = events.find(

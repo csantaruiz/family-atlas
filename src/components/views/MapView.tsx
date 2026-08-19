@@ -6,6 +6,7 @@ import {
   branchOptions,
   centuryOptions,
 } from '../../utils/personDirectory'
+import { resolveExploreMapCoordinate } from '../../data/placeCoordinates'
 import {
   buildMigrationSegments,
   buildPlaceIndex,
@@ -47,8 +48,14 @@ function MapViewContent({ active }: MapViewProps) {
   const [directAncestorsOnly, setDirectAncestorsOnly] = useState(false)
   const [showRoutes, setShowRoutes] = useState(true)
 
-  const allPlaces = useMemo(() => buildPlaceIndex(people, familyEvents), [people, familyEvents])
-  const allMigrations = useMemo(() => buildMigrationSegments(people, familyEvents), [people, familyEvents])
+  const allPlaces = useMemo(
+    () => buildPlaceIndex(people, familyEvents, resolveExploreMapCoordinate),
+    [people, familyEvents],
+  )
+  const allMigrations = useMemo(
+    () => buildMigrationSegments(people, familyEvents, resolveExploreMapCoordinate),
+    [people, familyEvents],
+  )
 
   const filteredPlaces = useMemo(
     () =>

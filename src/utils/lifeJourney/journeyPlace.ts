@@ -1,4 +1,4 @@
-import { resolvePlaceCoordinate, type MapCoordinate } from '../../data/placeCoordinates'
+import { resolvePlaceCoordinateLegacy, type MapCoordinate } from '../../data/placeCoordinates'
 
 const US_STATE_PATTERNS: [RegExp, string][] = [
   [/california|\blos angeles\b|\bmonrovia\b|\banaheim\b|\bsan diego\b|\borange\b/, 'california'],
@@ -60,7 +60,7 @@ export function journeyPlaceKey(place = ''): string {
     return state ? `united-states:${state}` : 'united-states'
   }
 
-  const coord = resolvePlaceCoordinate(raw)
+  const coord = resolvePlaceCoordinateLegacy(raw)
   if (coord.resolved && coord.region) {
     if (coord.region === 'United States') {
       const state = usStateKey(s)
@@ -82,27 +82,30 @@ export function journeyPlaceLabel(place = ''): string {
   return parts.slice(0, 2).join(', ')
 }
 
+/**
+ * Journey / Follow coordinates — always legacy Explore path until Phase 2A.4.
+ * Intentionally does not honor ?unifiedPlaces=1.
+ */
 export function resolveJourneyCoordinate(place: string): MapCoordinate {
   const trimmed = place.trim()
   if (!trimmed) return { x: 50, y: 50, resolved: false, region: '' }
 
-  // Prefer the actual GEDCOM place string so El Paso ≠ Chihuahua, Monrovia ≠ Bay Area.
-  const direct = resolvePlaceCoordinate(trimmed)
+  const direct = resolvePlaceCoordinateLegacy(trimmed)
   if (direct.resolved) return direct
 
   const key = journeyPlaceKey(trimmed)
   if (key === 'united-states:california') {
-    return resolvePlaceCoordinate('Los Angeles, California, USA')
+    return resolvePlaceCoordinateLegacy('Los Angeles, California, USA')
   }
   if (key === 'united-states:texas') {
-    return resolvePlaceCoordinate('El Paso, Texas, USA')
+    return resolvePlaceCoordinateLegacy('El Paso, Texas, USA')
   }
   if (key === 'united-states:new-jersey') {
-    return resolvePlaceCoordinate('Camden City, Camden, New Jersey')
+    return resolvePlaceCoordinateLegacy('Camden City, Camden, New Jersey')
   }
-  if (key === 'england') return resolvePlaceCoordinate('England')
-  if (key === 'scotland') return resolvePlaceCoordinate('Scotland')
-  if (key === 'mexico') return resolvePlaceCoordinate('Mexico')
+  if (key === 'england') return resolvePlaceCoordinateLegacy('England')
+  if (key === 'scotland') return resolvePlaceCoordinateLegacy('Scotland')
+  if (key === 'mexico') return resolvePlaceCoordinateLegacy('Mexico')
   return { x: 50, y: 50, resolved: false, region: '' }
 }
 

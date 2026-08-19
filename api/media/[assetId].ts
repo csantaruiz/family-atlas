@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireEditAccess } from '../_lib/auth.js'
-import { deletePrivateMedia, readPrivateMediaByUrl } from '../_lib/blob.js'
+import { deletePrivateMedia, readPrivateMedia } from '../_lib/blob.js'
 import { getSql, requireAtlasId } from '../_lib/db.js'
 import { allowCors, handleOptions, sendError } from '../_lib/http.js'
 
@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'GET') {
       const rows = await sql`
-        SELECT blob_url, content_type
+        SELECT blob_url, blob_pathname, content_type
         FROM media_assets
         WHERE id = ${assetId} AND atlas_id = ${atlasId}
         LIMIT 1
@@ -30,8 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
       }
 
-      const row = rows[0] as { blob_url: string; content_type: string }
-      const { body, contentType } = await readPrivateMediaByUrl(row.blob_url)
+      const row = rows[0] as { blob_url: string; blob_pathname: string | null; content_type: string }
+      const { body, contentType } = await readPrivateMedia({
+        blobUrl: row.blob_url,
+        blobPathname: row.blob_pathname,
+      })
       res.setHeader('Content-Type', contentType || row.content_type || 'application/octet-stream')
       res.setHeader('Cache-Control', 'private, max-age=3600')
       res.status(200).send(Buffer.from(body))

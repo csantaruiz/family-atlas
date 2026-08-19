@@ -4,7 +4,6 @@ import { getFamilyEventHeroImage } from '../data/familyEventImagery'
 import { getHistoryEventHeroImage } from '../data/historyEventImagery'
 import { getHistoryEventWikipediaUrl } from '../data/historyEventWikipedia'
 import { useAppNavigation } from '../context/AppNavigationContext'
-import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
 import { usePersonPortraits } from '../hooks/usePersonPortraits'
 import {
@@ -19,12 +18,12 @@ import { peopleRelevantToEvent } from '../utils/placeUtils'
 import { ensurePersonPortraitLoaded } from '../utils/personPortraitStore'
 import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
+import { PersonJourneyButton } from './PersonJourneyButton'
 import type { FamilyEvent, PersonImage } from '../types'
 
 export function DetailPanel() {
   const { detail, peopleById, birthPeople, familyEvents, closeDetail, openPerson } = useTimeline()
   const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
-  const { startFollow, journeyForPerson, active: followActive } = useFollowPerson()
   const uploadedPortraits = usePersonPortraits()
 
   const portraitPersonKey = detail?.type === 'person' ? detail.personId : null
@@ -62,8 +61,7 @@ export function DetailPanel() {
   let showReturnToTimeline = false
   let portraitPersonId: string | undefined
   let portraitPersonName: string | undefined
-  let followCtaLabel: string | null = null
-  let followPersonId: string | null = null
+  let journeyPersonId: string | null = null
 
   if (detail?.type === 'person') {
     const p = peopleById[detail.personId]
@@ -104,11 +102,7 @@ export function DetailPanel() {
       useArchivalPlaceholder = resolved.isUnavailablePlaceholder
       portraitPersonId = p.id
       portraitPersonName = p.name
-      const follow = journeyForPerson(p.id)
-      if (follow?.eligible) {
-        followCtaLabel = follow.ctaLabel
-        followPersonId = p.id
-      }
+      journeyPersonId = p.id
     }
   } else if (detail?.type === 'familyEvent') {
     isFamilyEvent = true
@@ -162,6 +156,7 @@ export function DetailPanel() {
       portraitImage = getFamilyEventHeroImage(e)
       portraitVariant = portraitImage ? 'history-hero' : 'portrait'
     }
+    journeyPersonId = p.id
   } else if (detail?.type === 'history') {
     const ev = detail.event
     historyRelated = peopleRelevantToEvent(ev, birthPeople)
@@ -237,15 +232,7 @@ export function DetailPanel() {
             <div className="life" id="personLife">
               {life}
             </div>
-            {followCtaLabel && followPersonId && !followActive && (
-              <button
-                type="button"
-                className="detail-follow-journey"
-                onClick={() => startFollow(followPersonId)}
-              >
-                {followCtaLabel} →
-              </button>
-            )}
+            {journeyPersonId ? <PersonJourneyButton personId={journeyPersonId} /> : null}
             {!isThinking && (
               <>
                 {(storyParagraphs.length ? storyParagraphs : story ? [story] : []).map(

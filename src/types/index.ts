@@ -8,6 +8,8 @@ export type PersonImage = {
   isUserUpload?: boolean
   /** Cloud media_assets.id when served from private Blob via /api/media/:id */
   assetId?: string
+  /** Set when metadata exists but byte delivery failed (local dev / Blob auth). */
+  loadError?: string
 }
 
 export type Person = {

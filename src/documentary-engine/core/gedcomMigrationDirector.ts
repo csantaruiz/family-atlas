@@ -93,7 +93,7 @@ const SCALE_RANK: Record<GeographicScale, number> = {
   world: 4,
 }
 
-function normalizeGedcomPlace(value: string): string {
+export function normalizeGedcomPlace(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
@@ -181,16 +181,31 @@ function patternFallbackPlaceId(gedcomPlace: string): string | null {
   return null
 }
 
-/** Resolve a raw GEDCOM place string to a documentary canonical place id. */
-export function resolveGedcomPlaceToCanonicalId(gedcomPlace: string): string | null {
+export type DocumentaryPlaceDiagnosis = {
+  canonicalId: string | null
+  normalized: string
+  method: 'empty' | 'alias-index' | 'pattern-fallback' | 'substring-alias' | 'unresolved'
+}
+
+/**
+ * Observability wrapper — same resolution path as {@link resolveGedcomPlaceToCanonicalId}.
+ * Records which branch matched; does not change alias precedence or results.
+ */
+export function diagnoseGedcomPlaceResolution(gedcomPlace: string): DocumentaryPlaceDiagnosis {
   const normalized = normalizeGedcomPlace(gedcomPlace)
-  if (!normalized) return null
+  if (!normalized) {
+    return { canonicalId: null, normalized: '', method: 'empty' }
+  }
 
   const direct = GEDCOM_ALIAS_INDEX.get(normalized)
-  if (direct) return direct
+  if (direct) {
+    return { canonicalId: direct, normalized, method: 'alias-index' }
+  }
 
   const patternMatch = patternFallbackPlaceId(gedcomPlace)
-  if (patternMatch) return patternMatch
+  if (patternMatch) {
+    return { canonicalId: patternMatch, normalized, method: 'pattern-fallback' }
+  }
 
   let best: { id: string; score: number } | null = null
   for (const [alias, placeId] of GEDCOM_ALIAS_INDEX.entries()) {
@@ -199,9 +214,16 @@ export function resolveGedcomPlaceToCanonicalId(gedcomPlace: string): string | n
     const score = alias.length
     if (!best || score > best.score) best = { id: placeId, score }
   }
-  if (best) return best.id
+  if (best) {
+    return { canonicalId: best.id, normalized, method: 'substring-alias' }
+  }
 
-  return null
+  return { canonicalId: null, normalized, method: 'unresolved' }
+}
+
+/** Resolve a raw GEDCOM place string to a documentary canonical place id. */
+export function resolveGedcomPlaceToCanonicalId(gedcomPlace: string): string | null {
+  return diagnoseGedcomPlaceResolution(gedcomPlace).canonicalId
 }
 
 function landmassForPlaceId(placeId: string): MacroLandmass | null {

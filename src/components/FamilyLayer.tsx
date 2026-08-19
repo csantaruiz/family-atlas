@@ -313,8 +313,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   // Freeze marker selection/layout during drag+zoom; only X is recomputed from yearX.
   const persistEventMarkers = interactionLocked
   const eventFadeEnabled = motionEnabled && !persistEventMarkers
-  const frozenEventsRef = useRef<
-    Array<{
+  /** Last idle folded layout — kept stable through drag/inertia so clusters do not vanish. */
+  const frozenRenderLayoutRef = useRef<{
+    events: Array<{
       event: FamilyEvent
       x: number
       y: number
@@ -322,9 +323,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       nudge?: number
       compact?: boolean
       lane?: number
-    }> | null
-  >(null)
-  const persistSnapshotRef = useRef(false)
+    }>
+    clusters: PlacedEventConflictCluster[]
+  } | null>(null)
   const frozenEventYRef = useRef<Map<string, number>>(new Map())
   // Span-stable pins: once shown at a zoom level, prefer keeping them while still in view.
   const pinnedSpanBucketRef = useRef<number | null>(null)
@@ -352,8 +353,6 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       freezeLandmarkStability(useBirthClusters ? 'far' : zoomSemantic, span)
       return
     }
-    frozenEventsRef.current = null
-    persistSnapshotRef.current = false
     unfreezeLandmarkStability()
   }, [interactionLocked, span, useBirthClusters, zoomSemantic])
 
@@ -612,19 +611,23 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   }, [isZooming, spanBucket, activeLayout?.events, start, end, span])
 
   const renderLayout = useMemo(() => {
-    const zoomFrozen =
-      persistEventMarkers && frozenEventsRef.current?.length ? frozenEventsRef.current : null
-    if (zoomFrozen) {
+    // While dragging / coasting / zooming: keep the idle folded mix (events + clusters)
+    // and only remap X — never expand back to every landmark.
+    if (persistEventMarkers && frozenRenderLayoutRef.current) {
+      const frozen = frozenRenderLayoutRef.current
       return {
-        events: zoomFrozen
+        events: frozen.events
           .filter(({ event }) => event.year >= start && event.year <= end)
           .map((entry) => ({
             ...entry,
             x: yearX(entry.event.year, start, span, width),
-            nudge: 0,
-            alignment: 'center' as const,
           })),
-        clusters: [] as PlacedEventConflictCluster[],
+        clusters: frozen.clusters
+          .filter((cluster) => cluster.to >= start && cluster.from <= end)
+          .map((cluster) => ({
+            ...cluster,
+            x: yearX((cluster.from + cluster.to) / 2, start, span, width),
+          })),
       }
     }
 
@@ -686,6 +689,15 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   const renderEvents = renderLayout.events
   const conflictClusters = renderLayout.clusters
 
+  // Keep a fresh idle snapshot so the next drag/coast preserves clusters + density.
+  useLayoutEffect(() => {
+    if (persistEventMarkers) return
+    frozenRenderLayoutRef.current = {
+      events: renderEvents.map((entry) => ({ ...entry })),
+      clusters: conflictClusters.map((cluster) => ({ ...cluster })),
+    }
+  }, [persistEventMarkers, renderEvents, conflictClusters])
+
   useLayoutEffect(() => {
     if (isZooming) return
     previousRenderedIdsRef.current = [
@@ -706,14 +718,6 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       pinnedSpanBucketRef.current = spanBucket
     }
   }, [renderEvents, conflictClusters, isZooming, start, end, spanBucket])
-
-  useLayoutEffect(() => {
-    if (!persistEventMarkers || !activeLayout?.events?.length) return
-    if (!persistSnapshotRef.current) {
-      frozenEventsRef.current = activeLayout.events.map((entry) => ({ ...entry }))
-      persistSnapshotRef.current = true
-    }
-  }, [persistEventMarkers, activeLayout?.events])
 
   registerFamilyPulseTargets(
     useMemo(

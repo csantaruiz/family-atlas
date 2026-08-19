@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 let loaded = false
 
-function applyEnvFile(path: string): void {
+function applyEnvFile(path: string, options?: { preferLocal?: boolean }): void {
   if (!existsSync(path)) return
   const text = readFileSync(path, 'utf8')
   for (const line of text.split('\n')) {
@@ -21,7 +21,11 @@ function applyEnvFile(path: string): void {
     if (!value || value === '[SENSITIVE]') continue
     if (key === 'BLOB_READ_WRITE_TOKEN' && !value.startsWith('vercel_blob_rw_')) continue
     const current = process.env[key]
+    const preferLocalKey =
+      options?.preferLocal === true &&
+      (key === 'BLOB_READ_WRITE_TOKEN' || key === 'BLOB_STORE_ID')
     const shouldOverride =
+      preferLocalKey ||
       current === undefined ||
       current === '' ||
       current === '[SENSITIVE]' ||
@@ -40,7 +44,8 @@ export function loadLocalEnv(): void {
   try {
     const cwd = process.cwd()
     applyEnvFile(join(cwd, '.env'))
-    applyEnvFile(join(cwd, '.env.local'))
+    // Local Blob creds from `vercel env pull` must win over masked `vercel env run` values.
+    applyEnvFile(join(cwd, '.env.local'), { preferLocal: true })
   } catch {
     // Serverless has no local env files; Vercel dashboard env is the source of truth.
   }

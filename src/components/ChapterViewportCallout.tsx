@@ -24,19 +24,27 @@ import {
   type ChapterVerticalLayout,
 } from '../utils/chapterCalloutLayout'
 import type { PlacedSpanCluster, SemanticZoomMode } from '../utils/clustering'
-import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { TimelineHint } from './TimelineHint'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
 const CALLOUT_CROSSFADE_S = 0.58
+/** Target opacity for plaque scenery images (matches CSS resting state). */
+const CALLOUT_SCENERY_OPACITY = 0.32
 
 const calloutCrossfadeTransition = { duration: CALLOUT_CROSSFADE_S, ease: motionEase }
 
-const calloutCrossfade = {
-  initial: { opacity: 0, '--callout-vivid': 0 },
-  animate: { opacity: 1, '--callout-vivid': 1 },
-  exit: { opacity: 0, '--callout-vivid': 0 },
+/** Content/scenery only — never fade the plaque chrome or --callout-vivid. */
+const calloutContentCrossfade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+} as const
+
+const calloutSceneryCrossfade = {
+  initial: { opacity: 0 },
+  animate: { opacity: CALLOUT_SCENERY_OPACITY },
+  exit: { opacity: 0 },
 } as const
 
 const connectorCrossfade = {
@@ -328,6 +336,7 @@ type ChapterViewportCalloutProps = {
   canScrollPrev: boolean
   canScrollNext: boolean
   showScrollChevrons: boolean
+  motionEnabled?: boolean
   frameRef?: RefObject<HTMLDivElement | null>
 }
 
@@ -348,6 +357,7 @@ export function ChapterViewportCallout({
   canScrollPrev,
   canScrollNext,
   showScrollChevrons,
+  motionEnabled = false,
   frameRef: externalFrameRef,
 }: ChapterViewportCalloutProps) {
   const localFrameRef = useRef<HTMLDivElement>(null)
@@ -425,7 +435,7 @@ export function ChapterViewportCallout({
 
   const zoomInIconSize = isWideTimelineView ? 24 : 20
 
-  const content = (
+  const copyBlock = (
     <div className="chapter-callout" aria-label={accessibleLabel}>
       <span className="chapter-callout-title">{presentation.title}</span>
       <span className="chapter-callout-divider" aria-hidden="true">
@@ -439,66 +449,76 @@ export function ChapterViewportCallout({
       {layout.showMeta && presentation.hiddenCountLabel ? (
         <span className="chapter-callout-meta">{presentation.hiddenCountLabel}</span>
       ) : null}
-      {layout.showCta ? (
-        <div
-          className={`chapter-callout-zoom-actions${isWideTimelineView ? ' chapter-callout-zoom-actions--wide' : ''}${showScrollChevrons ? ' chapter-callout-zoom-actions--scroll-ready' : ''}`}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {showScrollChevrons ? (
-            <button
-              type="button"
-              className="chapter-callout-nav chapter-callout-nav--prev"
-              aria-label="Scroll timeline earlier"
-              title="Scroll earlier"
-              disabled={!canScrollPrev}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={handleScrollPrev}
-            >
-              <ChevronLeft size={22} strokeWidth={2.15} aria-hidden="true" />
-            </button>
-          ) : null}
-          {!isWideTimelineView ? (
-            <button
-              type="button"
-              className="chapter-callout-zoom-btn chapter-callout-zoom-btn--out"
-              aria-label="Zoom out"
-              title="Zoom out"
-              disabled={!canZoomOut}
-              onClick={handleZoomOut}
-            >
-              <ZoomOut size={20} strokeWidth={2} aria-hidden="true" />
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className={`chapter-callout-zoom-btn chapter-callout-zoom-btn--in${isWideTimelineView ? ' chapter-callout-zoom-btn--wide' : ''}${showZoomCtaPulse ? ' chapter-callout-zoom-btn--cta-pulse' : ''}`}
-            aria-label={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
-            title={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
-            disabled={!canZoomIn}
-            onClick={handleZoomIn}
-          >
-            <ZoomIn size={zoomInIconSize} strokeWidth={2} aria-hidden="true" />
-            {isWideTimelineView ? (
-              <span className="chapter-callout-zoom-label">Zoom into timeline</span>
-            ) : null}
-          </button>
-          {showScrollChevrons ? (
-            <button
-              type="button"
-              className="chapter-callout-nav chapter-callout-nav--next"
-              aria-label="Scroll timeline later"
-              title="Scroll later"
-              disabled={!canScrollNext}
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={handleScrollNext}
-            >
-              <ChevronRight size={22} strokeWidth={2.15} aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   )
+
+  const zoomActions = layout.showCta ? (
+    <div
+      className={`chapter-callout-zoom-actions${isWideTimelineView ? ' chapter-callout-zoom-actions--wide' : ''}${showScrollChevrons ? ' chapter-callout-zoom-actions--scroll-ready' : ''}`}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {showScrollChevrons ? (
+        <button
+          type="button"
+          className="chapter-callout-nav chapter-callout-nav--prev"
+          aria-label="Scroll timeline earlier"
+          title="Scroll earlier"
+          disabled={!canScrollPrev}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={handleScrollPrev}
+        >
+          <ChevronLeft size={22} strokeWidth={2.15} aria-hidden="true" />
+        </button>
+      ) : null}
+      {!isWideTimelineView ? (
+        <button
+          type="button"
+          className="chapter-callout-zoom-btn chapter-callout-zoom-btn--out"
+          aria-label="Zoom out"
+          title="Zoom out"
+          disabled={!canZoomOut}
+          onClick={handleZoomOut}
+        >
+          <ZoomOut size={20} strokeWidth={2} aria-hidden="true" />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className={`chapter-callout-zoom-btn chapter-callout-zoom-btn--in${isWideTimelineView ? ' chapter-callout-zoom-btn--wide' : ''}${showZoomCtaPulse ? ' chapter-callout-zoom-btn--cta-pulse' : ''}`}
+        aria-label={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
+        title={isWideTimelineView ? 'Zoom into timeline' : 'Zoom in'}
+        disabled={!canZoomIn}
+        onClick={handleZoomIn}
+      >
+        <ZoomIn size={zoomInIconSize} strokeWidth={2} aria-hidden="true" />
+        {isWideTimelineView ? (
+          <span className="chapter-callout-zoom-label">Zoom into timeline</span>
+        ) : null}
+      </button>
+      {showScrollChevrons ? (
+        <button
+          type="button"
+          className="chapter-callout-nav chapter-callout-nav--next"
+          aria-label="Scroll timeline later"
+          title="Scroll later"
+          disabled={!canScrollNext}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={handleScrollNext}
+        >
+          <ChevronRight size={22} strokeWidth={2.15} aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
+  ) : null
+
+  const sceneryImgProps = {
+    className: 'chapter-callout-scenery-img',
+    src: plaqueBackground.src,
+    alt: '',
+    draggable: false as const,
+    decoding: 'async' as const,
+    style: { objectPosition: plaqueBackground.position ?? 'center center' },
+  }
 
   return (
     <div
@@ -520,19 +540,40 @@ export function ChapterViewportCallout({
         onPointerDown={(e) => e.stopPropagation()}
       >
         <div className="chapter-callout-scenery" aria-hidden="true">
-          <img
-            key={plaqueBackground.key}
-            className="chapter-callout-scenery-img"
-            src={plaqueBackground.src}
-            alt=""
-            draggable={false}
-            decoding="async"
-            style={{ objectPosition: plaqueBackground.position ?? 'center center' }}
-          />
+          {motionEnabled ? (
+            <AnimatePresence initial={false}>
+              <motion.img
+                key={plaqueBackground.key}
+                {...sceneryImgProps}
+                initial={calloutSceneryCrossfade.initial}
+                animate={calloutSceneryCrossfade.animate}
+                exit={calloutSceneryCrossfade.exit}
+                transition={calloutCrossfadeTransition}
+              />
+            </AnimatePresence>
+          ) : (
+            <img key={plaqueBackground.key} {...sceneryImgProps} />
+          )}
         </div>
         <ChapterCalloutFrameBorder frameRef={frameRef} />
-        <div className="chapter-callout-inner" style={{ opacity: cluster.dissolve }}>
-          {content}
+        <div className="chapter-callout-inner">
+          {motionEnabled ? (
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={cluster.chapterId}
+                className="chapter-callout-swap"
+                initial={calloutContentCrossfade.initial}
+                animate={calloutContentCrossfade.animate}
+                exit={calloutContentCrossfade.exit}
+                transition={calloutCrossfadeTransition}
+              >
+                {copyBlock}
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <div className="chapter-callout-swap">{copyBlock}</div>
+          )}
+          {zoomActions}
         </div>
       </div>
       <div className="timeline-plaque-hint">
@@ -667,7 +708,6 @@ export function ChapterCalloutPresence({
   const frameRef = useRef<HTMLDivElement>(null)
   const [cardAnchor, setCardAnchor] = useState<CalloutLayoutAnchor | null>(null)
   const { introProgress, isIntroActive, completeIntro } = useJourneyIntro()
-  const { isZooming } = useTimeline()
 
   useLayoutEffect(() => {
     const frame = frameRef.current
@@ -716,6 +756,7 @@ export function ChapterCalloutPresence({
       viewportWidth={viewportWidth}
       layout={layout}
       verticalLayout={verticalLayout}
+      motionEnabled={motionEnabled}
       onZoomIn={(c) => {
         completeIntro()
         onZoomIn(c)
@@ -751,26 +792,10 @@ export function ChapterCalloutPresence({
 
   return (
     <>
-      <div className={`chapter-callout-presence-stack${isZooming ? ' is-scroll-muted' : ''}`}>
-        <AnimatePresence initial={false}>
-          {motionEnabled ? (
-            <motion.div
-              key={primary.chapterId}
-              className="chapter-callout-presence"
-              initial={isIntroActive ? false : calloutCrossfade.initial}
-              animate={isIntroActive ? undefined : calloutCrossfade.animate}
-              exit={calloutCrossfade.exit}
-              transition={calloutCrossfadeTransition}
-              style={cardMotionStyle}
-            >
-              {callout}
-            </motion.div>
-          ) : (
-            <div className="chapter-callout-presence" style={cardMotionStyle}>
-              {callout}
-            </div>
-          )}
-        </AnimatePresence>
+      <div className="chapter-callout-presence-stack">
+        <div className="chapter-callout-presence" style={cardMotionStyle}>
+          {callout}
+        </div>
       </div>
 
       <AnimatePresence initial={false}>

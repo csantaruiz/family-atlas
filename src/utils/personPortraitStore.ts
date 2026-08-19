@@ -14,6 +14,47 @@ export type PersonPortraitMap = Record<string, PersonImage>
 const listeners = new Set<() => void>()
 let snapshot: PersonPortraitMap = {}
 const inflight = new Map<string, Promise<void>>()
+const objectUrls = new Map<string, string>()
+
+function revokePortraitObjectUrl(personId: string): void {
+  const url = objectUrls.get(personId)
+  if (!url) return
+  URL.revokeObjectURL(url)
+  objectUrls.delete(personId)
+}
+
+/** Prefetch private media bytes for reliable preview in the detail drawer. */
+async function portraitWithDisplayUrl(portrait: CloudPortrait): Promise<PersonImage> {
+  const res = await fetch(portrait.src, { credentials: 'include' })
+  if (!res.ok) {
+    let message = `Portrait bytes failed (${res.status})`
+    try {
+      const data = (await res.json()) as { error?: string }
+      if (typeof data.error === 'string') message = data.error
+    } catch {
+      // keep status message
+    }
+    throw new Error(message)
+  }
+
+  const headerType = res.headers.get('content-type') ?? ''
+  const blob = await res.blob()
+  const mime =
+    blob.type ||
+    (headerType.startsWith('image/') ? headerType : '') ||
+    'image/jpeg'
+
+  if (!mime.startsWith('image/') && !headerType.startsWith('image/')) {
+    throw new Error('Portrait response was not an image')
+  }
+
+  revokePortraitObjectUrl(portrait.personId)
+  const objectUrl = URL.createObjectURL(
+    blob.type.startsWith('image/') ? blob : new Blob([await blob.arrayBuffer()], { type: mime }),
+  )
+  objectUrls.set(portrait.personId, objectUrl)
+  return { ...portrait, src: objectUrl, loadError: undefined }
+}
 
 function emit(): void {
   for (const listener of listeners) listener()
@@ -41,6 +82,7 @@ function setLocalPortrait(personId: string, image: PersonImage): void {
 
 function clearLocalPortrait(personId: string): void {
   if (!(personId in snapshot)) return
+  revokePortraitObjectUrl(personId)
   const next = { ...snapshot }
   delete next[personId]
   snapshot = next
@@ -56,7 +98,14 @@ export function ensurePersonPortraitLoaded(personId: string): Promise<void> {
   const task = (async () => {
     try {
       const portrait = await fetchPrimaryPortrait(personId)
-      if (portrait) setLocalPortrait(personId, portrait)
+      if (!portrait) return
+      try {
+        setLocalPortrait(personId, await portraitWithDisplayUrl(portrait))
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Portrait bytes failed'
+        console.warn('Portrait bytes prefetch failed', personId, error)
+        setLocalPortrait(personId, { ...portrait, loadError: message })
+      }
     } catch (error) {
       console.warn('Portrait load failed', personId, error)
     } finally {
@@ -140,8 +189,19 @@ export async function uploadPersonPortrait(
     height: prepared.height,
     originalFilename: file.name || 'portrait.jpg',
   })
-  setLocalPortrait(personId, portrait)
+  try {
+    setLocalPortrait(personId, await portraitWithDisplayUrl(portrait))
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Portrait bytes failed'
+    setLocalPortrait(personId, { ...portrait, loadError: message })
+  }
   return portrait
+}
+
+/** Force a fresh metadata + byte fetch (e.g. after fixing Blob env). */
+export function reloadPersonPortrait(personId: string): Promise<void> {
+  clearLocalPortrait(personId)
+  return ensurePersonPortraitLoaded(personId)
 }
 
 export async function removePersonPortrait(personId: string): Promise<void> {

@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin, ViteDevServer } from 'vite'
+import { loadLocalEnv } from './api/_lib/loadEnv.ts'
 
 type VercelLikeReq = IncomingMessage & {
   query: Record<string, string | string[]>
@@ -82,6 +83,7 @@ export function atlasApiPlugin(): Plugin {
   return {
     name: 'atlas-local-api',
     configureServer(server) {
+      loadLocalEnv()
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? ''
         if (!url.startsWith('/api/')) {

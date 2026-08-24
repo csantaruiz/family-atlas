@@ -40,7 +40,7 @@ import { admitPersistentMarkers, maxFamilyEventsForSpan, staggerFamilyEventLanes
 import { connectorStemColor, familyEventStemLength, familyLabelCeilingY } from '../utils/eventConnector'
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import { isNarrowStage } from '../utils/stageBreakpoints'
-import { clampLabelNudge, leftoverUnlabeledLayout } from '../utils/phoneTimelineDensity'
+import { leftoverUnlabeledLayout, phoneLabelPlacement } from '../utils/phoneTimelineDensity'
 import { PhoneSheet } from './phone/PhoneSheet'
 import type { FamilyEvent } from '../types'
 
@@ -177,9 +177,11 @@ function FamilyEventButton({
   }
 
   const labelWidth = measureDetailedFootprint(event, viewportWidth, compact).width
-  const edgeNudge = isNarrowStage(viewportWidth)
-    ? clampLabelNudge(markerX ?? x, labelWidth, viewportWidth) + nudge
-    : nudge
+  const phonePlace = isNarrowStage(viewportWidth)
+    ? phoneLabelPlacement(markerX ?? x, labelWidth, viewportWidth)
+    : null
+  const edgeNudge = phonePlace ? phonePlace.nudge : nudge
+  const resolvedAlignment = phonePlace?.align ?? alignment
 
   const style = {
     left: Math.round(x),
@@ -204,7 +206,7 @@ function FamilyEventButton({
   const className = [
     'family-event',
     event.kind,
-    `align-${alignment}`,
+    `align-${resolvedAlignment}`,
     compact ? 'compact' : '',
     markerOnly ? 'marker-only' : '',
     motionEnabled ? 'placement-animated' : '',

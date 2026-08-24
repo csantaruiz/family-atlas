@@ -73,8 +73,8 @@ describe('stageBreakpoints', () => {
     ).toBe(false)
   })
 
-  it('moves the axis slightly on narrow stages', () => {
-    expect(timelineAxisY(700, 390)).toBeLessThan(timelineAxisY(700, 1400))
+  it('shares the desktop axis ratio on phone so landscape layers share one baseline', () => {
+    expect(timelineAxisY(700, 390)).toBe(timelineAxisY(700, 1400))
   })
 
   it('keeps phone family labels below the arrival plaque and lower after exploring', () => {

@@ -16,6 +16,7 @@ import {
   uploadGedcomFile,
 } from './gedcomManageApi'
 import { PhoneCloseButton } from '../components/phone/PhoneSheet'
+import { usePresence } from '../hooks/usePresence'
 
 type Screen =
   | 'closed'
@@ -65,7 +66,8 @@ export function ManageFamilyTree({ open, onClose, fetchFn = fetch }: Props) {
     return () => window.clearInterval(timer)
   }, [screen])
 
-  if (!open) return null
+  const overlay = usePresence(open)
+  if (!overlay.present) return null
 
   const showPreview = (row: InspectableGedcomImport) => {
     const next = customerPreviewFromInspect(row, currentPeople)
@@ -120,7 +122,7 @@ export function ManageFamilyTree({ open, onClose, fetchFn = fetch }: Props) {
   }
 
   return (
-    <div className="atlas-manage-scrim" role="dialog" aria-modal="true" aria-labelledby="atlas-manage-title">
+    <div className={`atlas-manage-scrim${overlay.shown ? ' is-open' : ''}`} role="dialog" aria-modal="true" aria-labelledby="atlas-manage-title">
       <div className="atlas-manage-sheet">
         <PhoneCloseButton className="atlas-manage-close" onClick={onClose} />
         {screen === 'home' || screen === 'checking' ? (

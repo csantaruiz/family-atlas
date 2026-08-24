@@ -1,0 +1,24 @@
+import { useEffect, useState } from 'react'
+
+const OVERLAY_MS = 200
+
+/** Keep a surface mounted until its close animation finishes. */
+export function usePresence(open: boolean, durationMs = OVERLAY_MS) {
+  const [present, setPresent] = useState(open)
+  const [shown, setShown] = useState(open)
+
+  useEffect(() => {
+    if (open) {
+      setPresent(true)
+      const frame = window.requestAnimationFrame(() => setShown(true))
+      return () => window.cancelAnimationFrame(frame)
+    }
+    setShown(false)
+    const timer = window.setTimeout(() => setPresent(false), durationMs)
+    return () => window.clearTimeout(timer)
+  }, [open, durationMs])
+
+  return { present, shown }
+}
+
+export const PHONE_OVERLAY_MS = OVERLAY_MS

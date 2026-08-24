@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { usePresence } from '../hooks/usePresence'
 import { AtlasReviewOverlay } from './AtlasReviewOverlay'
 import { selectCustomerReviews, type CustomerReviewItem } from './selectCustomerReviews'
 
@@ -32,6 +33,8 @@ export function AtlasReviewRoot({ children }: { children: ReactNode }) {
     setEpoch((n) => n + 1)
   }, [])
 
+  const overlay = usePresence(open)
+
   const value = useMemo(
     () => ({
       count,
@@ -46,10 +49,11 @@ export function AtlasReviewRoot({ children }: { children: ReactNode }) {
   return (
     <AtlasReviewContext.Provider value={value}>
       {children}
-      {open ? (
+      {overlay.present ? (
         <AtlasReviewOverlay
           items={items}
           showIntro={!introSeen}
+          overlayShown={overlay.shown}
           onIntroConsumed={() => setIntroSeen(true)}
           onClose={() => {
             setOpen(false)

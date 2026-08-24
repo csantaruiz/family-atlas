@@ -13,8 +13,12 @@ export const NARROW_PLOT_EDGE = 36
 export const TABLET_PLOT_EDGE = 48
 
 export const DESKTOP_AXIS_RATIO = 0.62
-/** Slightly higher family band on short/narrow stages. */
-export const NARROW_AXIS_RATIO = 0.52
+/**
+ * Phone shares the desktop axis ratio so mountain, cyan era columns, and the
+ * gold worldline share one baseline. History diamonds are then placed in JS
+ * below that same axis.
+ */
+export const NARROW_AXIS_RATIO = 0.62
 export const TABLET_AXIS_RATIO = 0.6
 
 export function isNarrowStage(width: number): boolean {

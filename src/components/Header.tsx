@@ -81,6 +81,13 @@ export function Header() {
             <span />
           </span>
         </button>
+        <button
+          type="button"
+          className={`nav-menu-scrim${exploreOpen ? ' is-open' : ''}`}
+          aria-label="Close menu"
+          tabIndex={exploreOpen ? 0 : -1}
+          onClick={() => setExploreOpen(false)}
+        />
         <div className={`nav-cluster${exploreOpen ? ' is-open' : ''}`}>
           <nav
             id="atlas-explore-menu"

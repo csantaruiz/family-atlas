@@ -11,9 +11,9 @@ const PHONE_CLUSTER_MIN_COUNT = 3
 /** Horizontal inset so labels never kiss the viewport edge. */
 export const PHONE_LABEL_INSET_PX = 18
 /** Year numerals occupy a band just below the axis. Diamonds start after this. */
-export const PHONE_YEAR_BAND_PX = 26
+export const PHONE_YEAR_BAND_PX = 22
 /** History diamonds sit this far below the axis, under year ticks. */
-export const PHONE_HISTORY_DIAMOND_GAP_PX = 40
+export const PHONE_HISTORY_DIAMOND_GAP_PX = 34
 
 /** Phone opens on a readable chapter of time, not the full atlas. Desktop stays full-span. */
 export function defaultTimelineSpan(fullSpan: number, width: number): number {
@@ -61,8 +61,23 @@ export function phoneFamilyLaneOffsets(span: number, exploring = false): number[
  * extra lanes are only used when labels would collide.
  */
 export function phoneHistoryLaneOffsets(span: number): number[] {
-  if (span > 160) return [PHONE_HISTORY_DIAMOND_GAP_PX, 86]
-  return [PHONE_HISTORY_DIAMOND_GAP_PX, 84, 126]
+  if (span > 160) return [PHONE_HISTORY_DIAMOND_GAP_PX, 62]
+  return [PHONE_HISTORY_DIAMOND_GAP_PX, 60, 88]
+}
+
+export type PhoneLabelAlign = 'left' | 'center' | 'right'
+
+/** Prefer left/right alignment near the viewport edge instead of clipping. */
+export function phoneLabelPlacement(
+  x: number,
+  labelWidth: number,
+  viewportWidth: number,
+  pad = PHONE_LABEL_INSET_PX,
+): { align: PhoneLabelAlign; nudge: number } {
+  const half = labelWidth / 2
+  if (x - half < pad) return { align: 'left', nudge: 0 }
+  if (x + half > viewportWidth - pad) return { align: 'right', nudge: 0 }
+  return { align: 'center', nudge: clampLabelNudge(x, labelWidth, viewportWidth, pad) }
 }
 
 export type UnlabeledMarkerGroup<T> = {

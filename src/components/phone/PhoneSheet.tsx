@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { usePresence } from '../../hooks/usePresence'
 
 export function PhoneCloseButton({
   onClick,
@@ -29,13 +30,14 @@ export function PhoneSheet({
   children: ReactNode
   size?: 'full' | 'compact'
 }) {
-  if (!open) return null
+  const { present, shown } = usePresence(open)
+  if (!present) return null
 
   return (
-    <div className="phone-sheet-layer">
+    <div className={`phone-sheet-layer${shown ? ' is-open' : ''}`}>
       <button type="button" className="phone-sheet-scrim" aria-label="Close" onClick={onClose} />
       <div
-        className={`phone-sheet${size === 'compact' ? ' phone-sheet--compact' : ''}`}
+        className={`phone-sheet${size === 'compact' ? ' phone-sheet--compact' : ''}${shown ? ' is-open' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

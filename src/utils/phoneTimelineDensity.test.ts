@@ -9,6 +9,7 @@ import {
   phoneFamilyLaneOffsets,
   phoneHistoryLabelBudget,
   phoneHistoryLaneOffsets,
+  phoneLabelPlacement,
 } from './phoneTimelineDensity'
 
 describe('phone timeline density', () => {
@@ -41,8 +42,8 @@ describe('phone timeline density', () => {
   })
 
   it('keeps phone history diamonds below the year band', () => {
-    expect(Math.min(...phoneHistoryLaneOffsets(130))).toBeGreaterThanOrEqual(40)
-    expect(Math.min(...phoneHistoryLaneOffsets(80))).toBeGreaterThanOrEqual(40)
+    expect(Math.min(...phoneHistoryLaneOffsets(130))).toBeGreaterThanOrEqual(32)
+    expect(Math.min(...phoneHistoryLaneOffsets(80))).toBeGreaterThanOrEqual(32)
   })
 
   it('clusters leftover markers that share a pixel column', () => {
@@ -73,6 +74,12 @@ describe('phone timeline density', () => {
     expect(clampLabelNudge(12, 160, 390)).toBeGreaterThan(0)
     expect(clampLabelNudge(380, 160, 390)).toBeLessThan(0)
     expect(clampLabelNudge(200, 160, 390)).toBe(0)
+  })
+
+  it('aligns labels to the near edge instead of clipping them', () => {
+    expect(phoneLabelPlacement(20, 160, 390).align).toBe('left')
+    expect(phoneLabelPlacement(370, 160, 390).align).toBe('right')
+    expect(phoneLabelPlacement(195, 120, 390).align).toBe('center')
   })
 
   it('does not synthesize leftover unlabeled clusters on desktop widths', () => {

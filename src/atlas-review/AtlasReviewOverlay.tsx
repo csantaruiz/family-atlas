@@ -83,6 +83,7 @@ import { introBreakdown, presentationState, reviewCandidates } from './reviewPre
 type Props = {
   items: CustomerReviewItem[]
   showIntro: boolean
+  overlayShown?: boolean
   onIntroConsumed: () => void
   onClose: () => void
   onQueueChanged: () => void
@@ -102,6 +103,7 @@ type PendingSave =
 export function AtlasReviewOverlay({
   items,
   showIntro,
+  overlayShown = true,
   onIntroConsumed,
   onClose,
   onQueueChanged,
@@ -628,7 +630,7 @@ export function AtlasReviewOverlay({
 
   return (
     <div
-      className="atlas-review-scrim"
+      className={`atlas-review-scrim${overlayShown ? ' is-open' : ''}`}
       role="presentation"
       onClick={() => {
         if (!busy && !flagOpen) onClose()

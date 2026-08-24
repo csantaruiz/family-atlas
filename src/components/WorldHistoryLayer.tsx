@@ -9,7 +9,11 @@ import { activeCountriesAt } from '../utils/placeUtils'
 import { yearX } from '../utils/timelineMath'
 import { timelineAxisY } from '../utils/chapterCalloutLayout'
 import { isNarrowStage, stageLayoutProfile } from '../utils/stageBreakpoints'
-import { phoneHistoryLabelBudget, phoneHistoryLaneOffsets } from '../utils/phoneTimelineDensity'
+import {
+  phoneHistoryLabelBudget,
+  phoneHistoryLaneOffsets,
+  phoneLabelPlacement,
+} from '../utils/phoneTimelineDensity'
 import type { HistoryEvent, Person, RenderedHistoryEvent } from '../types'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
@@ -420,6 +424,11 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
                   stemHeight={stemHeight}
                   isAmbientPulse={isAmbientPulse}
                   onOpen={openHistory}
+                  align={
+                    isNarrowStage(width)
+                      ? phoneLabelPlacement(x, 168, width).align
+                      : 'center'
+                  }
                 />
               </motion.div>
             )
@@ -441,6 +450,11 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
                 stemHeight={stemHeight}
                 isAmbientPulse={isAmbientPulse}
                 onOpen={openHistory}
+                align={
+                  isNarrowStage(width)
+                    ? phoneLabelPlacement(x, 168, width).align
+                    : 'center'
+                }
               />
             </div>
           )
@@ -498,17 +512,19 @@ function HistoryEventButton({
   isAmbientPulse,
   onOpen,
   markerOnly = false,
+  align = 'center',
 }: {
   event: HistoryEvent
   stemHeight: number
   isAmbientPulse: boolean
   onOpen: (event: HistoryEvent) => void
   markerOnly?: boolean
+  align?: 'left' | 'center' | 'right'
 }) {
   return (
     <button
       type="button"
-      className={`history-event below${isAmbientPulse ? ' is-ambient-pulse' : ''}${markerOnly ? ' marker-only' : ''}`}
+      className={`history-event below align-${align}${isAmbientPulse ? ' is-ambient-pulse' : ''}${markerOnly ? ' marker-only' : ''}`}
       title={`${event.year} · ${event.title}`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {

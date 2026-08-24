@@ -1,13 +1,15 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useFollowPerson } from '../../context/FollowPersonContext'
 import { FollowPersonMap } from './FollowPersonMap'
+import { usePresence } from '../../hooks/usePresence'
 
 export function FollowPersonOverlay() {
   const { active, journey, beat, beatIndex, playing, togglePlay, next, prev, goToBeat, exit, exploreHere } =
     useFollowPerson()
   const prefersReducedMotion = useReducedMotion()
 
-  if (!active || !journey || !beat) return null
+  const overlay = usePresence(Boolean(active && journey && beat))
+  if (!overlay.present || !journey || !beat) return null
 
   const fade = prefersReducedMotion
     ? { duration: 0.01 }
@@ -15,7 +17,7 @@ export function FollowPersonOverlay() {
 
   return (
     <div
-      className="follow-person-overlay"
+      className={`follow-person-overlay${overlay.shown ? ' is-open' : ''}`}
       role="dialog"
       aria-label={`Following ${journey.ctaLabel.replace(/^Follow /, '')}`}
     >

@@ -10,10 +10,8 @@ export function usePresence(open: boolean, durationMs = OVERLAY_MS) {
   useEffect(() => {
     if (open) {
       setPresent(true)
-      const frame = window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => setShown(true))
-      })
-      return () => window.cancelAnimationFrame(frame)
+      const timer = window.setTimeout(() => setShown(true), 16)
+      return () => window.clearTimeout(timer)
     }
     setShown(false)
     const timer = window.setTimeout(() => setPresent(false), durationMs)

@@ -57,7 +57,7 @@ export function PhoneSheet({
   list?: boolean
 }) {
   const { present, shown } = usePresence(open, PHONE_OVERLAY_MS)
-  usePhoneOverlayLock(present)
+  usePhoneOverlayLock(shown)
   const bodyRef = useRef<HTMLDivElement>(null)
   const [atEnd, setAtEnd] = useState(true)
 

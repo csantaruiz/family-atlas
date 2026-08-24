@@ -38,6 +38,7 @@ function FilterIcon() {
 
 type TimelineFiltersPanelProps = {
   onClose: () => void
+  hideHeader?: boolean
 }
 
 export function TimelineFiltersControl({ open, onToggle, onClose }: { open: boolean; onToggle: () => void; onClose: () => void }) {
@@ -108,7 +109,10 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
   )
 }
 
-function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
+export function TimelineFiltersPanel({
+  onClose,
+  hideHeader = false,
+}: TimelineFiltersPanelProps & { hideHeader?: boolean }) {
   const { database: familyDatabase } = useFamilyData()
   const { timelineFilters, setTimelineFilter, setTimelineFilters } = useTimeline()
   const masterCheckboxRef = useRef<HTMLInputElement>(null)
@@ -154,12 +158,14 @@ function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
 
   return (
     <div className="timeline-filters-panel-inner">
-      <header className="timeline-filters-header">
-        <span className="eyebrow">Refine the journey</span>
-        <button type="button" className="timeline-filters-close" onClick={onClose} aria-label="Close filters">
-          ×
-        </button>
-      </header>
+      {hideHeader ? null : (
+        <header className="timeline-filters-header">
+          <span className="eyebrow">Refine the journey</span>
+          <button type="button" className="timeline-filters-close" onClick={onClose} aria-label="Close filters">
+            ×
+          </button>
+        </header>
+      )}
 
       <div className="timeline-filters-toggle-all">
         <label className="timeline-filter-option timeline-filter-option--master">

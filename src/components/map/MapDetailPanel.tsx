@@ -4,10 +4,29 @@ import type { PlaceRecord } from '../../utils/placeIndex'
 import { getMapClusterPresentation } from '../../utils/mapClusterTitles'
 import { generateMapClusterSynopsis } from '../../utils/mapClusterSynopsis'
 import { generateMigrationRouteSynopsis, generateMigrationRouteTitle } from '../../utils/mapRoutes'
+import { useEffect, useState } from 'react'
 import { useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
 import { MapUnresolvedDisclosure } from './MapUnresolvedDisclosure'
+
+function MapDetailsToggle({
+  phone,
+  expanded,
+  onToggle,
+}: {
+  phone: boolean
+  expanded: boolean
+  onToggle: () => void
+}) {
+  if (!phone) return null
+  return (
+    <button type="button" className="map-detail-more" onClick={onToggle}>
+      {expanded ? 'Show less' : 'Full details'}
+    </button>
+  )
+}
 
 export function MapDetailPanel({
   subregions = [],
@@ -19,6 +38,14 @@ export function MapDetailPanel({
   const { selection, level, clearSelection } = useMapExploration()
   const { openPerson, openFamilyEvent } = useTimeline()
   const { viewOnTimeline } = useAppNavigation()
+  const phone = useMaxWidth(760)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    setExpanded(false)
+  }, [selection])
+
+  const panelClass = `place-detail-panel open map-detail-panel${phone && expanded ? ' is-expanded' : ''}${phone ? ' map-detail-panel--phone' : ''}`
 
   if (!selection) return null
 
@@ -46,8 +73,8 @@ export function MapDetailPanel({
     const routeSynopsis = generateMigrationRouteSynopsis(route)
 
     return (
-      <aside className="place-detail-panel open map-detail-panel">
-        <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
+      <aside className={panelClass}>
+        <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
           ×
         </button>
         <div className="eyebrow map-inspector-kicker">Migration corridor</div>
@@ -113,6 +140,7 @@ export function MapDetailPanel({
           <button type="button" className="pill" onClick={handleViewTimeline}>
             View on timeline
           </button>
+          <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
         </div>
         <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
@@ -138,8 +166,8 @@ export function MapDetailPanel({
     })
 
     return (
-      <aside className="place-detail-panel open map-detail-panel">
-        <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
+      <aside className={panelClass}>
+        <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
           ×
         </button>
         <div className="eyebrow map-inspector-kicker">Regional chapter</div>
@@ -176,6 +204,7 @@ export function MapDetailPanel({
             )}
           </ul>
         </div>
+        <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
         <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
@@ -242,8 +271,8 @@ export function MapDetailPanel({
       : null
 
   return (
-    <aside className="place-detail-panel open map-detail-panel">
-      <button type="button" className="place-detail-close" onClick={handleClose} aria-label="Close">
+    <aside className={panelClass}>
+      <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
         ×
       </button>
       <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
@@ -359,6 +388,7 @@ export function MapDetailPanel({
         <button type="button" className="pill" onClick={handleViewTimeline}>
           View on timeline
         </button>
+        <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
       </div>
       <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
     </aside>

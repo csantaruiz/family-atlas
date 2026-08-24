@@ -24,6 +24,7 @@ import { MapDetailPanel } from '../map/MapDetailPanel'
 import { MapLineageLegend } from '../map/MapLineageLegend'
 import { MapNarrativeCaption } from '../map/MapNarrativeCaption'
 import { MapUnresolvedDisclosure } from '../map/MapUnresolvedDisclosure'
+import { PhoneSheet } from '../phone/PhoneSheet'
 
 type MapViewProps = {
   active: boolean
@@ -141,6 +142,61 @@ function MapViewContent({ active }: MapViewProps) {
     refitFilteredView,
   ])
 
+  const filterFields = (
+    <div className="map-filter-grid">
+      <label className="filter-field">
+        <span>Branch</span>
+        <select value={branch} onChange={(e) => setBranch(e.target.value)}>
+          <option value="">All</option>
+          {branches.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="filter-field">
+        <span>Event</span>
+        <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
+          {EVENT_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="filter-field">
+        <span>Century</span>
+        <select value={century} onChange={(e) => setCentury(e.target.value)}>
+          <option value="">All</option>
+          {centuries.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="map-filter-checks">
+        <label className="filter-field filter-check">
+          <input
+            type="checkbox"
+            checked={directAncestorsOnly}
+            onChange={(e) => setDirectAncestorsOnly(e.target.checked)}
+          />
+          <span>Direct ancestors</span>
+        </label>
+        <label className="filter-field filter-check">
+          <input
+            type="checkbox"
+            checked={showRoutes}
+            onChange={(e) => setShowRoutes(e.target.checked)}
+          />
+          <span>Migration routes</span>
+        </label>
+      </div>
+    </div>
+  )
+
   return (
     <section
       id="map"
@@ -182,14 +238,13 @@ function MapViewContent({ active }: MapViewProps) {
             {phone ? (
               <button
                 type="button"
-                className="map-overview-toggle"
+                className="phone-toolbar-btn"
                 aria-expanded={overviewOpen}
                 onClick={() => setOverviewOpen((open) => !open)}
               >
-                {overviewOpen ? 'Hide overview' : 'Read overview'}
+                Overview
               </button>
-            ) : null}
-            {phone && !overviewOpen ? null : (
+            ) : (
               <MapLineageLegend palette={lineagePalette} visible={showRoutes} />
             )}
           </header>
@@ -198,7 +253,7 @@ function MapViewContent({ active }: MapViewProps) {
             <div className="map-phone-toolbar">
               <button
                 type="button"
-                className="map-filter-toggle"
+                className="phone-toolbar-btn"
                 aria-expanded={filtersOpen}
                 onClick={() => setFiltersOpen((open) => !open)}
               >
@@ -207,81 +262,44 @@ function MapViewContent({ active }: MapViewProps) {
             </div>
           ) : null}
 
-          <div className={`map-page-controls map-filters${phone ? (filtersOpen ? ' is-open' : ' is-collapsed') : ''}`}>
-            {phone ? (
-              <div className="map-filter-sheet-head">
-                <strong>Filter journeys</strong>
-                <button type="button" onClick={() => setFiltersOpen(false)}>
-                  Done
-                </button>
-              </div>
-            ) : null}
-            <div className="map-filter-grid">
-              <label className="filter-field">
-                <span>Branch</span>
-                <select value={branch} onChange={(e) => setBranch(e.target.value)}>
-                  <option value="">All</option>
-                  {branches.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="filter-field">
-                <span>Event</span>
-                <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
-                  {EVENT_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="filter-field">
-                <span>Century</span>
-                <select value={century} onChange={(e) => setCentury(e.target.value)}>
-                  <option value="">All</option>
-                  {centuries.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="map-filter-checks">
-                <label className="filter-field filter-check">
-                  <input
-                    type="checkbox"
-                    checked={directAncestorsOnly}
-                    onChange={(e) => setDirectAncestorsOnly(e.target.checked)}
-                  />
-                  <span>Direct ancestors</span>
-                </label>
-                <label className="filter-field filter-check">
-                  <input
-                    type="checkbox"
-                    checked={showRoutes}
-                    onChange={(e) => setShowRoutes(e.target.checked)}
-                  />
-                  <span>Migration routes</span>
-                </label>
-              </div>
+          {phone ? (
+            <PhoneSheet open={filtersOpen} title="Filters" onClose={() => setFiltersOpen(false)}>
+              {filterFields}
+              {unresolved.length > 0 && level === 'family' && !selection ? (
+                <MapUnresolvedDisclosure places={unresolved} variant="filters" />
+              ) : null}
+            </PhoneSheet>
+          ) : (
+            <div className="map-page-controls map-filters">
+              {filterFields}
+              {unresolved.length > 0 && level === 'family' && !selection ? (
+                <MapUnresolvedDisclosure places={unresolved} variant="filters" />
+              ) : null}
             </div>
-            {unresolved.length > 0 && level === 'family' && !selection && (
-              <MapUnresolvedDisclosure places={unresolved} variant="filters" />
-            )}
-          </div>
+          )}
 
           <MapDetailPanel subregions={subregions} unresolved={unresolved} />
 
-          <MapNarrativeCaption
-            selection={selection}
-            filters={narrativeFilters}
-            summary={summary}
-            regions={regions}
-            places={filteredPlaces}
-          />
+          {phone ? (
+            <PhoneSheet open={overviewOpen} title="Overview" onClose={() => setOverviewOpen(false)}>
+              <MapLineageLegend palette={lineagePalette} visible={showRoutes} />
+              <MapNarrativeCaption
+                selection={selection}
+                filters={narrativeFilters}
+                summary={summary}
+                regions={regions}
+                places={filteredPlaces}
+              />
+            </PhoneSheet>
+          ) : (
+            <MapNarrativeCaption
+              selection={selection}
+              filters={narrativeFilters}
+              summary={summary}
+              regions={regions}
+              places={filteredPlaces}
+            />
+          )}
 
           <div className="map-page-vignette" aria-hidden="true" />
         </div>

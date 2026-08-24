@@ -15,6 +15,7 @@ import {
   loadGedcomImport,
   uploadGedcomFile,
 } from './gedcomManageApi'
+import { PhoneCloseButton } from '../components/phone/PhoneSheet'
 
 type Screen =
   | 'closed'
@@ -121,6 +122,7 @@ export function ManageFamilyTree({ open, onClose, fetchFn = fetch }: Props) {
   return (
     <div className="atlas-manage-scrim" role="dialog" aria-modal="true" aria-labelledby="atlas-manage-title">
       <div className="atlas-manage-sheet">
+        <PhoneCloseButton className="atlas-manage-close" onClick={onClose} />
         {screen === 'home' || screen === 'checking' ? (
           <>
             <p className="atlas-manage-kicker">Family editor</p>

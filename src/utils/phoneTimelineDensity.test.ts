@@ -76,6 +76,8 @@ describe('phone timeline density', () => {
     }))
     expect(leftoverUnlabeledLayout(items, 1440)).toEqual({ ticks: [], clusters: [] })
     expect(leftoverUnlabeledLayout(items, 1920)).toEqual({ ticks: [], clusters: [] })
+    expect(leftoverUnlabeledLayout(items, 1280)).toEqual({ ticks: [], clusters: [] })
+    expect(leftoverUnlabeledLayout(items, 1181)).toEqual({ ticks: [], clusters: [] })
     expect(leftoverUnlabeledLayout(items, 1024)).toEqual({ ticks: [], clusters: [] })
     const phone = leftoverUnlabeledLayout(items, 390)
     expect(phone.ticks.length + phone.clusters.length).toBeGreaterThan(0)

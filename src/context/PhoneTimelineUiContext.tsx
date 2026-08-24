@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from 'react'
 
-export type PhoneDiscoverySheet = 'story' | 'thinking' | null
+export type PhoneDiscoverySheet = 'story' | 'thinking' | 'filters' | null
 
 export type PhoneTimelineUiValue = {
   phone: boolean

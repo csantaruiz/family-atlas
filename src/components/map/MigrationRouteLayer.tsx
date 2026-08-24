@@ -233,7 +233,10 @@ export function MigrationRouteTooltip({
       <div className="map-route-tooltip-who">{travelers}</div>
       <div className="map-route-tooltip-when">{yearLabel}</div>
       {moveCount > 0 && (
-        <div className="map-route-tooltip-meta">Click for corridor detail</div>
+        <div className="map-route-tooltip-meta">
+          <span className="hint-item-fine">Click for corridor detail</span>
+          <span className="hint-item-coarse">Tap for corridor detail</span>
+        </div>
       )}
     </div>
   )

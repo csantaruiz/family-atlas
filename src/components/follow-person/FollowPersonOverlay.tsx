@@ -21,6 +21,10 @@ export function FollowPersonOverlay() {
     >
       <FollowPersonMap journey={journey} beat={beat} />
 
+      <button type="button" className="phone-close follow-person-close" onClick={exit} aria-label="Close">
+        ×
+      </button>
+
       <div className="follow-person-hud">
         <div className="follow-person-kicker">
           {journey.ctaLabel.replace(/^Follow /, '')}

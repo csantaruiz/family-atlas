@@ -400,9 +400,17 @@ export function FamilyMap({
       )}
 
       <div className="map-hint">
-        {level === 'family'
-          ? 'Click a region to explore · Scroll to zoom deeper'
-          : 'Scroll out to widen · Click places for records'}
+        {level === 'family' ? (
+          <>
+            <span className="hint-item-fine">Click a region to explore · Scroll to zoom deeper</span>
+            <span className="hint-item-coarse">Tap a region to explore · Pinch to zoom deeper</span>
+          </>
+        ) : (
+          <>
+            <span className="hint-item-fine">Scroll out to widen · Click places for records</span>
+            <span className="hint-item-coarse">Pinch out to widen · Tap places for records</span>
+          </>
+        )}
       </div>
     </div>
   )

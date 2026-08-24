@@ -47,8 +47,13 @@ export function timelineAxisRatioForStage(width: number, height: number): number
 }
 
 /** Floor for family label anchors so short stages keep markers below chrome. */
-export function familyLabelFloorY(width: number, height: number): number {
-  if (isNarrowStage(width) || isShortStage(height)) return 96
+export function familyLabelFloorY(
+  width: number,
+  height: number,
+  phoneExploring = false,
+): number {
+  if (isNarrowStage(width)) return phoneExploring ? 78 : 158
+  if (isShortStage(height)) return 96
   if (isTabletStage(width)) return 140
   return 168
 }

@@ -455,7 +455,7 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
             <div
               key={`history-cluster:${eventKey}:${group.items.length}`}
               className="history-event-anchor history-event-marker-cluster-anchor"
-              style={{ left: Math.round(group.x), top: Math.round(axisY + 22) }}
+              style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) ? 40 : 22)) }}
             >
               <button
                 type="button"
@@ -476,11 +476,11 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
           <div
             key={`history-marker:${eventKey}`}
             className="history-event-anchor"
-            style={{ left: Math.round(group.x), top: Math.round(axisY + 22) }}
+            style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) ? 40 : 22)) }}
           >
             <HistoryEventButton
               event={event}
-              stemHeight={22}
+              stemHeight={isNarrowStage(width) ? 40 : 22}
               isAmbientPulse={false}
               onOpen={openHistory}
               markerOnly

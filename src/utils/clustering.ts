@@ -735,7 +735,9 @@ export function foldSpatiallyConflictingEvents<
   groups.push(current)
 
   const axisY = timelineAxisY(height, width)
-  const clusterY = Math.max(familyLabelFloorY(width, height) + 24, axisY - 96)
+  const clusterY = isNarrowStage(width)
+    ? axisY - 36
+    : Math.max(familyLabelFloorY(width, height) + 24, axisY - 96)
   const events: T[] = []
   const clusters: PlacedEventConflictCluster[] = []
 

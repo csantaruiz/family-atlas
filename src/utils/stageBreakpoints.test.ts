@@ -3,6 +3,7 @@ import {
   DESKTOP_PLOT_EDGE,
   NARROW_PLOT_EDGE,
   TABLET_PLOT_EDGE,
+  familyLabelFloorY,
   isCompactStage,
   isNarrowStage,
   isTabletStage,
@@ -74,5 +75,11 @@ describe('stageBreakpoints', () => {
 
   it('moves the axis slightly on narrow stages', () => {
     expect(timelineAxisY(700, 390)).toBeLessThan(timelineAxisY(700, 1400))
+  })
+
+  it('keeps phone family labels below the arrival plaque and lower after exploring', () => {
+    expect(familyLabelFloorY(390, 800, false)).toBeGreaterThan(140)
+    expect(familyLabelFloorY(390, 800, true)).toBeLessThan(familyLabelFloorY(390, 800, false))
+    expect(familyLabelFloorY(1440, 800)).toBe(168)
   })
 })

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { TimelineFiltersPanel } from './TimelineFiltersPanel'
-import { TimelineHint } from './TimelineHint'
 import { PhoneSheet } from './phone/PhoneSheet'
 
 const FeaturedStory = lazy(() =>
@@ -58,7 +57,7 @@ export function PhoneTimelineDock() {
             <circle cx="8" cy="7" r="3.2" />
             <path d="M5.5 11.5 4 14h8l-1.5-2.5" />
           </svg>
-          Thinking
+          AI Insights
         </button>
         <button
           type="button"
@@ -88,11 +87,32 @@ export function PhoneTimelineDock() {
           Help
         </button>
       </div>
-      {helpOpen ? (
-        <div className="phone-popover" role="note">
-          <TimelineHint />
+      <PhoneSheet open={helpOpen} title="How to explore" onClose={() => setHelpOpen(false)} size="compact">
+        <div className="phone-help">
+          <p>
+            Gold marks family lives. Teal diamonds mark world history. They never share the same
+            side of the axis.
+          </p>
+          <dl>
+            <div>
+              <dt>Zoom</dt>
+              <dd>Pinch the canvas, or use + and − on the chapter plaque.</dd>
+            </div>
+            <div>
+              <dt>Pan</dt>
+              <dd>Drag to move through years. The chapter header stays put.</dd>
+            </div>
+            <div>
+              <dt>Open a record</dt>
+              <dd>Tap a named family event, then choose Explore, Tree, or Follow.</dd>
+            </div>
+            <div>
+              <dt>Grouped events</dt>
+              <dd>A numbered circle is several lives in one year-band. Tap it to list them.</dd>
+            </div>
+          </dl>
         </div>
-      ) : null}
+      </PhoneSheet>
       <PhoneSheet
         open={ui.sheet === 'story'}
         title="Featured Story"
@@ -104,7 +124,7 @@ export function PhoneTimelineDock() {
       </PhoneSheet>
       <PhoneSheet
         open={ui.sheet === 'thinking'}
-        title="Atlas Thinking"
+        title="AI Insights"
         onClose={() => ui.openSheet(null)}
       >
         <Suspense fallback={null}>

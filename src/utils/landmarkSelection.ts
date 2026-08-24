@@ -119,9 +119,13 @@ function hybridMaxLanes(viewportWidth: number): number {
 }
 
 /** Vertical stem offsets for family labels — mirrors history-event lane staggering. */
-function familyLaneOffsets(span: number, viewportWidth = 1200): number[] {
+function familyLaneOffsets(
+  span: number,
+  viewportWidth = 1200,
+  phoneExploring = false,
+): number[] {
   if (isNarrowStage(viewportWidth)) {
-    return phoneFamilyLaneOffsets(span)
+    return phoneFamilyLaneOffsets(span, phoneExploring)
   }
   if (isTabletStage(viewportWidth)) {
     // Larger steps than desktop-at-tablet-width so Georgia labels clear each other.
@@ -265,15 +269,16 @@ export function staggerFamilyEventLanes<
   span: number,
   viewportWidth = 1200,
   mustKeepIds?: ReadonlySet<string>,
+  phoneExploring = false,
 ): T[] {
   if (placed.length <= 1) return placed
 
-  const offsets = familyLaneOffsets(span, viewportWidth)
+  const offsets = familyLaneOffsets(span, viewportWidth, phoneExploring)
   const pad = familyLanePad(span)
   const maxKeep = maxFamilyEventsForSpan(span, viewportWidth)
   const compact = span > 90 || isNarrowStage(viewportWidth)
   const axisY = timelineAxisY(height, viewportWidth)
-  const floorY = familyLabelFloorY(viewportWidth, height)
+  const floorY = familyLabelFloorY(viewportWidth, height, phoneExploring)
   // Century views: render-time clamps clear sidenotes; packing should fill the axis.
   const editorialPanels =
     span >= 40 ? [] : estimateEditorialSidenoteObstacles(viewportWidth)

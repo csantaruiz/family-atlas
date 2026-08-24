@@ -71,9 +71,15 @@ export function Header() {
           className="explore-toggle"
           aria-expanded={exploreOpen}
           aria-controls="atlas-explore-menu"
+          aria-label={exploreMenuLabel()}
           onClick={() => setExploreOpen((open) => !open)}
         >
-          {exploreMenuLabel()}
+          <span className="explore-toggle-label">{exploreMenuLabel()}</span>
+          <span className="explore-toggle-icon" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
         <div className={`nav-cluster${exploreOpen ? ' is-open' : ''}`}>
           <nav

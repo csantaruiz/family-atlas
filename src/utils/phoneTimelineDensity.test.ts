@@ -8,6 +8,7 @@ import {
   phoneFamilyLabelBudget,
   phoneFamilyLaneOffsets,
   phoneHistoryLabelBudget,
+  phoneHistoryLaneOffsets,
 } from './phoneTimelineDensity'
 
 describe('phone timeline density', () => {
@@ -37,6 +38,11 @@ describe('phone timeline density', () => {
     expect(phoneFamilyLaneOffsets(130).length).toBeGreaterThanOrEqual(2)
     expect(phoneFamilyLaneOffsets(130).length).toBeLessThanOrEqual(3)
     expect(phoneFamilyLaneOffsets(40).length).toBe(3)
+  })
+
+  it('keeps phone history diamonds below the year band', () => {
+    expect(Math.min(...phoneHistoryLaneOffsets(130))).toBeGreaterThanOrEqual(40)
+    expect(Math.min(...phoneHistoryLaneOffsets(80))).toBeGreaterThanOrEqual(40)
   })
 
   it('clusters leftover markers that share a pixel column', () => {

@@ -76,7 +76,7 @@ export function displayName(event: FamilyEvent, compact = false): string {
 
 export function detailMaxLabelWidth(viewportWidth: number): number {
   if (viewportWidth <= 760) {
-    return Math.round(Math.min(150, Math.max(118, viewportWidth * 0.34)))
+    return Math.round(Math.min(viewportWidth - 36, Math.max(168, viewportWidth * 0.52)))
   }
   if (viewportWidth <= 1180) {
     return Math.round(Math.min(158, Math.max(132, viewportWidth * 0.155)))

@@ -280,6 +280,7 @@
 }
 
 .explore-toggle,
+.explore-toggle-icon,
 .explore-menu-kicker,
 .explore-manage-block {
   display: none;
@@ -8398,16 +8399,53 @@ body {
   }
 
   .brand-title-full {
-    display: none;
-  }
-
-  .brand-title-short {
     display: inline;
   }
 
+  .brand-title-short {
+    display: none;
+  }
+
   .brand-title {
-    font-size: 0.98rem;
-    letter-spacing: 0.06em;
+    font-size: 0.84rem;
+    letter-spacing: 0.018em;
+    white-space: nowrap;
+  }
+
+  .explore-toggle {
+    width: 46px;
+    min-width: 46px;
+    height: 46px;
+    min-height: 46px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .explore-toggle-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .explore-toggle-icon {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 18px;
+    height: 14px;
+  }
+
+  .explore-toggle-icon span {
+    display: block;
+    height: 1.5px;
+    border-radius: 1px;
+    background: #ead9b4;
   }
 
   #timeline.timeline-phone {
@@ -8572,9 +8610,19 @@ body {
   }
 
   .chapter-callout-layer--phone-compact .chapter-callout-halo,
+  .chapter-callout-layer--phone-compact .chapter-callout-scenery,
+  .chapter-callout-layer--phone-compact .chapter-callout-narrative,
+  .chapter-callout-layer--phone-compact .chapter-callout-meta,
+  .chapter-callout-layer--phone-compact .chapter-callout-divider,
   .chapter-callout-layer--phone-compact .timeline-plaque-hint,
   .timeline-phone--exploring .timeline-plaque-hint {
     display: none;
+  }
+
+  .chapter-callout-layer--phone-compact,
+  .chapter-callout-layer--phone-compact .chapter-callout-frame,
+  .chapter-callout-layer--phone-compact .chapter-callout-title {
+    overflow: visible;
   }
 
   .chapter-callout--phone-chip {
@@ -8837,11 +8885,43 @@ body {
     overflow-x: hidden;
   }
 
+  #timeline.timeline-phone {
+    --phone-axis: 52%;
+  }
+
+  #timeline.timeline-phone .worldline {
+    top: var(--phone-axis);
+  }
+
+  #timeline.timeline-phone .century {
+    top: calc(var(--phone-axis) - 12px);
+  }
+
   #timeline.timeline-phone .year-label {
+    top: calc(var(--phone-axis) + 8px);
     font-size: 13px;
     letter-spacing: 0.04em;
     opacity: 0.82;
-    padding-top: 6px;
+    padding-top: 0;
+    max-width: calc(100vw - 36px);
+  }
+
+  #timeline.timeline-phone .timeline-plaque-hint {
+    display: none !important;
+  }
+
+  #timeline.timeline-phone .history-event-anchor .history-event {
+    transform: translate(-50%, 0);
+  }
+
+  #timeline.timeline-phone .history-event .history-label {
+    top: 18px;
+  }
+
+  #timeline.timeline-phone .history-stem {
+    bottom: auto;
+    top: 4px;
+    transform: translate(-50%, -100%);
   }
 
   #timeline.timeline-phone .history-event .history-label,
@@ -8886,24 +8966,34 @@ body {
 
   #timeline.timeline-phone .family-event-marker-cluster,
   #timeline.timeline-phone .family-event-cluster {
-    width: 36px;
-    height: 36px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
-    opacity: 1;
+    opacity: 0.82;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
     transform: translate(-50%, -50%);
   }
 
   #timeline.timeline-phone .family-event-cluster .cluster-count,
   #timeline.timeline-phone .family-event-marker-cluster .marker-cluster-count {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
-    padding: 0 0 3px;
-    border-width: 1.5px;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    border: 1px solid rgba(214, 181, 108, 0.7);
     border-radius: 50%;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+    background: rgba(16, 18, 20, 0.92);
+    color: rgba(243, 236, 220, 0.92);
+    box-shadow: none;
   }
 
   #map.map-phone .map-page-visual,
@@ -9238,12 +9328,12 @@ body {
     flex: 1 1 0;
     min-height: var(--phone-touch);
     min-width: 44px;
-    padding: 4px 4px 6px;
+    padding: 4px 2px 6px;
     border: 0;
     border-radius: 0;
     background: none;
     color: #ead9b4;
-    font: 400 0.78rem/1 Georgia, 'Times New Roman', serif;
+    font: 400 0.86rem/1.1 Georgia, 'Times New Roman', serif;
   }
 
   .phone-toolbar-btn svg {
@@ -9254,7 +9344,11 @@ body {
 
   .phone-toolbar-btn.is-active {
     color: #f3ead4;
-    box-shadow: inset 0 -2px 0 #d6b56c;
+    box-shadow: none;
+    background-image: linear-gradient(#d6b56c, #d6b56c);
+    background-repeat: no-repeat;
+    background-position: center calc(100% - 5px);
+    background-size: 14px 2px;
   }
 
   .phone-toolbar-btn.is-active svg {
@@ -9625,6 +9719,43 @@ body {
   .phone-peek-list span {
     color: rgba(234, 217, 180, 0.68);
     font-size: var(--phone-type-meta);
+  }
+
+  .phone-help p {
+    margin: 0 0 16px;
+    font-size: var(--phone-type-body);
+    line-height: 1.45;
+    color: rgba(243, 236, 220, 0.88);
+  }
+
+  .phone-help dl {
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+
+  .phone-help dt {
+    margin: 0;
+    color: #ead9b4;
+    font: 400 0.78rem/1.2 Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .phone-help dd {
+    margin: 4px 0 0;
+    font-size: var(--phone-type-body);
+    line-height: 1.4;
+    color: rgba(234, 217, 180, 0.78);
+  }
+
+  .drawer-close,
+  .place-detail-close,
+  .follow-person-close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .phone-sheet-body .featured-story-headline {

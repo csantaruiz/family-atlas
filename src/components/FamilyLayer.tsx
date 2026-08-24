@@ -14,6 +14,7 @@ import { useTimeline } from '../context/TimelineContext'
 import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { useFollowPerson } from '../context/FollowPersonContext'
+import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
@@ -284,6 +285,8 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
   const { active: followActive, journey, startFollow, journeyForPerson } = useFollowPerson()
+  const phoneUi = usePhoneTimelineUi()
+  const phoneExploring = Boolean(phoneUi?.phone && phoneUi.exploring)
   const [phonePeek, setPhonePeek] = useState<PhonePeek | null>(null)
 
   const modeLive = zoomMode(span)
@@ -730,7 +733,14 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     )
 
     const mustKeep = new Set(stickyIds.filter((id) => admitted.some((e) => canonicalEventId(e.event) === id)))
-    const staggered = staggerFamilyEventLanes(admitted, height, span, width, mustKeep)
+    const staggered = staggerFamilyEventLanes(
+      admitted,
+      height,
+      span,
+      width,
+      mustKeep,
+      phoneExploring,
+    )
 
     assertNoDuplicateEvents(
       staggered.map((p) => p.event),
@@ -751,6 +761,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     detail,
     center,
     filteredFamilyEvents,
+    phoneExploring,
   ])
 
   const renderEvents = renderLayout.events
@@ -1148,7 +1159,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
             <div
               key={`unlabeled:${from}-${to}:${group.items.length}`}
               className="family-event-anchor family-event-marker-cluster-anchor"
-              style={{ left: Math.round(group.x), top: Math.round(axisY) }}
+              style={{ left: Math.round(group.x), top: Math.round(axisY - (isNarrowStage(width) ? 36 : 0)) }}
             >
               <button
                 type="button"

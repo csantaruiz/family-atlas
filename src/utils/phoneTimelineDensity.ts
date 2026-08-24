@@ -2,11 +2,18 @@ import { isNarrowStage } from './stageBreakpoints'
 import type { FamilyEvent } from '../types'
 import { canonicalEventId } from './canonicalEvent'
 
-const PHONE_FAMILY_LABEL_SLOT_PX = 150
+const PHONE_FAMILY_LABEL_SLOT_PX = 168
 const PHONE_HISTORY_LABEL_SLOT_PX = 188
 const PHONE_DEFAULT_SPAN_YEARS = 130
 const PHONE_MAX_NUMBERED_CLUSTERS = 2
 const PHONE_CLUSTER_MIN_COUNT = 3
+
+/** Horizontal inset so labels never kiss the viewport edge. */
+export const PHONE_LABEL_INSET_PX = 18
+/** Year numerals occupy a band just below the axis. Diamonds start after this. */
+export const PHONE_YEAR_BAND_PX = 26
+/** History diamonds sit this far below the axis, under year ticks. */
+export const PHONE_HISTORY_DIAMOND_GAP_PX = 40
 
 /** Phone opens on a readable chapter of time, not the full atlas. Desktop stays full-span. */
 export function defaultTimelineSpan(fullSpan: number, width: number): number {
@@ -33,17 +40,29 @@ export function phoneHistoryLabelBudget(span: number, width: number): number {
   return Math.max(1, Math.min(2, byCentury, byWidth))
 }
 
-/** 2–3 lanes, reaching up toward the plaque instead of hugging the axis. */
-export function phoneFamilyLaneOffsets(span: number): number[] {
-  if (span > 160) return [124, 208]
-  if (span > 80) return [118, 196, 268]
-  return [108, 186, 252]
+/**
+ * Marker offsets ABOVE the axis. Kept modest so labels (which sit above the marker)
+ * stay below the chapter plaque. After first pan/zoom the plaque shrinks and we
+ * can reach a little higher.
+ */
+export function phoneFamilyLaneOffsets(span: number, exploring = false): number[] {
+  if (exploring) {
+    if (span > 160) return [64, 124]
+    if (span > 80) return [58, 108, 154]
+    return [54, 100, 146]
+  }
+  if (span > 160) return [52, 96]
+  if (span > 80) return [48, 88, 126]
+  return [46, 84, 118]
 }
 
-/** Sit clearly below century ticks so world-event copy does not hit the axis. */
+/**
+ * History diamond offsets BELOW the axis. First lane clears year ticks;
+ * extra lanes are only used when labels would collide.
+ */
 export function phoneHistoryLaneOffsets(span: number): number[] {
-  if (span > 160) return [112, 176]
-  return [104, 168, 228]
+  if (span > 160) return [PHONE_HISTORY_DIAMOND_GAP_PX, 86]
+  return [PHONE_HISTORY_DIAMOND_GAP_PX, 84, 126]
 }
 
 export type UnlabeledMarkerGroup<T> = {
@@ -115,7 +134,7 @@ export function clampLabelNudge(
   x: number,
   labelWidth: number,
   viewportWidth: number,
-  pad = 10,
+  pad = PHONE_LABEL_INSET_PX,
 ): number {
   const half = labelWidth / 2
   const left = x - half

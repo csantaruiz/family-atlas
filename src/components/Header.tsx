@@ -8,6 +8,7 @@ import { HeaderManageMenu } from './HeaderManageMenu'
 import { useAtlasReview } from '../atlas-review/AtlasReviewRoot'
 import { useManageFamilyTree } from '../atlas-manage/ManageFamilyTreeRoot'
 import { reviewMenuCount } from '../atlas-review/customerReviewCopy'
+import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
 
 export function Header() {
   const { database: familyDatabase } = useFamilyData()
@@ -18,6 +19,7 @@ export function Header() {
   const stats = familyDatabase.stats
   const [exploreOpen, setExploreOpen] = useState(false)
   const exploreRef = useRef<HTMLDivElement>(null)
+  usePhoneOverlayLock(exploreOpen)
   const badge = reviewMenuCount(count)
 
   useEffect(() => {

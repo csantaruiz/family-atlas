@@ -1,6 +1,7 @@
 import type { PlaceRecord } from '../../utils/placeIndex'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
+import { PhoneCloseButton } from '../phone/PhoneSheet'
 
 type PlaceDetailPanelProps = {
   place: PlaceRecord | null
@@ -34,9 +35,7 @@ export function PlaceDetailPanel({ place, onClose }: PlaceDetailPanelProps) {
 
   return (
     <aside className="place-detail-panel open">
-      <button type="button" className="place-detail-close" onClick={onClose} aria-label="Close">
-        ×
-      </button>
+      <PhoneCloseButton className="place-detail-close" onClick={onClose} />
       <div className="eyebrow">Place record</div>
       <h3>{place.name}</h3>
       {!place.coordinate.resolved && (

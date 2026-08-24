@@ -5,12 +5,14 @@ const OVERLAY_MS = 200
 /** Keep a surface mounted until its close animation finishes. */
 export function usePresence(open: boolean, durationMs = OVERLAY_MS) {
   const [present, setPresent] = useState(open)
-  const [shown, setShown] = useState(open)
+  const [shown, setShown] = useState(false)
 
   useEffect(() => {
     if (open) {
       setPresent(true)
-      const frame = window.requestAnimationFrame(() => setShown(true))
+      const frame = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setShown(true))
+      })
       return () => window.cancelAnimationFrame(frame)
     }
     setShown(false)

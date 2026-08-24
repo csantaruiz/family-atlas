@@ -47,8 +47,9 @@ export function TimelineMountainSilhouette({
     <svg
       className="timeline-mountain-silhouette"
       width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      height={axisY}
+      viewBox={`0 0 ${width} ${axisY}`}
+      preserveAspectRatio="none"
       aria-hidden="true"
     >
       <path d={path} className="timeline-mountain-silhouette-fill" />

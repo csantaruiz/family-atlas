@@ -17,6 +17,7 @@ import {
 } from './gedcomManageApi'
 import { PhoneCloseButton } from '../components/phone/PhoneSheet'
 import { usePresence } from '../hooks/usePresence'
+import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
 
 type Screen =
   | 'closed'
@@ -67,6 +68,7 @@ export function ManageFamilyTree({ open, onClose, fetchFn = fetch }: Props) {
   }, [screen])
 
   const overlay = usePresence(open)
+  usePhoneOverlayLock(overlay.present)
   if (!overlay.present) return null
 
   const showPreview = (row: InspectableGedcomImport) => {

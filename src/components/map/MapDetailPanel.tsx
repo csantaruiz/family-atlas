@@ -10,6 +10,7 @@ import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import { useMaxWidth } from '../../hooks/useMaxWidth'
 import { MapUnresolvedDisclosure } from './MapUnresolvedDisclosure'
+import { PhoneCloseButton } from '../phone/PhoneSheet'
 
 function MapDetailsToggle({
   phone,
@@ -74,9 +75,7 @@ export function MapDetailPanel({
 
     return (
       <aside className={panelClass}>
-        <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
-          ×
-        </button>
+        <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
         <div className="eyebrow map-inspector-kicker">Migration corridor</div>
         <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
         <p className="map-inspector-lede place-region">
@@ -167,9 +166,7 @@ export function MapDetailPanel({
 
     return (
       <aside className={panelClass}>
-        <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
-          ×
-        </button>
+        <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
         <div className="eyebrow map-inspector-kicker">Regional chapter</div>
         <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
         <p className="map-inspector-lede place-region">{sub.name}</p>
@@ -272,9 +269,7 @@ export function MapDetailPanel({
 
   return (
     <aside className={panelClass}>
-      <button type="button" className="place-detail-close phone-close" onClick={handleClose} aria-label="Close">
-        ×
-      </button>
+      <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
       <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
       <h3 className="map-inspector-title">
         {selection.type === 'region'

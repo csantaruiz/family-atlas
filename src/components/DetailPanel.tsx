@@ -19,6 +19,8 @@ import { ensurePersonPortraitLoaded } from '../utils/personPortraitStore'
 import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
 import { PersonJourneyButton } from './PersonJourneyButton'
+import { PhoneCloseButton } from './phone/PhoneSheet'
+import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
 import type { FamilyEvent, PersonImage } from '../types'
 
 export function DetailPanel() {
@@ -26,13 +28,13 @@ export function DetailPanel() {
   const { treeReturnViewport, returnToTimeline, activeView } = useAppNavigation()
   const uploadedPortraits = usePersonPortraits()
 
+  const isOpen = Boolean(detail)
+  usePhoneOverlayLock(isOpen)
   const portraitPersonKey = detail?.type === 'person' ? detail.personId : null
   useEffect(() => {
     if (!portraitPersonKey) return
     void ensurePersonPortraitLoaded(portraitPersonKey)
   }, [portraitPersonKey])
-
-  const isOpen = detail !== null
 
   let initialsText = ''
   let name = ''
@@ -210,9 +212,7 @@ export function DetailPanel() {
       aria-label="Detail panel"
       aria-hidden={!isOpen}
     >
-      <button type="button" id="drawerClose" className="drawer-close" aria-label="Close panel" onClick={closeDetail}>
-        ×
-      </button>
+      <PhoneCloseButton className="drawer-close" onClick={closeDetail} label="Close panel" />
       <div className="drawer-content">
       {isOpen && (
         <>

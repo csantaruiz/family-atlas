@@ -3,6 +3,8 @@ import { useFollowPerson } from '../../context/FollowPersonContext'
 import { FollowPersonMap } from './FollowPersonMap'
 import { usePresence } from '../../hooks/usePresence'
 import { useMaxWidth } from '../../hooks/useMaxWidth'
+import { PhoneCloseButton } from '../phone/PhoneSheet'
+import { usePhoneOverlayLock } from '../../hooks/usePhoneOverlayLock'
 
 function journeyHeading(givenName: string): string {
   const name = givenName.trim().toUpperCase()
@@ -17,6 +19,7 @@ export function FollowPersonOverlay() {
   const phone = useMaxWidth(760)
 
   const overlay = usePresence(Boolean(active && journey && beat))
+  usePhoneOverlayLock(overlay.present)
   if (!overlay.present || !journey || !beat) return null
 
   const fade = prefersReducedMotion
@@ -34,9 +37,7 @@ export function FollowPersonOverlay() {
     >
       <div className="follow-person-stage">
         <FollowPersonMap journey={journey} beat={beat} compact={phone} />
-        <button type="button" className="phone-close follow-person-close" onClick={exit} aria-label="Close">
-          ×
-        </button>
+        <PhoneCloseButton className="follow-person-close" onClick={exit} />
       </div>
       <div className="follow-person-hud">
         <div className="follow-person-meta">

@@ -1,9 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { tickStep, viewport, yearX } from '../utils/timelineMath'
 import { isNarrowStage, isTabletStage } from '../utils/stageBreakpoints'
+import { timelineAxisY } from '../utils/chapterCalloutLayout'
 import { useStageDimensions } from '../hooks/useStageDimensions'
 import { usePinchZoom } from '../hooks/usePinchZoom'
 import { FamilyLayer } from './FamilyLayer'
@@ -153,6 +154,7 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
           <div
             ref={ref}
             className={`stage${isNarrowStage(width) ? ' stage--narrow' : ''}${isTabletStage(width) ? ' stage--tablet' : ''}${isDragging ? ' dragging' : ''}${isInertialScrolling ? ' coasting' : ''}${isZooming ? ' zooming' : ''}`}
+            style={{ '--timeline-axis-y': `${timelineAxisY(height, width)}px` } as CSSProperties}
             data-stage-layout={
               isNarrowStage(width) ? 'narrow' : isTabletStage(width) ? 'tablet' : 'desktop'
             }

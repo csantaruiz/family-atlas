@@ -78,6 +78,8 @@ import {
 } from './customerReviewCopy'
 import { AtlasReviewMapPreview } from './AtlasReviewMapPreview'
 import { AtlasReviewPerson } from './AtlasReviewPerson'
+import { PhoneCloseButton } from '../components/phone/PhoneSheet'
+import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
 import { introBreakdown, presentationState, reviewCandidates } from './reviewPresentation'
 
 type Props = {
@@ -108,6 +110,7 @@ export function AtlasReviewOverlay({
   onClose,
   onQueueChanged,
 }: Props) {
+  usePhoneOverlayLock(overlayShown)
   const [queue, setQueue] = useState(items)
   const [phase, setPhase] = useState<Phase>(showIntro ? 'intro' : queue.length ? 'item' : 'complete')
   const [picking, setPicking] = useState(false)
@@ -643,23 +646,12 @@ export function AtlasReviewOverlay({
         aria-labelledby="atlas-review-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <button
-          type="button"
+        <PhoneCloseButton
           className="atlas-review-close"
           onClick={onClose}
+          label={closeReview()}
           disabled={busy}
-          aria-label={closeReview()}
-        >
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              d="M4 4l8 8M12 4L4 12"
-            />
-          </svg>
-        </button>
+        />
         {phase === 'intro' ? (
           <>
             <h2 id="atlas-review-title">{introTitle()}</h2>

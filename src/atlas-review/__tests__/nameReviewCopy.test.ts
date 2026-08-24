@@ -98,8 +98,8 @@ describe('name Review overlay composition', () => {
     expect(overlay).toMatch(/fetchEditStatus\(\)/)
     expect(overlay).toMatch(/unlockNeeded/)
     expect(overlay).toMatch(/atlas-review-close/)
-    expect(overlay).toMatch(/aria-label=\{closeReview\(\)\}/)
-    expect(overlay).toMatch(/M4 4l8 8M12 4L4 12/)
+    expect(overlay).toMatch(/PhoneCloseButton/)
+    expect(overlay).toMatch(/label=\{closeReview\(\)\}/)
   })
 })
 

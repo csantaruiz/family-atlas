@@ -1274,13 +1274,12 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       {isNarrowStage(width) && phonePeek?.kind === 'event' ? (
         <PhoneSheet
           open
-          size="compact"
+          placement="sheet"
+          titleSize="display"
           title={displayName(phonePeek.event)}
+          kicker={`${categoryTypeLabel(phonePeek.event)} · ${phonePeek.event.year}`}
           onClose={() => setPhonePeek(null)}
         >
-          <p className="phone-peek-meta">
-            {categoryTypeLabel(phonePeek.event)} · {phonePeek.event.year}
-          </p>
           <div className="phone-peek-actions">
             <button
               type="button"
@@ -1311,7 +1310,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   startFollow(id)
                 }}
               >
-                {journeyForPerson(phonePeek.event.person.id)?.ctaLabel ?? 'Follow journey'}
+                {`Follow ${phonePeek.event.person.name.split(' ')[0]}'s Journey`}
               </button>
             ) : null}
           </div>
@@ -1321,7 +1320,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       {isNarrowStage(width) && phonePeek?.kind === 'cluster' ? (
         <PhoneSheet
           open
-          size="compact"
+          placement="sheet"
           title={phonePeek.title}
           onClose={() => setPhonePeek(null)}
         >

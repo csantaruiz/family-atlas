@@ -99,7 +99,13 @@ export function PhoneTimelineDock() {
           Help
         </button>
       </div>
-      <PhoneSheet open={helpOpen} title="How to explore" onClose={() => setHelpOpen(false)} size="compact">
+      <PhoneSheet
+        open={helpOpen}
+        title="How to explore"
+        onClose={() => setHelpOpen(false)}
+        size="auto"
+        placement="panel"
+      >
         <div className="phone-help">
           <p>
             Gold marks family lives. Teal diamonds mark world history. They never share the same
@@ -129,6 +135,8 @@ export function PhoneTimelineDock() {
         open={ui.sheet === 'story'}
         title="Featured Story"
         onClose={() => ui.openSheet(null)}
+        size="auto"
+        placement="panel"
       >
         <Suspense fallback={null}>
           <FeaturedStory presentation="sheet" />
@@ -138,6 +146,8 @@ export function PhoneTimelineDock() {
         open={ui.sheet === 'thinking'}
         title="AI Insights"
         onClose={() => ui.openSheet(null)}
+        size="auto"
+        placement="panel"
       >
         <Suspense fallback={null}>
           <AtlasThinkingPanel presentation="sheet" />
@@ -147,6 +157,8 @@ export function PhoneTimelineDock() {
         open={ui.sheet === 'filters'}
         title="Filters"
         onClose={() => ui.openSheet(null)}
+        size="auto"
+        placement="panel"
       >
         <TimelineFiltersPanel onClose={() => ui.openSheet(null)} hideHeader />
       </PhoneSheet>

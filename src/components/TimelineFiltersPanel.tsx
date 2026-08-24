@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTimeline } from '../context/TimelineContext'
-import { familyDatabase } from '../data/familyDatabase'
+import { useFamilyData } from '../family-data/FamilyDataProvider'
 import {
   DEFAULT_TIMELINE_FILTERS,
   TIMELINE_FILTER_GROUPS,
@@ -109,12 +109,13 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
 }
 
 function TimelineFiltersPanel({ onClose }: TimelineFiltersPanelProps) {
+  const { database: familyDatabase } = useFamilyData()
   const { timelineFilters, setTimelineFilter, setTimelineFilters } = useTimeline()
   const masterCheckboxRef = useRef<HTMLInputElement>(null)
 
   const lineagePalette = useMemo(
     () => buildLineagePalette(familyDatabase.people, familyDatabase.root),
-    [],
+    [familyDatabase],
   )
 
   const branchMeta: Partial<Record<TimelineFilterKey, { surname: string; color: string }>> = useMemo(

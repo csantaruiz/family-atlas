@@ -150,7 +150,7 @@ export const TABLET_PLAQUE_WIDTH_VIEWPORT_RATIO = 0.4
 
 export function getPlaqueWidthPx(viewportWidth: number): number {
   if (viewportWidth <= 760) {
-    return Math.min(360, Math.max(260, viewportWidth * 0.72))
+    return Math.min(viewportWidth - 40, 280)
   }
   if (viewportWidth <= 1180) {
     return Math.min(
@@ -180,8 +180,9 @@ export function getCalloutLayoutProfile(input: {
         ? 'sparse'
         : 'balanced'
 
+  const phone = viewportWidth <= 760
   const tablet = viewportWidth > 760 && viewportWidth <= 1180
-  const showNarrative = !(tablet && labelDensity === 'dense')
+  const showNarrative = !phone && !(tablet && labelDensity === 'dense')
   const showCta = true
   const showMeta = placedEventCount < totalVisibleEvents
 

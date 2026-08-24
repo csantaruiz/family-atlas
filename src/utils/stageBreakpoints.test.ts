@@ -12,7 +12,7 @@ import {
 } from './stageBreakpoints'
 import { yearX } from './timelineMath'
 import { maxFamilyEventsForSpan, targetVisibleEventCount } from './landmarkSelection'
-import { getPlaqueWidthPx } from './chapterPresentation'
+import { getCalloutLayoutProfile, getPlaqueWidthPx } from './chapterPresentation'
 import { timelineAxisY } from './chapterCalloutLayout'
 
 describe('stageBreakpoints', () => {
@@ -53,13 +53,23 @@ describe('stageBreakpoints', () => {
     expect(targetVisibleEventCount('dense', 'near', 20, 1400)).toBeGreaterThan(
       targetVisibleEventCount('dense', 'near', 20, 390),
     )
-    expect(stageLayoutProfile(390, 800).familyEventCap(6)).toBeLessThanOrEqual(4)
+    expect(stageLayoutProfile(390, 800).familyEventCap(6)).toBeLessThanOrEqual(3)
+    expect(stageLayoutProfile(390, 800).historyEventCap(8)).toBeLessThanOrEqual(2)
     expect(stageLayoutProfile(1024, 800).forceCompactLabels).toBe(true)
   })
 
   it('shrinks the chapter plaque on tablet widths', () => {
     expect(getPlaqueWidthPx(1400)).toBeGreaterThan(getPlaqueWidthPx(1024))
     expect(getPlaqueWidthPx(1024)).toBeLessThanOrEqual(400)
+    expect(getPlaqueWidthPx(390)).toBeLessThanOrEqual(280)
+    expect(
+      getCalloutLayoutProfile({
+        zoomMode: 'near',
+        totalVisibleEvents: 8,
+        placedEventCount: 3,
+        viewportWidth: 390,
+      }).showNarrative,
+    ).toBe(false)
   })
 
   it('moves the axis slightly on narrow stages', () => {

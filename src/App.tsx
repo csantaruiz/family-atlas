@@ -2,6 +2,7 @@ import { AppNavigationProvider } from './context/AppNavigationContext'
 import { FollowPersonProvider, useFollowPerson } from './context/FollowPersonContext'
 import { JourneyIntroProvider } from './context/JourneyIntroContext'
 import { TimelineProvider } from './context/TimelineContext'
+import { FamilyDataProvider } from './family-data/FamilyDataProvider'
 import { DetailPanel } from './components/DetailPanel'
 import { FollowPersonOverlay } from './components/follow-person/FollowPersonOverlay'
 import { AtlasMapBackdrop } from './components/AtlasMapBackdrop'
@@ -25,6 +26,9 @@ import type { AppView } from './types/navigation'
 import { DocumentaryV3Player } from './documentary-v3'
 import { AtlasDebuggerPanel } from './atlas-health/dev/AtlasDebuggerPanel'
 import { isAtlasDebugEnabled } from './atlas-health/dev/atlasDebugEnabled'
+import { ensureOverrideCacheLoaded } from './overrides/overrideCache'
+import { AtlasReviewRoot } from './atlas-review/AtlasReviewRoot'
+import { ManageFamilyTreeRoot } from './atlas-manage/ManageFamilyTreeRoot'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -73,16 +77,24 @@ function AtlasAppShell() {
   const { active: followActive } = useFollowPerson()
   usePreventBrowserZoom()
 
+  useEffect(() => {
+    void ensureOverrideCacheLoaded()
+  }, [])
+
   return (
-    <div className={`app app--view-${activeView}${followActive ? ' app--follow-person' : ''}`}>
-      <AtlasMapBackdrop />
-      <div className="grain" aria-hidden="true" />
-      <Header />
-      <AppViews />
-      <FollowPersonOverlay />
-      <DetailPanel />
-      {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}
-    </div>
+    <AtlasReviewRoot>
+      <ManageFamilyTreeRoot>
+      <div className={`app app--view-${activeView}${followActive ? ' app--follow-person' : ''}`}>
+        <AtlasMapBackdrop />
+        <div className="grain" aria-hidden="true" />
+        <Header />
+        <AppViews />
+        <FollowPersonOverlay />
+        <DetailPanel />
+        {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}
+      </div>
+      </ManageFamilyTreeRoot>
+    </AtlasReviewRoot>
   )
 }
 
@@ -135,6 +147,7 @@ function App() {
   }
 
   return (
+    <FamilyDataProvider>
     <TimelineProvider>
       <AppNavigationProvider>
         <JourneyIntroProvider>
@@ -146,6 +159,7 @@ function App() {
         </JourneyIntroProvider>
       </AppNavigationProvider>
     </TimelineProvider>
+    </FamilyDataProvider>
   )
 }
 

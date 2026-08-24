@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { familyDatabase } from '../../data'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
+import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { MapExplorationProvider, useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import {
@@ -38,6 +39,7 @@ const EVENT_TYPES = [
 ]
 
 function MapViewContent({ active }: MapViewProps) {
+  const { database: familyDatabase } = useFamilyData()
   const { familyEvents } = useTimeline()
   const { level, selection, resetExploration, refitFilteredView } = useMapExploration()
   const people = familyDatabase.people
@@ -47,6 +49,9 @@ function MapViewContent({ active }: MapViewProps) {
   const [century, setCentury] = useState('')
   const [directAncestorsOnly, setDirectAncestorsOnly] = useState(false)
   const [showRoutes, setShowRoutes] = useState(true)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [overviewOpen, setOverviewOpen] = useState(false)
+  const phone = useMaxWidth(760)
 
   const allPlaces = useMemo(
     () => buildPlaceIndex(people, familyEvents, resolveExploreMapCoordinate),
@@ -137,7 +142,11 @@ function MapViewContent({ active }: MapViewProps) {
   ])
 
   return (
-    <section id="map" className={`view atlas-page${active ? ' active' : ''}`} aria-hidden={!active}>
+    <section
+      id="map"
+      className={`view atlas-page${active ? ' active' : ''}${phone ? ' map-phone' : ''}`}
+      aria-hidden={!active}
+    >
       <div className="map-wrap">
         <div className="map-page-atmosphere" aria-hidden="true" />
         <div className="map-page-focus" aria-hidden="true" />
@@ -154,26 +163,59 @@ function MapViewContent({ active }: MapViewProps) {
             people={people}
           />
 
-          <header className="map-page-intro map-title">
+          <header className={`map-page-intro map-title${phone ? ' map-page-intro--compact' : ''}`}>
             <div className="eyebrow">Known places</div>
             <h2>A family in motion.</h2>
             <div className="map-summary">
               <span>
-                <strong>{summary.placeCount}</strong> places
+                <strong>{summary.placeCount}</strong> known places
               </span>
               <span>
                 <strong>{regions.length}</strong> regions
               </span>
-              {summary.longestMove && (
+              {summary.longestMove && !phone ? (
                 <span className="map-summary-move">
                   Longest move: {summary.longestMove.personName}
                 </span>
-              )}
+              ) : null}
             </div>
-            <MapLineageLegend palette={lineagePalette} visible={showRoutes} />
+            {phone ? (
+              <button
+                type="button"
+                className="map-overview-toggle"
+                aria-expanded={overviewOpen}
+                onClick={() => setOverviewOpen((open) => !open)}
+              >
+                {overviewOpen ? 'Hide overview' : 'Read overview'}
+              </button>
+            ) : null}
+            {phone && !overviewOpen ? null : (
+              <MapLineageLegend palette={lineagePalette} visible={showRoutes} />
+            )}
           </header>
 
-          <div className="map-page-controls map-filters">
+          {phone ? (
+            <div className="map-phone-toolbar">
+              <button
+                type="button"
+                className="map-filter-toggle"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                Filters
+              </button>
+            </div>
+          ) : null}
+
+          <div className={`map-page-controls map-filters${phone ? (filtersOpen ? ' is-open' : ' is-collapsed') : ''}`}>
+            {phone ? (
+              <div className="map-filter-sheet-head">
+                <strong>Filter journeys</strong>
+                <button type="button" onClick={() => setFiltersOpen(false)}>
+                  Done
+                </button>
+              </div>
+            ) : null}
             <div className="map-filter-grid">
               <label className="filter-field">
                 <span>Branch</span>

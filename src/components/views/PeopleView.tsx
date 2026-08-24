@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { familyDatabase } from '../../data'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
+import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import {
@@ -21,6 +22,7 @@ type PeopleViewProps = {
 }
 
 export function PeopleView({ active }: PeopleViewProps) {
+  const { database: familyDatabase } = useFamilyData()
   const { familyEvents, openPerson } = useTimeline()
   const { viewOnTimeline, viewOnTree } = useAppNavigation()
   const exploreRef = useRef<HTMLDivElement>(null)
@@ -31,6 +33,8 @@ export function PeopleView({ active }: PeopleViewProps) {
   const [century, setCentury] = useState('')
   const [directAncestorsOnly, setDirectAncestorsOnly] = useState(false)
   const [notableLivesExplanationOpen, setNotableLivesExplanationOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const phone = useMaxWidth(760)
 
   useEffect(() => {
     if (!active) return
@@ -92,6 +96,9 @@ export function PeopleView({ active }: PeopleViewProps) {
             onPlaceChange={setPlace}
             onCenturyChange={setCentury}
             onDirectAncestorsChange={setDirectAncestorsOnly}
+            compact={phone}
+            expanded={filtersOpen}
+            onToggle={() => setFiltersOpen((open) => !open)}
           />
         </div>
 
@@ -100,7 +107,10 @@ export function PeopleView({ active }: PeopleViewProps) {
           <h2>{familyDatabase.stats.people} lives, connected.</h2>
         </div>
         {notableLives.length > 0 && (
-          <section className="notable-lives" aria-labelledby="notable-lives-heading">
+          <section
+            className={`notable-lives${phone ? ' notable-lives--rail' : ''}`}
+            aria-labelledby="notable-lives-heading"
+          >
             <div className="notable-lives-header">
               <div className="notable-lives-heading-block">
                 <div className="eyebrow" id="notable-lives-heading">

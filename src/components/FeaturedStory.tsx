@@ -7,7 +7,11 @@ import { viewport } from '../utils/timelineMath'
 
 const SWIPE_THRESHOLD_PX = 48
 
-export function FeaturedStory() {
+export function FeaturedStory({
+  presentation = 'overlay',
+}: {
+  presentation?: 'overlay' | 'rail' | 'sheet'
+}) {
   const { center, span, openPerson, setHighlightedStoryPersonId, timelineFilters } = useTimeline()
   const { active: followActive } = useFollowPerson()
   const [index, setIndex] = useState(0)
@@ -86,7 +90,7 @@ export function FeaturedStory() {
 
   return (
     <section
-      className="featured-story"
+      className={`featured-story${presentation === 'overlay' ? '' : ` featured-story--${presentation}`}`}
       aria-label="Featured story"
       onPointerDown={(e) => {
         if (e.pointerType === 'touch' || e.pointerType === 'pen') {

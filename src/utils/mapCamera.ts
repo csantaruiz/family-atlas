@@ -58,12 +58,13 @@ export function usableViewport(layout: MapViewportLayout): UsableViewport {
     return { centerXPercent: 50, centerYPercent: 50, widthPercent: 100, heightPercent: 100 }
   }
 
+  const compact = frameWidthPx < 760
   const pad = MAP_FRAME_PADDING_PX
-  const panelReserve = panelOpen ? panelWidthPx + panelGapPx : 0
-  const rightReserve = Math.max(MAP_RIGHT_CHROME_PX, panelReserve)
-  const leftReserve = MAP_LEFT_CHROME_PX
-  const topReserve = MAP_TOP_CHROME_PX
-  const bottomReserve = MAP_BOTTOM_CHROME_PX
+  const panelReserve = panelOpen && !compact ? panelWidthPx + panelGapPx : 0
+  const rightReserve = compact ? 12 : Math.max(MAP_RIGHT_CHROME_PX, panelReserve)
+  const leftReserve = compact ? 12 : MAP_LEFT_CHROME_PX
+  const topReserve = compact ? 16 : MAP_TOP_CHROME_PX
+  const bottomReserve = compact ? 16 : MAP_BOTTOM_CHROME_PX
 
   const usableWidthPx = Math.max(120, frameWidthPx - pad - rightReserve - leftReserve)
   const usableHeightPx = Math.max(120, frameHeightPx - pad - topReserve - bottomReserve)
@@ -96,6 +97,9 @@ function scaleLimitsForLevel(level: MapZoomLevel): { min: number; max: number } 
 }
 
 export function fitOverviewCamera(bounds: MapBounds, layout: MapViewportLayout): MapCamera {
+  if (layout.frameWidthPx > 0 && layout.frameWidthPx < 760) {
+    return fitCameraToBounds(bounds, { ...layout, panelOpen: false }, 'regional')
+  }
   const padded = expandBounds(bounds, REGION_FIT_PADDING + 2)
   const geoCx = (padded.minX + padded.maxX) / 2
   const geoCy = (padded.minY + padded.maxY) / 2

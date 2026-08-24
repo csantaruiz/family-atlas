@@ -53,9 +53,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         SELECT id, person_id, caption, credit
         FROM media_assets
         WHERE atlas_id = ${atlasId}
-          AND person_id = ${personId}
           AND kind = 'portrait'
           AND is_primary = true
+          AND (
+            person_id = ${personId}
+            OR atlas_person_id::text = ${personId}
+          )
         LIMIT 1
       `
 

@@ -43,7 +43,7 @@ export async function unlockEditing(secret: string): Promise<void> {
 /** Prompt once for the atlas edit secret when uploads/deletes need it. */
 export async function ensureEditAccess(): Promise<void> {
   if (await fetchEditStatus()) return
-  const secret = window.prompt('Enter the Atlas edit password to upload or remove photos:')
+  const secret = window.prompt('Enter the family edit password for this Atlas:')
   if (!secret) throw new Error('Edit unlock cancelled.')
   await unlockEditing(secret)
 }

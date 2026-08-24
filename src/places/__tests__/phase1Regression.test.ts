@@ -61,7 +61,7 @@ const PRIORITY_FIXTURES: Fixture[] = [
   { place: 'Ireland', expectation: 'coarse', macro: 'europe', canonicalId: 'ireland' },
   { place: 'Ledyard, New London, Connecticut, USA', expectation: 'auto-corrected', macro: 'us', canonicalId: 'ledyard-ct', forbidCanonicalIds: ['england'] },
   { place: 'Medord, Oregon, USA', expectation: 'ambiguous', macro: 'us' },
-  { place: 'New York', expectation: 'ambiguous', macro: 'us' },
+  { place: 'New York', expectation: 'coarse', macro: 'us', canonicalId: 'new-york-state', forbidCanonicalIds: ['new-york-city'] },
   { place: 'of Clifford,Susquehanna,Pa', expectation: 'coarse', macro: 'us', canonicalId: 'susquehanna-county-pa' },
   { place: 'of Forkston,Wyoming,Pa', expectation: 'coarse', macro: 'us', canonicalId: 'wyoming-county-pa' },
   { place: 'San Antonio, TX, USA', expectation: 'auto-corrected', macro: 'us', canonicalId: 'san-antonio-tx' },

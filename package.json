@@ -12,10 +12,12 @@
     "test": "vitest run",
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:seed": "node scripts/db/migrate.mjs seed",
+    "db:seed-people": "node scripts/db/seed-atlas-people.mjs",
     "transcribe:documentary": "python3 scripts/transcribe-documentary.py base",
     "build:camera-cues": "python3 scripts/build-camera-cues.py",
     "sync:documentary": "python3 scripts/transcribe-documentary.py base && python3 scripts/build-camera-cues.py",
     "import:gedcom": "python3 scripts/import-gedcom.py",
+    "gedcom:diff": "vitest run src/gedcom/__tests__/parseGedcom.test.ts src/gedcom/__tests__/diffFamilyGraphs.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

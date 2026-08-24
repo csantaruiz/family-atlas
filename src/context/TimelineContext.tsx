@@ -2,19 +2,22 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
 import { buildFamilyEvents } from '../data/buildFamilyEvents'
-import { familyDatabase } from '../data/familyDatabase'
-import type { AtlasThinking, DetailContent, FamilyEvent, HistoryEvent } from '../types'
+import { useFamilyData } from '../family-data/FamilyDataProvider'
+import { findPersonByRef } from '../family-data/resolvePerson'
+import type { AtlasThinking, DetailContent, FamilyEvent, HistoryEvent, Person } from '../types'
 import type { TimelineFilterKey, TimelineFilters } from '../types/timelineFilters'
 import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
 import { applyFamilyEventFilters, personPassesBranchFilter } from '../utils/timelineFilters'
 import { buildLineagePalette } from '../utils/lineageColors'
 import { assertNoDuplicateEvents, dedupeFamilyEvents } from '../utils/canonicalEvent'
+import { applyEventEligibilityOverrides } from '../overrides/applyEventOverrides'
 import {
   clampView,
   easeInOutCubic,
@@ -22,6 +25,7 @@ import {
   viewport,
   zoomValueFromSpan,
 } from '../utils/timelineMath'
+import { defaultTimelineSpan } from '../utils/phoneTimelineDensity'
 
 type TimelineContextValue = {
   minYear: number
@@ -40,9 +44,9 @@ type TimelineContextValue = {
   highlightedStoryPersonId: string | null
   thinkingFocusRange: { start: number; end: number } | null
   mapHighlightYears: { start: number; end: number } | null
-  peopleById: Record<string, (typeof familyDatabase.people)[number]>
-  birthPeople: (typeof familyDatabase.people)[number][]
-  filteredBirthPeople: (typeof familyDatabase.people)[number][]
+  peopleById: Record<string, Person>
+  birthPeople: Person[]
+  filteredBirthPeople: Person[]
   familyEvents: FamilyEvent[]
   filteredFamilyEvents: FamilyEvent[]
   timelineFilters: TimelineFilters
@@ -80,21 +84,22 @@ const INERTIA_MAX_VELOCITY_YEARS_PER_MS = 0.55
 const INERTIA_SAMPLE_WINDOW_MS = 100
 
 export function TimelineProvider({ children }: { children: ReactNode }) {
+  const { database: familyDatabase, marriages: familyMarriages } = useFamilyData()
   const presentYear = new Date().getFullYear()
   const birthPeople = useMemo(
     () =>
       familyDatabase.people
         .filter((p) => p.birthYear)
         .sort((a, b) => (a.birthYear ?? 0) - (b.birthYear ?? 0)),
-    [],
+    [familyDatabase],
   )
   const lineagePalette = useMemo(
     () => buildLineagePalette(familyDatabase.people, familyDatabase.root),
-    [],
+    [familyDatabase],
   )
   const peopleIdMap = useMemo(
     () => new Map(familyDatabase.people.map((person) => [person.id, person])),
-    [],
+    [familyDatabase],
   )
   const minYear = useMemo(
     () => Math.min(...birthPeople.map((p) => p.birthYear ?? presentYear)),
@@ -104,20 +109,26 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   const fullSpan = maxYear - minYear
   const peopleById = useMemo(
     () => Object.fromEntries(familyDatabase.people.map((p) => [p.id, p])),
-    [],
+    [familyDatabase],
   )
   const familyEvents = useMemo(() => {
-    const events = dedupeFamilyEvents(buildFamilyEvents(familyDatabase.people))
+    const events = dedupeFamilyEvents(buildFamilyEvents(familyDatabase.people, familyMarriages))
     assertNoDuplicateEvents(events, 'familyEvents')
     return events
-  }, [])
+  }, [familyDatabase, familyMarriages])
 
   const [timelineFilters, setTimelineFiltersState] = useState<TimelineFilters>(DEFAULT_TIMELINE_FILTERS)
 
-  const filteredFamilyEvents = useMemo(
-    () => applyFamilyEventFilters(familyEvents, timelineFilters, lineagePalette, peopleIdMap),
-    [familyEvents, timelineFilters, lineagePalette, peopleIdMap],
-  )
+  const filteredFamilyEvents = useMemo(() => {
+    const filtered = applyFamilyEventFilters(
+      familyEvents,
+      timelineFilters,
+      lineagePalette,
+      peopleIdMap,
+    )
+    // Phase 2B: suppress / year / place corrections only — never layout bypass.
+    return applyEventEligibilityOverrides(filtered)
+  }, [familyEvents, timelineFilters, lineagePalette, peopleIdMap])
   const filteredBirthPeople = useMemo(
     () =>
       birthPeople.filter((person) =>
@@ -139,12 +150,25 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
         0,
         ...familyDatabase.people.map((p) => (p.generation != null ? Math.abs(p.generation) : 0)),
       ) + 1,
-    [],
+    [familyDatabase],
   )
 
+  const initialSpan = defaultTimelineSpan(
+    fullSpan,
+    typeof window === 'undefined' ? 1200 : window.innerWidth,
+  )
   const [center, setCenter] = useState((minYear + maxYear) / 2)
-  const [span, setSpan] = useState(fullSpan)
-  const [zoomValue, setZoomValue] = useState(() => zoomValueFromSpan(fullSpan, fullSpan))
+  const [span, setSpan] = useState(initialSpan)
+  const [zoomValue, setZoomValue] = useState(() => zoomValueFromSpan(initialSpan, fullSpan))
+
+  useEffect(() => {
+    const width = window.innerWidth
+    const phoneSpan = defaultTimelineSpan(fullSpan, width)
+    if (phoneSpan >= fullSpan) return
+    if (Math.abs(spanRef.current - fullSpan) > 1) return
+    setSpan(phoneSpan)
+    setZoomValue(zoomValueFromSpan(phoneSpan, fullSpan))
+  }, [fullSpan])
   const [detail, setDetail] = useState<DetailContent>(null)
   const [highlightedStoryPersonId, setHighlightedStoryPersonId] = useState<string | null>(null)
   const [thinkingFocusRange, setThinkingFocusRange] = useState<{ start: number; end: number } | null>(null)
@@ -326,8 +350,9 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
   }, [animateView, peopleById])
 
   const openPerson = useCallback((id: string) => {
-    setDetail({ type: 'person', personId: id })
-  }, [])
+    const person = findPersonByRef(familyDatabase.people, id)
+    setDetail({ type: 'person', personId: person?.id ?? id })
+  }, [familyDatabase])
 
   const openFamilyEvent = useCallback((event: FamilyEvent) => {
     setDetail({ type: 'familyEvent', event })

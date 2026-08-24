@@ -1,5 +1,5 @@
 import { buildFamilyEvents } from '../data/buildFamilyEvents'
-import { familyDatabase } from '../data/familyDatabase'
+import { getFamilyDatabase } from '../family-data/activeFamily'
 import type { FamilyEvent } from '../types'
 import type { TimelineFilters } from '../types/timelineFilters'
 import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
@@ -32,7 +32,7 @@ import type {
 } from './types'
 
 function allEvents(): FamilyEvent[] {
-  return dedupeFamilyEvents(buildFamilyEvents(familyDatabase.people))
+  return dedupeFamilyEvents(buildFamilyEvents(getFamilyDatabase().people))
 }
 
 function findEvent(eventId: string, pool: FamilyEvent[]): FamilyEvent | null {
@@ -148,13 +148,13 @@ export function explainEventVisibility(input: ExplainVisibilityInput): EventLife
     filters,
   } = input
 
-  const rawBuilt = buildFamilyEvents(familyDatabase.people)
+  const rawBuilt = buildFamilyEvents(getFamilyDatabase().people)
   const beforeDedupe = rawBuilt.find((event) => canonicalEventId(event) === eventId) ?? null
   const events = dedupeFamilyEvents(rawBuilt)
   const event = findEvent(eventId, events)
 
-  const lineagePalette = buildLineagePalette(familyDatabase.people, familyDatabase.root)
-  const peopleIdMap = new Map(familyDatabase.people.map((person) => [person.id, person]))
+  const lineagePalette = buildLineagePalette(getFamilyDatabase().people, getFamilyDatabase().root)
+  const peopleIdMap = new Map(getFamilyDatabase().people.map((person) => [person.id, person]))
 
   if (!event) {
     const ghost = beforeDedupe

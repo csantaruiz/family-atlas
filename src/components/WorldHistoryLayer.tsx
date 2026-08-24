@@ -9,6 +9,7 @@ import { activeCountriesAt } from '../utils/placeUtils'
 import { yearX } from '../utils/timelineMath'
 import { timelineAxisY } from '../utils/chapterCalloutLayout'
 import { isNarrowStage, stageLayoutProfile } from '../utils/stageBreakpoints'
+import { phoneHistoryLabelBudget, phoneHistoryLaneOffsets } from '../utils/phoneTimelineDensity'
 import type { HistoryEvent, Person, RenderedHistoryEvent } from '../types'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
@@ -51,7 +52,11 @@ function historyTargetCount(span: number, viewportWidth = 1200): number {
   if (viewportWidth >= 1100 && span > 180) {
     cap = Math.max(cap, Math.min(10, Math.floor((viewportWidth - 280) / 130)))
   }
-  return stageLayoutProfile(viewportWidth, 800).historyEventCap(cap)
+  const profileCap = stageLayoutProfile(viewportWidth, 800).historyEventCap(cap)
+  if (isNarrowStage(viewportWidth)) {
+    return Math.min(profileCap, phoneHistoryLabelBudget(span, viewportWidth))
+  }
+  return profileCap
 }
 
 function minHistoryYearGap(span: number, viewportWidth = 1200): number {
@@ -64,10 +69,10 @@ function minHistoryYearGap(span: number, viewportWidth = 1200): number {
 
 function minHistoryPixelGap(span: number, viewportWidth = 1200): number {
   const narrow = isNarrowStage(viewportWidth)
-  if (span > 320) return narrow ? 120 : 160
-  if (span > 150) return narrow ? 100 : 140
-  if (span > 55) return narrow ? 95 : 140
-  return narrow ? 72 : 95
+  if (span > 320) return narrow ? 160 : 160
+  if (span > 150) return narrow ? 140 : 140
+  if (span > 55) return narrow ? 128 : 140
+  return narrow ? 110 : 95
 }
 
 function passesHistorySpacing(
@@ -185,8 +190,17 @@ function selectHistoricalEvents(
 }
 
 export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLayerProps) {
-  const { span, center, birthPeople, openHistory, timelineFilters, isZooming, isDragging, isInertialScrolling } =
-    useTimeline()
+  const {
+    span,
+    center,
+    birthPeople,
+    openHistory,
+    timelineFilters,
+    isZooming,
+    isDragging,
+    isInertialScrolling,
+    detail,
+  } = useTimeline()
   const { pulse, registerHistoryPulseTargets } = useTimelinePulse()
   const prefersReducedMotion = useReducedMotion()
   const historyVisible = timelineFilters.historicalEvents
@@ -231,8 +245,9 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
     if (!historyVisible) return [] as HistoryEvent[]
     const sticky =
       !isZooming && pinnedHistorySpanRef.current === spanBucket ? pinnedHistoryRef.current : []
-    return selectHistoricalEvents(start, end, span, center, birthPeople, sticky, width)
-  }, [historyVisible, span, start, end, center, birthPeople, isZooming, spanBucket, width])
+    const selected = detail?.type === 'history' ? [detail.event] : []
+    return selectHistoricalEvents(start, end, span, center, birthPeople, [...selected, ...sticky], width)
+  }, [historyVisible, span, start, end, center, birthPeople, isZooming, spanBucket, width, detail])
 
   useLayoutEffect(() => {
     if (!historyVisible || isZooming) return
@@ -338,6 +353,25 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
     return withPinnedLane
   }, [events, start, end, span, width, height, interactionLocked, isZooming, spanBucket])
 
+  const unlabeledHistory = useMemo(() => {
+    if (!isNarrowStage(width) || !historyVisible) return []
+    const labeled = new Set(placed.map((item) => historyEventHeroKey(item.event)))
+    const leftover = historyEvents
+      .filter(
+        (event) =>
+          event.year >= start &&
+          event.year <= end &&
+          !labeled.has(historyEventHeroKey(event)) &&
+          matchesCountryFilter(event, birthPeople),
+      )
+      .sort((a, b) => b.importance - a.importance)
+      .slice(0, 10)
+    return leftover.slice(0, 6).map((event) => ({
+      items: [event],
+      x: yearX(event.year, start, span, width),
+    }))
+  }, [width, historyVisible, placed, start, end, span, birthPeople])
+
   registerHistoryPulseTargets(
     useMemo(
       () =>
@@ -412,6 +446,48 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
           )
         })
       )}
+      {unlabeledHistory.map((group) => {
+        const event = group.items[0]
+        const eventKey = historyEventHeroKey(event)
+        const axisY = timelineAxisY(height, width)
+        if (group.items.length > 1) {
+          return (
+            <div
+              key={`history-cluster:${eventKey}:${group.items.length}`}
+              className="history-event-anchor history-event-marker-cluster-anchor"
+              style={{ left: Math.round(group.x), top: Math.round(axisY + 22) }}
+            >
+              <button
+                type="button"
+                className="history-event-marker-cluster"
+                title={`${group.items.length} world events`}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openHistory(event)
+                }}
+              >
+                <span>{group.items.length}</span>
+              </button>
+            </div>
+          )
+        }
+        return (
+          <div
+            key={`history-marker:${eventKey}`}
+            className="history-event-anchor"
+            style={{ left: Math.round(group.x), top: Math.round(axisY + 22) }}
+          >
+            <HistoryEventButton
+              event={event}
+              stemHeight={22}
+              isAmbientPulse={false}
+              onOpen={openHistory}
+              markerOnly
+            />
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -421,16 +497,18 @@ function HistoryEventButton({
   stemHeight,
   isAmbientPulse,
   onOpen,
+  markerOnly = false,
 }: {
   event: HistoryEvent
   stemHeight: number
   isAmbientPulse: boolean
   onOpen: (event: HistoryEvent) => void
+  markerOnly?: boolean
 }) {
   return (
     <button
       type="button"
-      className={`history-event below${isAmbientPulse ? ' is-ambient-pulse' : ''}`}
+      className={`history-event below${isAmbientPulse ? ' is-ambient-pulse' : ''}${markerOnly ? ' marker-only' : ''}`}
       title={`${event.year} · ${event.title}`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -442,12 +520,14 @@ function HistoryEventButton({
         className="history-stem"
         style={{ height: Math.max(18, stemHeight - 12), bottom: 12 }}
       />
-      <span className="history-label">
-        <b>{event.title}</b>
-        <small>
-          {event.year} · {event.country}
-        </small>
-      </span>
+      {markerOnly ? null : (
+        <span className="history-label">
+          <b>{event.title}</b>
+          <small>
+            {event.year} · {event.country}
+          </small>
+        </span>
+      )}
     </button>
   )
 }
@@ -455,9 +535,7 @@ function HistoryEventButton({
 function historyLanes(span: number, viewportWidth = 1200): number[] {
   // Offsets below the axis. Keep the nearest lane clear of century year labels (~axis+17).
   if (isNarrowStage(viewportWidth)) {
-    if (span > 320) return [68, 128, 188]
-    if (span > 150) return [64, 118, 172]
-    return [60, 108, 156, 204]
+    return phoneHistoryLaneOffsets(span)
   }
   if (span > 320) return [78, 148, 218]
   if (span > 150) return [78, 138, 198, 258]

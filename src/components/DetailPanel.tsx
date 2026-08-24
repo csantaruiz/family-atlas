@@ -93,9 +93,9 @@ export function DetailPanel() {
         ['Timeline events', personEvents.length ? String(personEvents.length) : 'None indexed'],
       ]
       relations = [
-        ...(p.parents ?? []).map((id) => ({ kind: 'Parent', id, name: peopleById[id]?.name ?? '' })),
-        ...(p.spouses ?? []).map((id) => ({ kind: 'Spouse', id, name: peopleById[id]?.name ?? '' })),
-        ...(p.children ?? []).map((id) => ({ kind: 'Child', id, name: peopleById[id]?.name ?? '' })),
+        ...(p.parents ?? []).map((id: string) => ({ kind: 'Parent' as const, id, name: peopleById[id]?.name ?? '' })),
+        ...(p.spouses ?? []).map((id: string) => ({ kind: 'Spouse' as const, id, name: peopleById[id]?.name ?? '' })),
+        ...(p.children ?? []).map((id: string) => ({ kind: 'Child' as const, id, name: peopleById[id]?.name ?? '' })),
       ].filter((r) => r.name)
       const resolved = resolvePersonPortrait(p, uploadedPortraits[p.id])
       portraitImage = resolved.image

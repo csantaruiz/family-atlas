@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
-import { familyDatabase } from '../data/familyDatabase'
+import { useFamilyData } from '../family-data/FamilyDataProvider'
 import { placeholderAtlasThinking } from '../data/placeholderAtlasThinking'
 import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
@@ -8,7 +8,12 @@ import { buildAtlasThinkingObservations } from '../utils/buildAtlasThinkingObser
 import { selectAtlasThinking } from '../utils/selectAtlasThinking'
 import { viewport } from '../utils/timelineMath'
 
-export function AtlasThinkingPanel() {
+export function AtlasThinkingPanel({
+  presentation = 'overlay',
+}: {
+  presentation?: 'overlay' | 'rail' | 'sheet'
+}) {
+  const { database: familyDatabase } = useFamilyData()
   const {
     center,
     span,
@@ -58,7 +63,11 @@ export function AtlasThinkingPanel() {
     : { duration: 0.75, ease: [0.22, 0.8, 0.2, 1] as const }
 
   return (
-    <aside className="atlas-thinking" aria-label="Atlas thinking" aria-live="polite">
+    <aside
+      className={`atlas-thinking${presentation === 'overlay' ? '' : ` atlas-thinking--${presentation}`}`}
+      aria-label="Atlas thinking"
+      aria-live="polite"
+    >
       <div className="editorial-cloud-vapor editorial-cloud-vapor--cool" aria-hidden="true" />
       <div className="atlas-thinking-panel">
         <div className="atlas-thinking-header">

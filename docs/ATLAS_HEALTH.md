@@ -116,3 +116,13 @@ Parity tests assert that diagnostic wrappers do not change:
 - documentary canonical ids
 - landmark layout event ids / cluster counts (existing suite)
 - Follow journey eligibility (existing suite)
+
+## Phase 2B — Persistent overrides
+
+See [ATLAS_OVERRIDES.md](./ATLAS_OVERRIDES.md). Corrections persist in Neon (`atlas_overrides`), apply via the override cache, and are editable from `?atlasDebug=1` (not a customer Review Queue).
+
+### DEV Review Findings (testing harness)
+
+Behind `?atlasDebug=1`, **Health → Review findings** walks geographic conflicts and resolution gaps one at a time in plain English. **Confirm** / **Ignore** use the same Phase 2B override APIs; failed API writes do **not** count as saved.
+
+Customer **Atlas Review** (Phase 2C) is a separate, quieter overlay over the same override APIs. It shows only findings where family knowledge helps. See [ATLAS_REVIEW.md](./ATLAS_REVIEW.md).

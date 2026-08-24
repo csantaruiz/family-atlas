@@ -76,12 +76,20 @@ describe('resolveJourneyPlace', () => {
   })
 
   it('falls back safely for ambiguous places', () => {
-    const ny = resolveCanonicalPlaceSync('New York')
-    expect(isCanonicalUsableForJourney(ny)).toBe(false)
+    const medord = resolveCanonicalPlaceSync('Medord, Oregon, USA')
+    expect(isCanonicalUsableForJourney(medord)).toBe(false)
 
-    const journey = resolveJourneyPlace('New York')
+    const journey = resolveJourneyPlace('Medord, Oregon, USA')
     expect(journey.canonicalPlaceId).toBeNull()
     expect(['legacy', 'unresolved']).toContain(journey.source)
+  })
+
+  it('uses the state reading for bare New York rather than leaving it ambiguous', () => {
+    const ny = resolveCanonicalPlaceSync('New York')
+    expect(ny.canonicalPlaceId).toBe('new-york-state')
+    const journey = resolveJourneyPlace('New York')
+    expect(journey.canonicalPlaceId).toBe('new-york-state')
+    expect(journey.source).toBe('canonical')
   })
 
   it('falls back safely for unresolved places', () => {

@@ -25,6 +25,7 @@ import {
 } from '../utils/chapterCalloutLayout'
 import type { PlacedSpanCluster, SemanticZoomMode } from '../utils/clustering'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
+import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { TimelineHint } from './TimelineHint'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
@@ -365,6 +366,8 @@ export function ChapterViewportCallout({
   const layerRef = useRef<HTMLDivElement>(null)
   const { chapterCenterX } = verticalLayout
   const { isIntroActive } = useJourneyIntro()
+  const phoneUi = usePhoneTimelineUi()
+  const phoneCompact = Boolean(phoneUi?.phone && phoneUi.exploring)
   const prefersReducedMotion = useReducedMotion()
   const [zoomCtaPulseReady, setZoomCtaPulseReady] = useState(false)
 
@@ -421,6 +424,7 @@ export function ChapterViewportCallout({
     e.preventDefault()
     e.stopPropagation()
     if (!canZoomIn) return
+    phoneUi?.beginExploring()
     onZoomIn(cluster)
   }
 
@@ -435,7 +439,17 @@ export function ChapterViewportCallout({
 
   const zoomInIconSize = isWideTimelineView ? 24 : 20
 
-  const copyBlock = (
+  const copyBlock = phoneCompact ? (
+    <button
+      type="button"
+      className="chapter-callout chapter-callout--phone-chip"
+      aria-label={`${accessibleLabel}. Show introduction`}
+      onClick={() => phoneUi?.restoreArrival()}
+    >
+      <span className="chapter-callout-title">{presentation.title}</span>
+      <span className="chapter-callout-years">{presentation.yearRange}</span>
+    </button>
+  ) : (
     <div className="chapter-callout" aria-label={accessibleLabel}>
       <span className="chapter-callout-title">{presentation.title}</span>
       <span className="chapter-callout-divider" aria-hidden="true">
@@ -523,7 +537,7 @@ export function ChapterViewportCallout({
   return (
     <div
       ref={layerRef}
-      className={`chapter-callout-layer chapter-callout-layer--${layout.tier} chapter-callout-layer--${zoomMode}`}
+      className={`chapter-callout-layer chapter-callout-layer--${layout.tier} chapter-callout-layer--${zoomMode}${phoneCompact ? ' chapter-callout-layer--phone-compact' : ''}`}
       style={{
         top: verticalLayout.cardTop,
         left: chapterCenterX,

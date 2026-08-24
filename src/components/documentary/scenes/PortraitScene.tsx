@@ -1,4 +1,5 @@
-import { familyDatabase } from '../../../data/familyDatabase'
+import { getFamilyDatabase } from '../../../family-data/activeFamily'
+import { findPersonByRef } from '../../../family-data/resolvePerson'
 import { portraitPlaceholderForSex } from '../../../data/portraitPlaceholder'
 import { sceneProgress } from '../../../data/openingScript'
 import { kenBurnsStyle, sceneOpacity } from '../../../utils/kenBurns'
@@ -18,7 +19,7 @@ export function PortraitScene({ scene, sceneElapsedMs }: PortraitSceneProps) {
   const showName = sceneElapsedMs >= nameDelay
   const showNarration = sceneElapsedMs >= 1800 && scene.narration
   const person = config?.portraitPersonId
-    ? familyDatabase.people.find((entry) => entry.id === config.portraitPersonId)
+    ? findPersonByRef(getFamilyDatabase().people, config.portraitPersonId)
     : undefined
   const portrait = person
     ? resolvePersonPortrait(person).image

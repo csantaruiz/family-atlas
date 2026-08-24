@@ -5,6 +5,8 @@ import type { TimelineFilters } from '../types/timelineFilters'
 import { DEFAULT_TIMELINE_FILTERS } from '../types/timelineFilters'
 import { readDocumentarySeen } from '../constants/documentarySession'
 import { viewFromPath } from '../types/navigation'
+import { defaultTimelineSpan } from '../utils/phoneTimelineDensity'
+import { zoomValueFromSpan } from '../utils/timelineMath'
 
 export const JOURNEY_INTRO_SESSION_KEY = 'family-atlas-journey-intro-seen'
 
@@ -89,10 +91,13 @@ function isDefaultTimelineView(
   zoomValue: number,
 ): boolean {
   const defaultCenter = (minYear + maxYear) / 2
+  const width = typeof window === 'undefined' ? 1200 : window.innerWidth
+  const defaultSpan = defaultTimelineSpan(fullSpan, width)
+  const defaultZoom = zoomValueFromSpan(defaultSpan, fullSpan)
   return (
     Math.abs(center - defaultCenter) < 0.5 &&
-    Math.abs(span - fullSpan) < 0.5 &&
-    zoomValue === 0
+    Math.abs(span - defaultSpan) < 1.5 &&
+    Math.abs(zoomValue - defaultZoom) <= 1
   )
 }
 

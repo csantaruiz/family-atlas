@@ -15,6 +15,9 @@ type PeopleFiltersProps = {
   onPlaceChange: (value: string) => void
   onCenturyChange: (value: string) => void
   onDirectAncestorsChange: (value: boolean) => void
+  compact?: boolean
+  expanded?: boolean
+  onToggle?: () => void
 }
 
 const SORT_OPTIONS: { value: PersonSortKey; label: string }[] = [
@@ -39,10 +42,33 @@ export function PeopleFilters({
   onPlaceChange,
   onCenturyChange,
   onDirectAncestorsChange,
+  compact = false,
+  expanded = true,
+  onToggle,
 }: PeopleFiltersProps) {
+  const extraCount = [branch, place, century, directAncestorsOnly].filter(Boolean).length
+
   return (
-    <div className="people-filters">
-      <div className="people-filters-row">
+    <div className={`people-filters${compact ? ' people-filters--compact' : ''}`}>
+      {compact ? (
+        <button
+          type="button"
+          className="people-filter-toggle"
+          aria-expanded={expanded}
+          onClick={onToggle}
+        >
+          Filters{extraCount ? ` (${extraCount})` : ''}
+        </button>
+      ) : null}
+      <div className={`people-filters-row${compact && !expanded ? ' is-collapsed' : ''}${compact && expanded ? ' is-sheet' : ''}`}>
+        {compact && expanded ? (
+          <div className="people-filter-sheet-head">
+            <strong>Filter lives</strong>
+            <button type="button" onClick={onToggle}>
+              Done
+            </button>
+          </div>
+        ) : null}
         <label className="filter-field">
           <span>Sort by</span>
           <select value={sortKey} onChange={(e) => onSortChange(e.target.value as PersonSortKey)}>

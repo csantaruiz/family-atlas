@@ -1,5 +1,7 @@
 /** Modern administrative divisions — reusable geographic knowledge, not family-specific strings. */
 
+import { MODERN_COUNTRIES } from './modernCountries'
+
 export type AdminDivision = {
   id: string
   name: string
@@ -13,71 +15,15 @@ export type AdminDivision = {
 
 export type CountryEntry = AdminDivision & { kind: 'country' }
 
-const COUNTRIES: CountryEntry[] = [
-  {
-    id: 'united-states',
-    name: 'United States',
-    aliases: ['usa', 'u.s.a.', 'u.s.', 'us', 'united states of america', 'america'],
-    kind: 'country',
-    country: 'United States',
-    latitude: 39.8283,
-    longitude: -98.5795,
-  },
-  {
-    id: 'mexico',
-    name: 'Mexico',
-    aliases: ['mexique', 'méxico', 'mx'],
-    kind: 'country',
-    country: 'Mexico',
-    latitude: 23.6345,
-    longitude: -102.5528,
-  },
-  {
-    id: 'england',
-    name: 'England',
-    aliases: ['england', 'uk', 'united kingdom', 'great britain', 'britain'],
-    kind: 'country',
-    country: 'England',
-    latitude: 52.3555,
-    longitude: -1.1743,
-  },
-  {
-    id: 'scotland',
-    name: 'Scotland',
-    aliases: ['scotland'],
-    kind: 'country',
-    country: 'Scotland',
-    latitude: 56.4907,
-    longitude: -4.2026,
-  },
-  {
-    id: 'ireland',
-    name: 'Ireland',
-    aliases: ['ireland', 'eire'],
-    kind: 'country',
-    country: 'Ireland',
-    latitude: 53.4129,
-    longitude: -8.2439,
-  },
-  {
-    id: 'spain',
-    name: 'Spain',
-    aliases: ['spain', 'espana', 'españa'],
-    kind: 'country',
-    country: 'Spain',
-    latitude: 40.4637,
-    longitude: -3.7492,
-  },
-  {
-    id: 'panama',
-    name: 'Panama',
-    aliases: ['panama'],
-    kind: 'country',
-    country: 'Panama',
-    latitude: 8.538,
-    longitude: -80.7821,
-  },
-]
+const COUNTRIES: CountryEntry[] = MODERN_COUNTRIES.map((country) => ({
+  id: country.id,
+  name: country.name,
+  aliases: country.aliases,
+  kind: 'country' as const,
+  country: country.name,
+  latitude: country.latitude,
+  longitude: country.longitude,
+}))
 
 const US_STATES: AdminDivision[] = [
   { id: 'us-ca', name: 'California', aliases: ['california', 'ca', 'calif.'], kind: 'state', country: 'United States', latitude: 36.7783, longitude: -119.4179 },

@@ -17,9 +17,10 @@ export function TimelineHint() {
       <span className="hint-sep" aria-hidden="true">
         |
       </span>
-      <span className="hint-item" title="Click markers to open records">
+      <span className="hint-item" title="Open a record from a marker">
         <span className="hint-marker-diamond" aria-hidden="true" />
-        <span className="hint-item-long">Click markers to open records</span>
+        <span className="hint-item-long hint-item-fine">Click markers to open records</span>
+        <span className="hint-item-long hint-item-coarse">Tap markers to open records</span>
         <span className="hint-item-short">Open records</span>
       </span>
     </div>

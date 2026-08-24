@@ -3,6 +3,7 @@ import { allCanonicalPlaces, type ProjectedPlace } from '../../documentary-engin
 import type { GeographicScale } from '../../documentary-engine/types/choreography'
 import type { DocumentaryBranch } from '../../documentary-engine/types/manifest'
 import type { PlaceConfidence } from '../../documentary-engine/data/canonicalPlaceRegistry'
+import { MODERN_COUNTRIES } from './modernCountries'
 
 export type AtlasPlaceEntry = {
   id: string
@@ -312,6 +313,32 @@ function buildRegistry(): {
       seed.push({ ...extra, latitude: coords.lat, longitude: coords.lon })
     }
   }
+  for (const country of MODERN_COUNTRIES) {
+    if (seed.some((entry) => entry.id === country.id)) continue
+    if (
+      seed.some(
+        (entry) =>
+          entry.hierarchy.country === country.name &&
+          !entry.hierarchy.admin1 &&
+          !entry.hierarchy.admin2 &&
+          !entry.hierarchy.locality,
+      )
+    ) {
+      continue
+    }
+    seed.push({
+      id: country.id,
+      canonicalName: country.name,
+      hierarchy: { country: country.name },
+      geographicScale: 'country',
+      confidence: 'high',
+      source: 'modern-country-table',
+      resolutionMethod: 'country-center',
+      exactAliases: [country.name.toLowerCase(), ...country.aliases.map((alias) => alias.toLowerCase())],
+      latitude: country.latitude,
+      longitude: country.longitude,
+    })
+  }
 
   for (const entry of seed) {
     const projected = projectGeo(entry.longitude, entry.latitude)
@@ -379,6 +406,27 @@ const REGISTRY = buildRegistry()
 
 export function getAtlasPlace(id: string): (AtlasPlaceEntry & { x: number; y: number }) | null {
   return REGISTRY.byId.get(id) ?? null
+}
+
+/**
+ * Customer-facing label from the registry hierarchy — not the short canonicalName alone.
+ * Example: Medford + Oregon + United States → "Medford, Oregon, United States".
+ */
+export function formatCanonicalPlaceLabel(
+  place: Pick<AtlasPlaceEntry, 'canonicalName' | 'hierarchy'>,
+): string {
+  const parts: string[] = []
+  const push = (value?: string) => {
+    if (!value) return
+    if (parts.some((part) => part.toLowerCase() === value.toLowerCase())) return
+    parts.push(value)
+  }
+  push(place.canonicalName)
+  push(place.hierarchy.locality)
+  push(place.hierarchy.admin2)
+  push(place.hierarchy.admin1)
+  push(place.hierarchy.country)
+  return parts.join(', ')
 }
 
 export function findExactRegistryMatch(matchKey: string): string | null {

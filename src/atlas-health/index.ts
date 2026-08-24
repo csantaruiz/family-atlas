@@ -34,4 +34,13 @@ export {
   listFamilyEvents,
 } from './explainVisibility'
 export { isActionablePlaceComparison, runAtlasHealthCheck } from './healthCheck'
+export {
+  collectNameDateFindings,
+  summarizeNameDateFindings,
+} from './nameDateFindings'
+export type {
+  NameDateFinding,
+  NameDateFindingCounts,
+  NameDateSeverity,
+} from './nameDateFindings'
 export { isAtlasDebugEnabled } from './dev/atlasDebugEnabled'

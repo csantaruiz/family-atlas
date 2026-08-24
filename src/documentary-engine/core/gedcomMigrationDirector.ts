@@ -1,5 +1,5 @@
 import { buildFamilyEvents } from '../../data/buildFamilyEvents'
-import { familyDatabase } from '../../data/familyDatabase'
+import { getFamilyDatabase } from '../../family-data/activeFamily'
 import { dedupeFamilyEvents } from '../../utils/canonicalEvent'
 import { buildFamilyRegions, type FamilyRegionId } from '../../utils/mapRegions'
 import {
@@ -383,7 +383,7 @@ function segmentConfidence(segment: MigrationSegment, events: ReturnType<typeof 
 function loadGedcomRoutes(): CachedGedcomRoutes {
   if (cachedRoutes) return cachedRoutes
 
-  const people = familyDatabase.people
+  const people = getFamilyDatabase().people
   const events = dedupeFamilyEvents(buildFamilyEvents(people))
   const places = buildPlaceIndex(people, events)
   const migrations = buildMigrationSegments(people, events)

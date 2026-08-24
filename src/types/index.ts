@@ -12,8 +12,19 @@ export type PersonImage = {
   loadError?: string
 }
 
+/** Provenance-only name parts from GEDCOM. Display still uses Person.name. */
+export type PersonNameSource = {
+  rawPrimary: string
+  given: string | null
+  surname: string | null
+  suffix: string | null
+  aliases: string[]
+}
+
 export type Person = {
   id: string
+  /** GEDCOM xref when Person.id is an Atlas UUID (after 2D.3C activation). */
+  sourcePersonId?: string
   name: string
   sex?: string
   birthDate?: string
@@ -30,6 +41,16 @@ export type Person = {
   spouses?: string[]
   children?: string[]
   image?: PersonImage
+  nameSource?: PersonNameSource
+  /** Original displayed name when a person name override is in effect. */
+  nameOverrideSource?: {
+    originalDisplay: string
+  }
+  /** Original GEDCOM vital dates when a person date override is in effect. */
+  dateSource?: {
+    birthDate?: string
+    deathDate?: string
+  }
 }
 
 export type FamilyDatabase = {

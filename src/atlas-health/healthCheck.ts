@@ -1,11 +1,11 @@
-import { familyDatabase } from '../data/familyDatabase'
-import { familyMarriages } from '../data/familyMarriages'
+import { getFamilyDatabase, getFamilyMarriages } from '../family-data/activeFamily'
 import { buildFamilyEvents } from '../data/buildFamilyEvents'
 import { getCuratedPersonPortrait } from '../data/personPortraits'
 import { dedupeFamilyEvents } from '../utils/canonicalEvent'
 import { classifyEventSynthesis } from './eventProvenance'
 import { buildPlaceResolutionRecord, collectUniquePlaceStrings } from './placeResolution'
 import { sortPlaceFindingsBySeverity } from './placeComparison'
+import { collectNameDateFindings, summarizeNameDateFindings } from './nameDateFindings'
 import type {
   AtlasHealthReport,
   PlaceComparisonCategory,
@@ -27,8 +27,8 @@ const EMPTY_COUNTS = (): PlaceComparisonCounts => ({
  */
 export function runAtlasHealthCheck(): AtlasHealthReport {
   const places = collectUniquePlaceStrings({
-    people: familyDatabase.people,
-    marriagePlaces: familyMarriages.map((marriage) => marriage.place),
+    people: getFamilyDatabase().people,
+    marriagePlaces: getFamilyMarriages().map((marriage) => marriage.place),
   })
 
   const records = places.map((place) => buildPlaceResolutionRecord(place))
@@ -63,7 +63,7 @@ export function runAtlasHealthCheck(): AtlasHealthReport {
       documentaryPrecision,
     }))
 
-  const events = dedupeFamilyEvents(buildFamilyEvents(familyDatabase.people))
+  const events = dedupeFamilyEvents(buildFamilyEvents(getFamilyDatabase().people))
   const byKind: Record<string, number> = {}
   let inferredMoves = 0
   let curatedServices = 0
@@ -76,10 +76,16 @@ export function runAtlasHealthCheck(): AtlasHealthReport {
     if (synthesis.kind === 'curated-marriage') curatedMarriages += 1
   }
 
+  const nameDateFindings = collectNameDateFindings({
+    people: getFamilyDatabase().people,
+    marriages: getFamilyMarriages(),
+  })
+
   const notes: string[] = [
     'Phase 1 observation only — legacy pipelines were not unified.',
     'Phase 2A shadow resolver runs alongside legacy; production consumers unchanged.',
     'Place comparisons are categorized by severity; AGREEMENT is not an actionable disagreement.',
+    'Damaged-name findings can appear in Atlas Review. Maiden/nickname/duplicate-person questions stay Health-only.',
     'Health aggregation is on-demand; it is not wired into Timeline pan/zoom.',
   ]
 
@@ -110,8 +116,8 @@ export function runAtlasHealthCheck(): AtlasHealthReport {
 
   return {
     generatedAt: new Date().toISOString(),
-    people: familyDatabase.people.length,
-    photographsCuratedHint: familyDatabase.people.filter((person) =>
+    people: getFamilyDatabase().people.length,
+    photographsCuratedHint: getFamilyDatabase().people.filter((person) =>
       Boolean(getCuratedPersonPortrait(person.id, person.name)),
     ).length,
     places: {
@@ -139,6 +145,8 @@ export function runAtlasHealthCheck(): AtlasHealthReport {
       curatedServices,
       curatedMarriages,
     },
+    namesDates: summarizeNameDateFindings(nameDateFindings),
+    nameDateFindings,
     placeFindings,
     priorityPlaces,
     notes,

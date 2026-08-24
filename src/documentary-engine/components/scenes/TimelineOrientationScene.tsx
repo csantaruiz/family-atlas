@@ -1,4 +1,4 @@
-import { familyDatabase } from '../../../data/familyDatabase'
+import { getFamilyDatabase } from '../../../family-data/activeFamily'
 import type { SceneManifestEntry } from '../../types/manifest'
 
 type TimelineOrientationSceneProps = {
@@ -8,7 +8,7 @@ type TimelineOrientationSceneProps = {
 
 /** Screen-space timeline band — map continues underneath via PersistentMapStage. */
 export function TimelineOrientationScene({ scene, progress }: TimelineOrientationSceneProps) {
-  const { earliestYear, latestYear } = familyDatabase.stats
+  const { earliestYear, latestYear } = getFamilyDatabase().stats
   const window = scene.timelineWindow ?? { start: earliestYear, end: earliestYear + 120 }
   const span = latestYear - earliestYear
   const left = ((window.start - earliestYear) / span) * 100

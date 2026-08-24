@@ -190,6 +190,8 @@ export type AtlasHealthReport = {
   photographsCuratedHint: number | null
   places: AtlasHealthPlaceSummary
   events: AtlasHealthEventSummary
+  namesDates: import('./nameDateFindings').NameDateFindingCounts
+  nameDateFindings: import('./nameDateFindings').NameDateFinding[]
   /** Non-AGREEMENT place comparisons, sorted by severity. */
   placeFindings: PlaceHealthFinding[]
   /** Highest-severity subset for quick review (conflicts + resolution gaps). */

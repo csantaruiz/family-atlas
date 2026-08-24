@@ -27,13 +27,13 @@ describe('unified shadow stats (reporting)', () => {
     // Distribution snapshot (Phase 2A shadow — update if material registry change).
     expect({ resolved, coarse, ambiguous, unresolved }).toMatchInlineSnapshot(`
       {
-        "ambiguous": 2,
-        "coarse": 102,
-        "resolved": 54,
-        "unresolved": 8,
+        "ambiguous": 1,
+        "coarse": 103,
+        "resolved": 55,
+        "unresolved": 7,
       }
     `)
-    expect(health.places.unifiedCorrections).toMatchInlineSnapshot(`23`)
+    expect(health.places.unifiedCorrections).toMatchInlineSnapshot(`24`)
   })
 
   it('snapshots unified unresolved place strings', () => {
@@ -45,7 +45,6 @@ describe('unified shadow stats (reporting)', () => {
     expect(unresolved).toMatchInlineSnapshot(`
       [
         "Anderr",
-        "Iceland",
         "Minshull",
         "Not Located - Appears in 1871 Census",
         "Not, Graz-Umgebung, Styria, Austria",

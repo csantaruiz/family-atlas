@@ -29,7 +29,7 @@ import {
 } from './labelMeasure'
 import { placeDetailEvents } from './detailPlacement'
 import { timelineAxisY, type MeasuredPlaqueAnchor } from './chapterCalloutLayout'
-import { familyLabelFloorY } from './stageBreakpoints'
+import { familyLabelFloorY, isNarrowStage } from './stageBreakpoints'
 import type { LabelAlignment } from './labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents, dedupeFamilyEvents } from './canonicalEvent'
 import { generationProximityScore, isNearGeneration } from './familyPriority'
@@ -707,6 +707,15 @@ export function foldSpatiallyConflictingEvents<
   } else {
     threshold = Math.min(88, Math.max(64, base * 0.5))
     maxYearGapToFold = Math.max(10, Math.round(span * 0.12))
+  }
+
+  if (isNarrowStage(width)) {
+    const labelPx = 128
+    threshold = Math.max(threshold, Math.min(width * 0.4, labelPx * 0.82))
+    maxYearGapToFold = Math.max(
+      maxYearGapToFold,
+      Math.round(labelPx / Math.max(pxPerYear, 0.2)),
+    )
   }
 
   const sorted = [...placed].sort((a, b) => a.x - b.x || a.event.year - b.event.year)

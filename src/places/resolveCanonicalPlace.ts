@@ -10,8 +10,6 @@ import {
   hasModernMexicoContext,
   matchHistoricalEntity,
 } from './registry/historicalEntities'
-import type { PlaceOverrideStore } from './overrides/placeOverrideStore'
-import { devPlaceOverrideStore } from './overrides/inMemoryPlaceOverrideStore'
 import { placeFingerprint } from './placeFingerprint'
 import type {
   AtlasConfidence,
@@ -22,8 +20,18 @@ import type {
   ResolutionStatus,
 } from './types'
 import { RESOLVER_VERSION } from './types'
-
-const defaultOverrideStore: PlaceOverrideStore = devPlaceOverrideStore
+import { getCachedPlaceOverride } from '../overrides/overrideCache'
+import { isRuntimeApplicable } from '../overrides/identity'
+import type {
+  PlaceConfirmPayload,
+  PlaceCoordinatesPayload,
+} from '../overrides/types'
+import { projectGeo } from '../utils/mapProjection'
+import {
+  collapsePlaceIdsToSourcePrecision,
+  placeIdHonoringSourcePrecision,
+  sourcePrecisionFromComponents,
+} from './sourcePrecision'
 
 function mapRegistryConfidence(raw: string | undefined): AtlasConfidence {
   switch (raw) {
@@ -186,37 +194,27 @@ function historicalOnlyResolution(
   }
 }
 
-function newYorkAmbiguity(
-  original: string,
-  normalized: ReturnType<typeof normalizePlace>,
-): CanonicalPlaceResolution | null {
-  if (normalized.matchKey !== 'new york') return null
-  const city = buildAlternative('new-york-city', 'New York City')
-  const state = buildAlternative('new-york-state', 'New York State')
-  if (!city || !state) return null
+function foldPlaceToken(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+}
 
-  return {
-    original,
-    normalized,
-    status: 'ambiguous',
-    method: 'hierarchical-match',
-    confidence: 'LOW',
-    precision: 'state',
-    canonicalPlaceId: null,
-    label: null,
-    latitude: null,
-    longitude: null,
-    projected: null,
-    geographicScale: null,
-    branch: null,
-    alternatives: [city, state],
-    provenance: {
-      parseNotes: normalized.components.parseNotes,
-      constraintNotes: ['City vs state ambiguity — human confirmation required.'],
-      resolverVersion: RESOLVER_VERSION,
-    },
-    humanOverride: { kind: 'none' },
+function countryRecognizedOnlyByLanguageAlias(country: string, parts: string[]): boolean {
+  const canon = foldPlaceToken(country)
+  const tokens = parts.map((part) => foldPlaceToken(part))
+  if (tokens.some((token) => token === canon || token.endsWith(` ${canon}`) || token.startsWith(`${canon} `))) {
+    return false
   }
+  if (canon === 'united states' && tokens.some((token) => /\b(usa|u\.s\.a\.|u\.s\.|united states)\b/.test(token))) {
+    return false
+  }
+  if (canon === 'mexico' && tokens.some((token) => token === 'mexico' || token.endsWith(' mexico'))) {
+    return false
+  }
+  return true
 }
 
 function medordAmbiguity(
@@ -252,24 +250,53 @@ function medordAmbiguity(
   }
 }
 
-function resolveCore(original: string, normalized: ReturnType<typeof normalizePlace>): CanonicalPlaceResolution {
-  const ny = newYorkAmbiguity(original, normalized)
-  if (ny) return ny
+function resolutionForHonoredPlace(
+  original: string,
+  normalized: ReturnType<typeof normalizePlace>,
+  originalId: string,
+  honoredId: string,
+  preferredMethod: ResolutionMethod,
+): CanonicalPlaceResolution {
+  const source = sourcePrecisionFromComponents(normalized.components)
+  const notes: string[] = []
+  if (honoredId !== originalId) {
+    notes.push(
+      `source-precision-cap: kept ${source}-level place instead of nested finer canonical ${originalId}.`,
+    )
+  }
+  const method: ResolutionMethod = honoredId !== originalId ? 'admin-center' : preferredMethod
+  const status: ResolutionStatus = method === 'admin-center' ? 'coarse' : 'resolved'
+  return fromRegistry(original, normalized, honoredId, method, status, notes)
+}
 
+function resolveCore(original: string, normalized: ReturnType<typeof normalizePlace>): CanonicalPlaceResolution {
   const medord = medordAmbiguity(original, normalized)
   if (medord) return medord
 
   const exactId = findExactRegistryMatch(normalized.matchKey)
   if (exactId) {
-    return fromRegistry(original, normalized, exactId, 'exact-registry', 'resolved', [])
+    const honoredId = placeIdHonoringSourcePrecision(exactId, normalized.components)
+    if (honoredId) {
+      return resolutionForHonoredPlace(original, normalized, exactId, honoredId, 'exact-registry')
+    }
   }
 
   const { country, admin1, admin2, locality } = normalized.components
 
   if (locality && country) {
-    const scoped = findScopedLocalityMatches({ locality, country, admin1 })
+    const scoped = collapsePlaceIdsToSourcePrecision(
+      findScopedLocalityMatches({ locality, country, admin1 }),
+      normalized.components,
+    )
     if (scoped.length === 1) {
-      return fromRegistry(original, normalized, scoped[0], 'hierarchical-match', 'resolved', [])
+      const originalScoped = findScopedLocalityMatches({ locality, country, admin1 })
+      return resolutionForHonoredPlace(
+        original,
+        normalized,
+        originalScoped[0] ?? scoped[0],
+        scoped[0],
+        'hierarchical-match',
+      )
     }
     if (scoped.length > 1) {
       const alternatives = scoped
@@ -312,38 +339,110 @@ function resolveCore(original: string, normalized: ReturnType<typeof normalizePl
 
   const adminId = adminCenterPlaceId({ country, admin1, admin2 })
   if (adminId) {
-    return fromRegistry(original, normalized, adminId, 'admin-center', 'coarse', [
-      locality ? 'Locality present but not verified — admin center used.' : 'Admin-level only.',
-    ])
+    const adminPlace = getAtlasPlace(adminId)
+    const countryOnlyPlace =
+      Boolean(adminPlace) &&
+      !adminPlace?.hierarchy.admin1 &&
+      !adminPlace?.hierarchy.admin2 &&
+      !adminPlace?.hierarchy.locality
+    const unmatchedFiner = Boolean(locality)
+    const newlySeededCountry = adminPlace?.source === 'modern-country-table'
+    const countryNamedOnlyByAlias =
+      country != null && countryRecognizedOnlyByLanguageAlias(country, normalized.components.parts)
+    if (countryOnlyPlace && unmatchedFiner && (newlySeededCountry || countryNamedOnlyByAlias)) {
+      // Keep unmatched locality/admin; do not coarsen newly recognized countries
+      // (or alias-only country tokens such as Espagne) to a country centroid.
+    } else {
+      return fromRegistry(original, normalized, adminId, 'admin-center', 'coarse', [
+        locality ? 'Locality present but not verified — admin center used.' : 'Admin-level only.',
+      ])
+    }
   }
 
   const historical = historicalOnlyResolution(original, normalized)
   if (historical) return historical
 
-  if (country === 'Ireland' && !admin1 && !locality) {
-    return fromRegistry(original, normalized, 'ireland', 'admin-center', 'coarse', [
-      'Country-only Ireland — no city-level precision claimed.',
-    ])
-  }
-
-  if (country === 'United States' && !admin1 && !locality && /^united states/i.test(normalized.compact)) {
-    return fromRegistry(original, normalized, 'united-states', 'admin-center', 'coarse', [
-      'Country-only United States — no state/city precision claimed.',
-    ])
-  }
-
   return unresolved(original, normalized)
 }
 
+function applyCachedPlaceOverride(
+  original: string,
+  normalized: ReturnType<typeof normalizePlace>,
+): CanonicalPlaceResolution | null {
+  const fingerprint = placeFingerprint(normalized)
+  const override = getCachedPlaceOverride(fingerprint)
+  if (!override || !isRuntimeApplicable(override)) return null
+
+  if (override.overrideType === 'confirm_resolution') {
+    const payload = override.payload as PlaceConfirmPayload
+    if (!payload.canonicalPlaceId) return null
+    const resolved = fromRegistry(
+      original,
+      normalized,
+      payload.canonicalPlaceId,
+      'human-override',
+      'resolved',
+      ['Human override applied (canonical_selection).'],
+    )
+    return {
+      ...resolved,
+      confidence: 'CONFIRMED',
+      label: payload.label || resolved.label,
+      humanOverride: {
+        kind: 'confirmed',
+        overrideId: override.id,
+        confirmedAt: override.updatedAt,
+        confirmedBy: override.createdBy ?? undefined,
+      },
+    }
+  }
+
+  if (override.overrideType === 'set_coordinates') {
+    const payload = override.payload as PlaceCoordinatesPayload
+    const projected = projectGeo(payload.lng, payload.lat)
+    return {
+      original,
+      normalized,
+      status: 'resolved',
+      method: 'human-override',
+      confidence: 'CONFIRMED',
+      precision: 'locality',
+      canonicalPlaceId: null,
+      label: payload.label || original,
+      latitude: payload.lat,
+      longitude: payload.lng,
+      projected: { x: projected.x, y: projected.y },
+      geographicScale: 'local',
+      branch: null,
+      alternatives: [],
+      provenance: {
+        parseNotes: [
+          ...normalized.components.parseNotes,
+          'Human override applied (manual_coordinates).',
+        ],
+        constraintNotes: ['selectionProvenance:manual_coordinates'],
+        resolverVersion: RESOLVER_VERSION,
+      },
+      humanOverride: {
+        kind: 'confirmed',
+        overrideId: override.id,
+        confirmedAt: override.updatedAt,
+        confirmedBy: override.createdBy ?? undefined,
+      },
+    }
+  }
+
+  return null
+}
+
 /**
- * Unified canonical place resolver — shadow mode in Phase 2A.
- * Does not replace Explore/Documentary/Journey production paths.
+ * Unified canonical place resolver — applies Phase 2B cache overrides when present.
  */
 export async function resolveCanonicalPlace(
   original: string,
   context: ResolveCanonicalPlaceContext = {},
 ): Promise<CanonicalPlaceResolution> {
-  const atlasId = context.atlasId ?? 'default'
+  void context
   const normalized = normalizePlace(original)
 
   if (normalized.components.parseQuality === 'empty') {
@@ -354,27 +453,13 @@ export async function resolveCanonicalPlace(
     }
   }
 
-  const override = await defaultOverrideStore.get(atlasId, placeFingerprint(normalized))
-  if (override?.status === 'confirmed' && override.canonicalPlaceId) {
-    const resolved = fromRegistry(original, normalized, override.canonicalPlaceId, 'human-override', 'resolved', [
-      'Human override applied.',
-    ])
-    return {
-      ...resolved,
-      confidence: 'CONFIRMED',
-      humanOverride: {
-        kind: 'confirmed',
-        overrideId: override.id,
-        confirmedAt: override.updatedAt,
-        confirmedBy: override.createdBy,
-      },
-    }
-  }
+  const overridden = applyCachedPlaceOverride(original, normalized)
+  if (overridden) return overridden
 
   return resolveCore(original, normalized)
 }
 
-/** Synchronous shadow helper for tests and health diagnostics. */
+/** Synchronous helper for Map/Journey/health — reads override cache (no network). */
 export function resolveCanonicalPlaceSync(
   original: string,
   _context: ResolveCanonicalPlaceContext = {},
@@ -388,6 +473,9 @@ export function resolveCanonicalPlaceSync(
       method: 'normalization-only',
     }
   }
+
+  const overridden = applyCachedPlaceOverride(original, normalized)
+  if (overridden) return overridden
 
   return resolveCore(original, normalized)
 }

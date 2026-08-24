@@ -1,5 +1,5 @@
 import type { FamilyEvent, Person } from '../types'
-import { familyMarriages } from './familyMarriages'
+import { familyMarriages, type FamilyMarriage } from './familyMarriages'
 import { featuredNames } from './featuredNames'
 import { placeRegion } from '../utils/placeUtils'
 
@@ -50,7 +50,10 @@ const SPECIAL_EVENTS = [
   },
 ] as const
 
-export function buildFamilyEvents(people: Person[]): FamilyEvent[] {
+export function buildFamilyEvents(
+  people: Person[],
+  marriages: FamilyMarriage[] = familyMarriages,
+): FamilyEvent[] {
   const events: FamilyEvent[] = []
 
   people.forEach((p) => {
@@ -104,7 +107,7 @@ export function buildFamilyEvents(people: Person[]): FamilyEvent[] {
   })
 
   const byId = new Map(people.map((person) => [person.id, person]))
-  for (const marriage of familyMarriages) {
+  for (const marriage of marriages) {
     const husband = byId.get(marriage.husbandId)
     const wife = byId.get(marriage.wifeId)
     if (!husband || !wife) continue

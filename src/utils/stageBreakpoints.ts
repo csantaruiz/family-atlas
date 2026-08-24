@@ -14,7 +14,7 @@ export const TABLET_PLOT_EDGE = 48
 
 export const DESKTOP_AXIS_RATIO = 0.62
 /** Slightly higher family band on short/narrow stages. */
-export const NARROW_AXIS_RATIO = 0.58
+export const NARROW_AXIS_RATIO = 0.52
 export const TABLET_AXIS_RATIO = 0.6
 
 export function isNarrowStage(width: number): boolean {
@@ -48,7 +48,7 @@ export function timelineAxisRatioForStage(width: number, height: number): number
 
 /** Floor for family label anchors so short stages keep markers below chrome. */
 export function familyLabelFloorY(width: number, height: number): number {
-  if (isNarrowStage(width) || isShortStage(height)) return 112
+  if (isNarrowStage(width) || isShortStage(height)) return 96
   if (isTabletStage(width)) return 140
   return 168
 }
@@ -76,14 +76,14 @@ export function stageLayoutProfile(width: number, height: number): StageLayoutPr
     plotEdge: plotEdgeForWidth(width),
     axisRatio: timelineAxisRatioForStage(width, height),
     forceCompactLabels: isNarrow || isTablet,
-    maxHybridLanes: isNarrow ? 4 : isTablet ? 5 : 7,
+    maxHybridLanes: isNarrow ? 3 : isTablet ? 5 : 7,
     familyEventCap: (spanCap) => {
-      if (isNarrow) return Math.max(3, Math.min(spanCap, spanCap > 5 ? spanCap - 2 : spanCap - 1))
+      if (isNarrow) return Math.max(2, Math.min(spanCap, 3))
       if (isTablet) return Math.max(4, Math.min(spanCap, spanCap > 6 ? spanCap - 2 : spanCap - 1))
       return spanCap
     },
     historyEventCap: (spanCap) => {
-      if (isNarrow) return Math.max(3, Math.min(spanCap, Math.round(spanCap * 0.55)))
+      if (isNarrow) return Math.max(1, Math.min(spanCap, 1))
       if (isTablet) return Math.max(4, Math.min(spanCap, Math.round(spanCap * 0.7)))
       return spanCap
     },

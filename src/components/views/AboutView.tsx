@@ -1,10 +1,11 @@
-import { familyDatabase } from '../../data'
+import { useFamilyData } from '../../family-data/FamilyDataProvider'
 
 type AboutViewProps = {
   active: boolean
 }
 
 export function AboutView({ active }: AboutViewProps) {
+  const { database: familyDatabase } = useFamilyData()
   const stats = familyDatabase.stats
   const yearSpan = stats.latestYear - stats.earliestYear
 
@@ -44,11 +45,11 @@ export function AboutView({ active }: AboutViewProps) {
 
         <h3 className="about-subhead">Finding your way</h3>
         <p>
-          <strong>Journey</strong> is the timeline — drag to travel through centuries, scroll to zoom,
-          and click any person or event to open the detail panel. <strong>People</strong> is a
-          searchable directory of every life in the archive. <strong>Map</strong> shows where the
+          <strong>Timeline</strong> is the centuries themselves — drag to travel, pinch or scroll
+          to zoom, and tap or click any person or event to open a record. <strong>People</strong> is a
+          searchable directory of every life in the archive. <strong>Journeys</strong> shows where the
           family lived and moved. Use &ldquo;View on timeline&rdquo; from People or Map to return to
-          Journey centered on relevant years.
+          the Timeline centered on relevant years.
         </p>
 
         <h3 className="about-subhead">Privacy</h3>

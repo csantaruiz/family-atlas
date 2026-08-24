@@ -8,7 +8,7 @@ import {
 } from './ChapterViewportCallout'
 import { getCalloutLayoutProfile } from '../utils/chapterPresentation'
 import { estimateCardFrameHeight, resolveChapterVerticalLayout, timelineAxisY } from '../utils/chapterCalloutLayout'
-import { familyDatabase } from '../data/familyDatabase'
+import { useFamilyData } from '../family-data/FamilyDataProvider'
 import { assignEventsToChapters, buildStoryChaptersForViewport } from '../data/buildStoryChapters'
 import { useTimeline } from '../context/TimelineContext'
 import { useTimelinePulse } from '../context/TimelinePulseContext'
@@ -38,6 +38,8 @@ import { freezeLandmarkStability, unfreezeLandmarkStability } from '../utils/lan
 import { admitPersistentMarkers, maxFamilyEventsForSpan, staggerFamilyEventLanes } from '../utils/landmarkSelection'
 import { connectorStemColor, familyEventStemLength, familyLabelCeilingY } from '../utils/eventConnector'
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
+import { isNarrowStage } from '../utils/stageBreakpoints'
+import { clampLabelNudge, leftoverUnlabeledLayout } from '../utils/phoneTimelineDensity'
 import type { FamilyEvent } from '../types'
 
 type FamilyLayerProps = {
@@ -110,12 +112,14 @@ function FamilyEventButton({
   x,
   y,
   viewportWidth,
+  markerX,
   onOpen,
   onExplore,
   onViewTree,
   alignment = 'center',
   nudge = 0,
   compact = false,
+  markerOnly = false,
   stemLength,
   motionEnabled = false,
 }: {
@@ -123,12 +127,14 @@ function FamilyEventButton({
   x: number
   y: number
   viewportWidth: number
+  markerX?: number
   onOpen: (event: FamilyEvent) => void
   onExplore?: (personId: string) => void
   onViewTree?: (personId: string) => void
   alignment?: LabelAlignment
   nudge?: number
   compact?: boolean
+  markerOnly?: boolean
   stemLength: number
   motionEnabled?: boolean
 }) {
@@ -158,11 +164,14 @@ function FamilyEventButton({
   }
 
   const labelWidth = measureDetailedFootprint(event, viewportWidth, compact).width
+  const edgeNudge = isNarrowStage(viewportWidth)
+    ? clampLabelNudge(markerX ?? x, labelWidth, viewportWidth) + nudge
+    : nudge
 
   const style = {
     left: Math.round(x),
     top: Math.round(y),
-    '--label-nudge': `${nudge}px`,
+    '--label-nudge': `${edgeNudge}px`,
     '--label-width': `${labelWidth}px`,
   } as React.CSSProperties
 
@@ -184,6 +193,7 @@ function FamilyEventButton({
     event.kind,
     `align-${alignment}`,
     compact ? 'compact' : '',
+    markerOnly ? 'marker-only' : '',
     motionEnabled ? 'placement-animated' : '',
     followActive && followFocus ? 'is-follow-focus' : '',
     followActive && followRelated && !followFocus ? 'is-follow-related' : '',
@@ -222,11 +232,13 @@ function FamilyEventButton({
           onViewTree={onViewTree}
         />
       ) : null}
-      <span className="event-copy">
-        <em>{label}</em>
-        <b>{title}</b>
-        {sub ? <small>{sub}</small> : null}
-      </span>
+      {markerOnly ? null : (
+        <span className="event-copy">
+          <em>{label}</em>
+          <b>{title}</b>
+          {sub ? <small>{sub}</small> : null}
+        </span>
+      )}
       <span className="event-anchor" />
       <EventStem stemLength={stemLength} kind={event.kind} />
     </button>
@@ -234,6 +246,7 @@ function FamilyEventButton({
 }
 
 export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
+  const { database: familyDatabase } = useFamilyData()
   const {
     span,
     minYear,
@@ -250,6 +263,8 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     zoomValue,
     openPerson,
     openFamilyEvent,
+    detail,
+    center,
     setThinkingFocusRange,
     isZooming,
     isDragging,
@@ -645,6 +660,29 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       byId.set(canonicalEventId(entry.event), entry)
     }
 
+    const selectedIds = new Set<string>()
+    if (detail?.type === 'familyEvent') {
+      selectedIds.add(canonicalEventId(detail.event))
+    } else if (detail?.type === 'person') {
+      const inView = filteredFamilyEvents
+        .filter((event) => event.person.id === detail.personId && event.year >= start && event.year <= end)
+        .sort((a, b) => Math.abs(a.year - center) - Math.abs(b.year - center))
+      for (const event of inView.slice(0, 2)) selectedIds.add(canonicalEventId(event))
+    }
+
+    for (const event of filteredFamilyEvents) {
+      if (!selectedIds.has(canonicalEventId(event))) continue
+      if (event.year < start || event.year > end) continue
+      const id = canonicalEventId(event)
+      if (byId.has(id)) continue
+      byId.set(id, {
+        event,
+        x: yearX(event.year, start, span, width),
+        y: timelineAxisY(height, width) - 96,
+        compact: true,
+      })
+    }
+
     const candidates = [...byId.values()]
       .filter(({ event }) => event.year >= start && event.year <= end)
       .map((entry) => ({
@@ -653,9 +691,12 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       }))
 
     const limit = maxFamilyEventsForSpan(span, width)
-    const stickyIds = previousRenderedIdsRef.current.filter((id) =>
-      candidates.some((entry) => canonicalEventId(entry.event) === id),
-    )
+    const stickyIds = [
+      ...selectedIds,
+      ...previousRenderedIdsRef.current.filter((id) =>
+        candidates.some((entry) => canonicalEventId(entry.event) === id),
+      ),
+    ]
     const admitted = admitPersistentMarkers(
       candidates,
       stickyIds,
@@ -684,10 +725,40 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     )
 
     return foldSpatiallyConflictingEvents(staggered, span, width, height)
-  }, [activeLayout, persistEventMarkers, isZooming, spanBucket, start, end, span, width, height])
+  }, [
+    activeLayout,
+    persistEventMarkers,
+    isZooming,
+    spanBucket,
+    start,
+    end,
+    span,
+    width,
+    height,
+    detail,
+    center,
+    filteredFamilyEvents,
+  ])
 
   const renderEvents = renderLayout.events
   const conflictClusters = renderLayout.clusters
+
+  const unlabeledMarkerGroups = useMemo(() => {
+    const labeled = new Set(renderEvents.map((entry) => canonicalEventId(entry.event)))
+    const clustered = new Set(
+      conflictClusters.flatMap((cluster) => cluster.events.map((event) => canonicalEventId(event))),
+    )
+    const leftover = filteredFamilyEvents.filter((event) => {
+      if (event.year < start || event.year > end) return false
+      const id = canonicalEventId(event)
+      return !labeled.has(id) && !clustered.has(id)
+    })
+    const leftoverPoints = leftover.map((event) => ({
+      item: event,
+      x: yearX(event.year, start, span, width),
+    }))
+    return leftoverUnlabeledLayout(leftoverPoints, width)
+  }, [width, renderEvents, conflictClusters, filteredFamilyEvents, start, end, span])
 
   // Keep a fresh idle snapshot so the next drag/coast preserves clusters + density.
   useLayoutEffect(() => {
@@ -928,6 +999,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           x={0}
           y={0}
           viewportWidth={width}
+          markerX={x}
           alignment={alignment}
           nudge={nudge}
           compact={compact}
@@ -1027,6 +1099,56 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         ) : (
           placedFamilyEvents
         )}
+
+        {unlabeledMarkerGroups.ticks.map((group) => {
+          const event = group.items[0]
+          if (!event) return null
+          return (
+            <div
+              key={`marker:${canonicalEventId(event)}`}
+              className="family-event-anchor family-event-marker-anchor"
+              style={{ left: Math.round(group.x), top: Math.round(axisY) }}
+            >
+              <FamilyEventButton
+                event={event}
+                x={0}
+                y={0}
+                viewportWidth={width}
+                markerOnly
+                compact
+                stemLength={12}
+                onOpen={handleEventOpen}
+              />
+            </div>
+          )
+        })}
+
+        {unlabeledMarkerGroups.clusters.map((group) => {
+          const years = group.items.map((event) => event.year)
+          const from = Math.min(...years)
+          const to = Math.max(...years)
+          return (
+            <div
+              key={`unlabeled:${from}-${to}:${group.items.length}`}
+              className="family-event-anchor family-event-marker-cluster-anchor"
+              style={{ left: Math.round(group.x), top: Math.round(axisY) }}
+            >
+              <button
+                type="button"
+                className="family-event-marker-cluster"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  completeIntro()
+                  zoomToCluster(from, to)
+                }}
+                aria-label={`${group.items.length} events from ${from} to ${to}. Zoom in to read them.`}
+              >
+                <span className="marker-cluster-count">{group.items.length}</span>
+              </button>
+            </div>
+          )
+        })}
 
         {conflictClusters.map((cluster) => (
           <div

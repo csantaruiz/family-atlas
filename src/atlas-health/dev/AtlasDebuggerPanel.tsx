@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
-import { familyDatabase } from '../../data/familyDatabase'
+import { useEffect, useMemo, useState } from 'react'
+import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { useTimeline } from '../../context/TimelineContext'
 import { canonicalEventId } from '../../utils/canonicalEvent'
 import { viewport } from '../../utils/timelineMath'
+import type { FamilyEvent } from '../../types'
 import {
   buildPlaceResolutionRecord,
   explainEventVisibility,
@@ -14,10 +15,171 @@ import {
 } from '../index'
 import { isAtlasDebugEnabled } from './atlasDebugEnabled'
 import { isUnifiedPlacesEnabled } from '../../places/featureFlag'
+import { resolveAtlasPlace } from '../../overrides/resolveAtlasPlace'
+import { resolveAtlasEvent } from '../../overrides/applyEventOverrides'
+import {
+  placeEntityKey,
+  placeSourceSignature,
+  eventEntityKey,
+  eventFingerprint,
+} from '../../overrides/identity'
+import {
+  cacheUpsert,
+  cacheRevert,
+  ensureOverrideCacheLoaded,
+  getCachedPlaceOverride,
+} from '../../overrides/overrideCache'
+import { upsertOverrideRemote, revertOverrideRemote, fetchOverrides } from '../../overrides/overrideApi'
+import { resolveCanonicalPlaceSync } from '../../places/resolveCanonicalPlace'
+import { ReviewFindingsPanel } from './ReviewFindingsPanel'
+import { buildReviewQueue } from './reviewFindingsModel'
+import { resolvePersonDateOverride } from '../../overrides/applyPersonDateOverrides'
+import { resolvePersonNameOverride } from '../../overrides/applyPersonNameOverrides'
+import { getFamilyDatabase } from '../../family-data/activeFamily'
 
 type Tab = 'health' | 'person' | 'event' | 'place'
+type HealthMode = 'summary' | 'review'
 
-function PlaceRecordView({ record }: { record: PlaceResolutionRecord }) {
+function PersonNameOverrideNote({ personId }: { personId: string }) {
+  const person = getFamilyDatabase().people.find((row) => row.id === personId)
+  if (!person) return null
+  const resolved = resolvePersonNameOverride(person)
+  const source = person.nameOverrideSource?.originalDisplay ?? person.name
+  return (
+    <div className="atlas-debug-muted">
+      source: {source || '—'} · effective: {person.name || '—'} · override:{' '}
+      {resolved ? `${resolved.kind} (${resolved.record.status})` : 'none'}
+    </div>
+  )
+}
+
+function PersonDateOverrideNote({ personId, fact }: { personId: string; fact: string }) {
+  const person = getFamilyDatabase().people.find((row) => row.id === personId)
+  if (!person || (fact !== 'birth' && fact !== 'death')) return null
+  const resolved = resolvePersonDateOverride(person, fact)
+  const source = fact === 'death' ? person.dateSource?.deathDate ?? person.deathDate : person.dateSource?.birthDate ?? person.birthDate
+  const effective = fact === 'death' ? person.deathDate : person.birthDate
+  return (
+    <div className="atlas-debug-muted">
+      source: {source || '—'} · effective: {effective || '—'} · override:{' '}
+      {resolved ? `${resolved.kind} (${resolved.record.status})` : 'none'}
+    </div>
+  )
+}
+
+function PlaceOverrideControls({
+  original,
+  onChanged,
+}: {
+  original: string
+  onChanged: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const atlas = resolveAtlasPlace(original)
+  const fingerprint = placeEntityKey(original)
+  const cached = getCachedPlaceOverride(fingerprint)
+  const automated = resolveCanonicalPlaceSync(original)
+
+  const saveLocalOrRemote = async (input: Parameters<typeof cacheUpsert>[0]) => {
+    setBusy(true)
+    setError(null)
+    try {
+      try {
+        await upsertOverrideRemote(input)
+      } catch {
+        cacheUpsert(input)
+      }
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const revert = async () => {
+    if (!cached) return
+    setBusy(true)
+    setError(null)
+    try {
+      try {
+        await revertOverrideRemote(cached.id)
+      } catch {
+        cacheRevert(cached.id)
+      }
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Revert failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="atlas-debug-block atlas-debug-override-controls">
+      <dl className="atlas-debug-dl">
+        <dt>Override present?</dt>
+        <dd>{cached ? `yes (${cached.overrideType}, ${cached.status})` : 'no'}</dd>
+        <dt>Selection provenance</dt>
+        <dd>{atlas.selectionProvenance ?? '—'}</dd>
+        <dt>Final effective</dt>
+        <dd>
+          {atlas.label} · {atlas.source} · {atlas.confidence}
+          {atlas.coordinate.resolved
+            ? ` · (${atlas.coordinate.x.toFixed(1)}, ${atlas.coordinate.y.toFixed(1)})`
+            : ''}
+        </dd>
+        <dt>Automated</dt>
+        <dd>
+          {automated.label ?? automated.status} · {automated.method} · {automated.confidence}
+          {automated.canonicalPlaceId ? ` · ${automated.canonicalPlaceId}` : ''}
+        </dd>
+      </dl>
+      <div className="atlas-debug-actions">
+        <button
+          type="button"
+          disabled={busy || !automated.canonicalPlaceId}
+          onClick={() =>
+            void saveLocalOrRemote({
+              entityType: 'place',
+              entityKey: fingerprint,
+              overrideType: 'confirm_resolution',
+              source: 'atlas-debug',
+              sourceSignature: placeSourceSignature(original, automated.canonicalPlaceId),
+              payload: {
+                fingerprint,
+                originalExamples: [original],
+                canonicalPlaceId: automated.canonicalPlaceId!,
+                label: automated.label ?? undefined,
+                selectionProvenance: 'canonical_selection',
+                autoCanonicalPlaceId: automated.canonicalPlaceId,
+              },
+            })
+          }
+        >
+          Confirm resolution
+        </button>
+        <button
+          type="button"
+          disabled={busy || !cached}
+          onClick={() => void revert()}
+        >
+          Revert place correction
+        </button>
+      </div>
+      {error ? <p className="atlas-debug-danger">{error}</p> : null}
+    </div>
+  )
+}
+
+function PlaceRecordView({
+  record,
+  onChanged,
+}: {
+  record: PlaceResolutionRecord
+  onChanged: () => void
+}) {
   return (
     <div className="atlas-debug-block">
       <dl className="atlas-debug-dl">
@@ -26,21 +188,19 @@ function PlaceRecordView({ record }: { record: PlaceResolutionRecord }) {
         <dt>Normalized</dt>
         <dd>{record.normalized || '—'}</dd>
         <dt>Unified (shadow)</dt>
-        <dd
-          className={
-            record.unifiedComparison.category === 'UNIFIED_REGRESSION'
-              ? 'atlas-debug-danger'
-              : record.unifiedComparison.category === 'UNIFIED_CORRECTS_LEGACY'
-                ? undefined
-                : undefined
-          }
-        >
+        <dd>
           {record.unified.status === 'ambiguous'
             ? 'ambiguous'
             : record.unified.status === 'resolved' || record.unified.status === 'coarse'
               ? record.unified.label
               : record.unified.status}{' '}
           · {record.unified.method} · {record.unified.confidence} · {record.unified.precision}
+        </dd>
+        <dt>Human override</dt>
+        <dd>
+          {record.unified.humanOverride.kind === 'none'
+            ? 'none'
+            : `${record.unified.humanOverride.kind} · ${record.unified.humanOverride.overrideId}`}
         </dd>
         <dt>Unified coords</dt>
         <dd>
@@ -68,35 +228,13 @@ function PlaceRecordView({ record }: { record: PlaceResolutionRecord }) {
           {record.explore.resolved ? record.explore.label : 'unresolved'} · {record.explore.method} ·{' '}
           {record.explore.confidence}
         </dd>
-        <dt>Explore coords</dt>
-        <dd>
-          {record.explore.latitude != null
-            ? `${record.explore.latitude.toFixed(3)}, ${record.explore.longitude?.toFixed(3)}`
-            : '—'}
-          {record.explore.projectedX != null
-            ? ` · projected (${record.explore.projectedX.toFixed(1)}, ${record.explore.projectedY?.toFixed(1)})`
-            : ''}
-        </dd>
         <dt>Documentary</dt>
         <dd>
           {record.documentary.resolved
             ? `${record.documentary.label} (${record.documentary.canonicalId})`
             : 'unresolved'}{' '}
           · {record.documentary.method} · {record.documentary.confidence}
-          {record.documentary.documentaryConfidenceRaw
-            ? ` [raw ${record.documentary.documentaryConfidenceRaw}]`
-            : ''}
         </dd>
-        <dt>Documentary coords</dt>
-        <dd>
-          {record.documentary.latitude != null
-            ? `${record.documentary.latitude.toFixed(3)}, ${record.documentary.longitude?.toFixed(3)}`
-            : '—'}
-        </dd>
-        <dt>Explore precision</dt>
-        <dd>{record.explore.precision}</dd>
-        <dt>Documentary precision</dt>
-        <dd>{record.documentary.precision}</dd>
         <dt>Comparison</dt>
         <dd
           className={
@@ -106,16 +244,75 @@ function PlaceRecordView({ record }: { record: PlaceResolutionRecord }) {
           {record.comparison.category}
           {record.comparison.summary ? `: ${record.comparison.summary}` : ''}
         </dd>
-        <dt>Notes</dt>
-        <dd>
-          {[...record.explore.notes, ...record.documentary.notes].join(' ') || '—'}
-        </dd>
       </dl>
+      <PlaceOverrideControls original={record.original} onChanged={onChanged} />
     </div>
   )
 }
 
-function EventRecordView({ record }: { record: EventLifecycleRecord }) {
+function EventRecordView({
+  record,
+  onChanged,
+}: {
+  record: EventLifecycleRecord
+  onChanged?: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const effect = resolveAtlasEvent(
+    {
+      kind: record.kind as FamilyEvent['kind'],
+      year: record.year,
+      title: record.title,
+      detail: record.placeRaw || '',
+      person: { id: record.personId, name: record.personName },
+      importance: record.importanceBase,
+    },
+    record.synthesis.kind,
+  )
+
+  const toggleSuppress = async (suppress: boolean) => {
+    if (!onChanged) return
+    setBusy(true)
+    try {
+      const eventLike: FamilyEvent = {
+        kind: record.kind as FamilyEvent['kind'],
+        year: record.year,
+        title: record.title,
+        detail: record.placeRaw || '',
+        person: { id: record.personId, name: record.personName },
+        importance: record.importanceBase,
+      }
+      const fp = eventFingerprint(eventLike, record.synthesis.kind)
+      if (suppress) {
+        const input = {
+          entityType: 'event' as const,
+          entityKey: eventEntityKey(eventLike),
+          overrideType: 'suppress' as const,
+          source: 'atlas-debug',
+          sourceSignature: fp,
+          payload: { reason: 'Suppressed from Atlas Debugger', eventFingerprint: fp },
+        }
+        try {
+          await upsertOverrideRemote(input)
+        } catch {
+          cacheUpsert(input)
+        }
+      } else {
+        const existing = effect.overrides.find((row) => row.overrideType === 'suppress')
+        if (existing) {
+          try {
+            await revertOverrideRemote(existing.id)
+          } catch {
+            cacheRevert(existing.id)
+          }
+        }
+      }
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="atlas-debug-block">
       <dl className="atlas-debug-dl">
@@ -131,6 +328,12 @@ function EventRecordView({ record }: { record: EventLifecycleRecord }) {
         <dd>
           <code>{record.eventId}</code>
         </dd>
+        <dt>Override eligibility</dt>
+        <dd>
+          suppressed={effect.suppressed ? 'yes' : 'no'} · force_include=
+          {effect.forceIncludeEligible ? 'yes (eligible only)' : 'no'} · confirmed_inferred=
+          {effect.confirmedInferred ? 'yes' : 'no'}
+        </dd>
         <dt>Synthesis</dt>
         <dd>
           {record.synthesis.kind}
@@ -144,32 +347,8 @@ function EventRecordView({ record }: { record: EventLifecycleRecord }) {
         </dd>
         <dt>Viewport</dt>
         <dd>{record.withinViewport ? 'in window' : 'outside window'}</dd>
-        <dt>Semantic zoom</dt>
-        <dd>
-          {record.semanticZoomMode ?? '—'}
-          {record.birthPeriodClusterMode ? ' · birth-period clusters' : ''}
-        </dd>
-        <dt>Importance</dt>
-        <dd>
-          base {record.importanceBase}
-          {record.importanceLayoutScore != null ? ` · layout ${record.importanceLayoutScore}` : ''}
-        </dd>
-        <dt>Selection / placement</dt>
-        <dd>
-          landmark {record.selectedAsLandmark ? 'yes' : 'no'} · placed{' '}
-          {record.placedInLayout ? 'yes' : 'no'} · admitted {record.admittedAfterCap ? 'yes' : 'no'}
-        </dd>
-        <dt>Cluster / fold</dt>
-        <dd>
-          folded {record.conflictFolded ? `yes (${record.conflictClusterId})` : 'no'}
-          {record.chapterClusterId
-            ? ` · chapter ${record.chapterClusterId} hidden≈${record.chapterHiddenCount}`
-            : ''}
-        </dd>
         <dt>Final visibility</dt>
-        <dd>{record.finallyVisible ? 'VISIBLE' : 'HIDDEN'}</dd>
-        <dt>Hidden reason</dt>
-        <dd>{record.hiddenReason}</dd>
+        <dd>{record.finallyVisible ? 'visible' : `hidden (${record.hiddenReason ?? '—'})`}</dd>
         <dt>Classification</dt>
         <dd
           className={
@@ -185,10 +364,28 @@ function EventRecordView({ record }: { record: EventLifecycleRecord }) {
         <dt>Summary</dt>
         <dd>{record.summary}</dd>
       </dl>
+      {onChanged ? (
+        <div className="atlas-debug-actions">
+          <button
+            type="button"
+            disabled={busy || effect.suppressed}
+            onClick={() => void toggleSuppress(true)}
+          >
+            Suppress event
+          </button>
+          <button
+            type="button"
+            disabled={busy || !effect.suppressed}
+            onClick={() => void toggleSuppress(false)}
+          >
+            Restore event
+          </button>
+        </div>
+      ) : null}
       {record.placeResolution ? (
         <>
           <h4 className="atlas-debug-subhead">Attached place resolution</h4>
-          <PlaceRecordView record={record.placeResolution} />
+          <PlaceRecordView record={record.placeResolution} onChanged={onChanged ?? (() => undefined)} />
         </>
       ) : null}
     </div>
@@ -196,6 +393,7 @@ function EventRecordView({ record }: { record: EventLifecycleRecord }) {
 }
 
 export function AtlasDebuggerPanel() {
+  const { database: familyDatabase } = useFamilyData()
   const enabled = isAtlasDebugEnabled()
   const timeline = useTimeline()
   const [open, setOpen] = useState(true)
@@ -206,11 +404,19 @@ export function AtlasDebuggerPanel() {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [healthRan, setHealthRan] = useState(false)
+  const [healthMode, setHealthMode] = useState<HealthMode>('summary')
+  const [placeRefresh, setPlaceRefresh] = useState(0)
+  const [eventRefresh, setEventRefresh] = useState(0)
+
+  useEffect(() => {
+    void ensureOverrideCacheLoaded()
+    void fetchOverrides({ status: 'active' }).catch(() => undefined)
+  }, [])
 
   const health = useMemo(() => {
     if (!enabled || !healthRan) return null
     return runAtlasHealthCheck()
-  }, [enabled, healthRan])
+  }, [enabled, healthRan, placeRefresh, eventRefresh])
 
   const { start, end } = useMemo(
     () => viewport(timeline.center, timeline.span),
@@ -267,7 +473,10 @@ export function AtlasDebuggerPanel() {
     const q = placeQuery.trim()
     if (!q) return null
     return buildPlaceResolutionRecord(q)
-  }, [placeQuery])
+  }, [placeQuery, placeRefresh])
+
+  const bumpPlace = () => setPlaceRefresh((n) => n + 1)
+  const bumpEvent = () => setEventRefresh((n) => n + 1)
 
   const eventMatches = useMemo(() => {
     const q = eventQuery.trim().toLowerCase()
@@ -332,10 +541,31 @@ export function AtlasDebuggerPanel() {
             <p className="atlas-debug-muted">
               Runs a full place/event aggregation on demand. Not tied to pan/zoom.
             </p>
-            <button type="button" className="atlas-debug-action" onClick={() => setHealthRan(true)}>
+            <button
+              type="button"
+              className="atlas-debug-action"
+              onClick={() => {
+                setHealthRan(true)
+                setHealthMode('summary')
+              }}
+            >
               Run Atlas Health Check
             </button>
-            {health ? (
+            {health && healthMode === 'review' ? (
+              <ReviewFindingsPanel
+                report={health}
+                onPersisted={() => {
+                  bumpPlace()
+                  bumpEvent()
+                }}
+                onOpenPlaceTab={(original) => {
+                  setPlaceQuery(original)
+                  setTab('place')
+                }}
+                onExit={() => setHealthMode('summary')}
+              />
+            ) : null}
+            {health && healthMode === 'summary' ? (
               <div className="atlas-debug-block">
                 <dl className="atlas-debug-dl">
                   <dt>People</dt>
@@ -367,6 +597,10 @@ export function AtlasDebuggerPanel() {
                   <dd className={health.places.actionableFindings ? 'atlas-debug-warn' : undefined}>
                     {health.places.actionableFindings}
                   </dd>
+                  <dt>Remaining for review</dt>
+                  <dd className={buildReviewQueue(health).length ? 'atlas-debug-warn' : undefined}>
+                    {buildReviewQueue(health).length} priority (conflict + gap, not yet confirmed/ignored)
+                  </dd>
                   <dt>Unified shadow</dt>
                   <dd>
                     {health.places.unifiedResolved} resolved · {health.places.unifiedCoarse} coarse ·{' '}
@@ -379,12 +613,64 @@ export function AtlasDebuggerPanel() {
                   </dd>
                   <dt>Photos (curated files)</dt>
                   <dd>{health.photographsCuratedHint ?? '—'}</dd>
+                  <dt>Names / dates</dt>
+                  <dd>
+                    {health.namesDates.name} name · {health.namesDates.date} date ·{' '}
+                    {health.namesDates.impossible} impossible · {health.namesDates.unusual} unusual ·{' '}
+                    {health.namesDates.uncertain} uncertain · {health.namesDates.presentation}{' '}
+                    presentation
+                    {health.namesDates.customerCandidates
+                      ? ` · ${health.namesDates.customerCandidates} possible future Review`
+                      : ''}
+                  </dd>
                 </dl>
+                {health.nameDateFindings.length ? (
+                  <>
+                    <h4 className="atlas-debug-subhead">Name & date findings (diagnostic only)</h4>
+                    <ul className="atlas-debug-list">
+                      {health.nameDateFindings.map((finding) => (
+                        <li key={finding.id}>
+                          <div>
+                            {finding.personName}{' '}
+                            <span className="atlas-debug-muted">{finding.sourcePersonId}</span>
+                          </div>
+                          <div
+                            className={
+                              finding.severity === 'impossible' ? 'atlas-debug-danger' : 'atlas-debug-muted'
+                            }
+                          >
+                            {finding.severity} · {finding.domain} · {finding.code}
+                            {finding.customerCandidate ? ' · Review candidate' : ''}
+                          </div>
+                          <div className="atlas-debug-muted">{finding.reason}</div>
+                          <div className="atlas-debug-muted">
+                            raw: {finding.rawValues.join(' | ')}
+                            {finding.relatedPersonName
+                              ? ` · related: ${finding.relatedPersonName} (${finding.relatedRaw ?? ''})`
+                              : ''}
+                          </div>
+                          {finding.domain === 'date' ? (
+                            <PersonDateOverrideNote personId={finding.personId} fact={finding.fact} />
+                          ) : finding.domain === 'name' ? (
+                            <PersonNameOverrideNote personId={finding.personId} />
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+                {buildReviewQueue(health).length ? (
+                  <div className="atlas-debug-actions">
+                    <button type="button" onClick={() => setHealthMode('review')}>
+                      Review findings
+                    </button>
+                  </div>
+                ) : null}
                 {health.priorityPlaces.length ? (
                   <>
                     <h4 className="atlas-debug-subhead">Priority places (conflict + resolution gap)</h4>
                     <ul className="atlas-debug-list">
-                      {health.priorityPlaces.slice(0, 40).map((item) => (
+                      {buildReviewQueue(health).slice(0, 40).map((item) => (
                         <li key={item.original}>
                           <button
                             type="button"
@@ -398,6 +684,39 @@ export function AtlasDebuggerPanel() {
                           <div className="atlas-debug-muted">
                             {item.category}: {item.summary}
                           </div>
+                          <button
+                            type="button"
+                            className="atlas-debug-action"
+                            onClick={() => {
+                              const key = `place:${placeEntityKey(item.original)}:${item.category}`
+                              const input = {
+                                entityType: 'diagnostic' as const,
+                                entityKey: key,
+                                overrideType: 'disposition' as const,
+                                source: 'atlas-debug',
+                                reviewState: 'ignored' as const,
+                                payload: {
+                                  category: item.category,
+                                  disposition: 'ignored' as const,
+                                  originalRef: item.original,
+                                },
+                              }
+                              void (async () => {
+                                try {
+                                  await upsertOverrideRemote(input)
+                                  bumpPlace()
+                                } catch (err) {
+                                  window.alert(
+                                    err instanceof Error
+                                      ? `Save failed — finding left unresolved. ${err.message}`
+                                      : 'Save failed — finding left unresolved.',
+                                  )
+                                }
+                              })()
+                            }}
+                          >
+                            Mark ignored
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -523,7 +842,12 @@ export function AtlasDebuggerPanel() {
                 )
               })}
             </ul>
-            {eventLifecycle ? <EventRecordView record={eventLifecycle} /> : null}
+            {eventLifecycle ? (
+              <EventRecordView
+                record={eventLifecycle}
+                onChanged={bumpEvent}
+              />
+            ) : null}
           </div>
         ) : null}
 
@@ -535,7 +859,9 @@ export function AtlasDebuggerPanel() {
               value={placeQuery}
               onChange={(e) => setPlaceQuery(e.target.value)}
             />
-            {placeRecord ? <PlaceRecordView record={placeRecord} /> : null}
+            {placeRecord ? (
+              <PlaceRecordView record={placeRecord} onChanged={bumpPlace} />
+            ) : null}
           </div>
         ) : null}
       </div>

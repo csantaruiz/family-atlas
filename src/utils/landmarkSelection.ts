@@ -29,6 +29,10 @@ import {
   isTabletStage,
   stageLayoutProfile,
 } from './stageBreakpoints'
+import {
+  phoneFamilyLabelBudget,
+  phoneFamilyLaneOffsets,
+} from './phoneTimelineDensity'
 import { isNearGeneration, generationDistance } from './familyPriority'
 import { familyLabelCeilingY } from './eventConnector'
 import {
@@ -76,7 +80,7 @@ export type HybridPlacedEvent = {
 }
 
 const HYBRID_LANE_OFFSETS_DESKTOP = [52, 110, 168, 226, 284, 342, 400]
-const HYBRID_LANE_OFFSETS_NARROW = [44, 92, 140, 188]
+const HYBRID_LANE_OFFSETS_NARROW = [96, 168]
 const HYBRID_H_GAP = 44
 const HYBRID_V_GAP = 28
 const PLACEMENT_PROBE_GAP = 32
@@ -117,10 +121,7 @@ function hybridMaxLanes(viewportWidth: number): number {
 /** Vertical stem offsets for family labels — mirrors history-event lane staggering. */
 function familyLaneOffsets(span: number, viewportWidth = 1200): number[] {
   if (isNarrowStage(viewportWidth)) {
-    if (span > 320) return [64, 132, 200, 268]
-    if (span > 180) return [58, 120, 182, 244]
-    if (span > 90) return [52, 110, 168, 226]
-    return [48, 100, 152, 204]
+    return phoneFamilyLaneOffsets(span)
   }
   if (isTabletStage(viewportWidth)) {
     // Larger steps than desktop-at-tablet-width so Georgia labels clear each other.
@@ -189,11 +190,17 @@ export function maxFamilyEventsForSpan(span: number, viewportWidth = 1200): numb
   }
 
   // Roughly one readable staggered label per ~100px of usable width.
-  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / (isCompactStage(viewportWidth) ? 120 : 100))
-  cap = Math.max(cap, Math.min(spaceBudget, isCompactStage(viewportWidth) ? 10 : 16))
-  cap = Math.min(cap, isTabletStage(viewportWidth) ? 9 : isNarrowStage(viewportWidth) ? 7 : 16)
+  const spaceBudget = Math.floor(
+    Math.max(360, viewportWidth - 220) / (isNarrowStage(viewportWidth) ? 180 : isCompactStage(viewportWidth) ? 120 : 100),
+  )
+  cap = Math.max(cap, Math.min(spaceBudget, isNarrowStage(viewportWidth) ? 4 : isCompactStage(viewportWidth) ? 10 : 16))
+  cap = Math.min(cap, isTabletStage(viewportWidth) ? 9 : isNarrowStage(viewportWidth) ? 4 : 16)
 
-  return stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
+  const profileCap = stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
+  if (isNarrowStage(viewportWidth)) {
+    return Math.min(profileCap, phoneFamilyLabelBudget(span, viewportWidth))
+  }
+  return profileCap
 }
 
 /**
@@ -438,7 +445,7 @@ export function targetVisibleEventCount(
   limit = Math.min(available, limit, modeCap)
 
   if (isNarrowStage(viewportWidth)) {
-    limit = Math.min(available, Math.max(2, Math.round(limit * 0.75)))
+    limit = Math.min(available, phoneFamilyLabelBudget(span, viewportWidth))
   } else if (isTabletStage(viewportWidth)) {
     limit = Math.min(available, Math.max(3, Math.round(limit * 0.82)))
   }

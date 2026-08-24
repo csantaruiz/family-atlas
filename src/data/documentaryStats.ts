@@ -1,13 +1,13 @@
 import { buildFamilyEvents } from './buildFamilyEvents'
-import { familyDatabase } from './familyDatabase'
+import { getFamilyDatabase } from '../family-data/activeFamily'
 import type { DocumentaryStats } from '../types/documentary'
 
 export function getDocumentaryStats(): DocumentaryStats {
-  const { stats } = familyDatabase
-  const events = buildFamilyEvents(familyDatabase.people)
+  const { stats } = getFamilyDatabase()
+  const events = buildFamilyEvents(getFamilyDatabase().people)
   const migrations = events.filter((event) => event.kind === 'move').length
   const generations =
-    Math.max(...familyDatabase.people.map((person) => person.generation ?? 0), 0) + 1
+    Math.max(...getFamilyDatabase().people.map((person) => person.generation ?? 0), 0) + 1
   const yearSpan = stats.latestYear - stats.earliestYear
   const historicalEras = Math.max(3, Math.round(yearSpan / 120))
 

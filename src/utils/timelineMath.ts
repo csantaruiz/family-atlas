@@ -1,5 +1,5 @@
 import type { ZoomMode, Viewport } from '../types'
-import { DESKTOP_PLOT_EDGE, plotEdgeForWidth } from './stageBreakpoints'
+import { DESKTOP_PLOT_EDGE, isNarrowStage, plotEdgeForWidth } from './stageBreakpoints'
 
 /** Desktop plot edge. Prefer `plotEdgeForWidth(width)` for layout math. */
 export const PLOT_EDGE = DESKTOP_PLOT_EDGE
@@ -31,7 +31,12 @@ export function yearX(year: number, start: number, span: number, width: number):
   return edge + ((year - start) / span) * usable
 }
 
-export function tickStep(span: number): number {
+export function tickStep(span: number, width = 1200): number {
+  if (isNarrowStage(width)) {
+    if (span > 180) return 50
+    if (span > 80) return 25
+    return 10
+  }
   if (span > 420) return 100
   if (span > 240) return 50
   if (span > 120) return 25

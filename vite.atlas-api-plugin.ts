@@ -69,12 +69,24 @@ function resolveApiFile(urlPath: string, root: string): { file: string; query: R
   if (pathname === '/api/unlock' || pathname === '/api/auth/unlock') {
     return { file: join(root, 'api/unlock.ts'), query }
   }
+  if (pathname === '/api/overrides' || pathname === '/api/overrides/') {
+    return { file: join(root, 'api/overrides/index.ts'), query }
+  }
   if (pathname === '/api/media' || pathname === '/api/media/') {
     return { file: join(root, 'api/media/index.ts'), query }
   }
   const mediaMatch = pathname.match(/^\/api\/media\/([^/]+)$/)
   if (mediaMatch) {
     return { file: join(root, 'api/media/[assetId].ts'), query: { ...query, assetId: mediaMatch[1] } }
+  }
+  if (pathname === '/api/gedcom/imports/activate' || pathname === '/api/gedcom/imports/activate/') {
+    return { file: join(root, 'api/gedcom/imports/activate.ts'), query }
+  }
+  if (pathname === '/api/gedcom/imports' || pathname === '/api/gedcom/imports/') {
+    return { file: join(root, 'api/gedcom/imports/index.ts'), query }
+  }
+  if (pathname === '/api/family/snapshot' || pathname === '/api/family/snapshot/') {
+    return { file: join(root, 'api/family/snapshot.ts'), query }
   }
   return null
 }

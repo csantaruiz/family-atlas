@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
-import { familyDatabase } from '../../data'
+import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import { buildFamilyTreeLayout, TREE_CARD_HEIGHT, TREE_CARD_WIDTH } from '../../utils/buildFamilyTree'
 import { TreeNodeCard } from '../tree/TreeNodeCard'
 import { TreePanHint } from '../tree/TreePanHint'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
 
 type TreeViewProps = {
   active: boolean
@@ -26,8 +27,10 @@ function canPanTarget(target: EventTarget | null): boolean {
 }
 
 export function TreeView({ active }: TreeViewProps) {
+  const { database: familyDatabase } = useFamilyData()
   const { peopleById, filteredFamilyEvents, openPerson } = useTimeline()
   const { focusedTreePersonId } = useAppNavigation()
+  const phone = useMaxWidth(760)
   const canvasRef = useRef<HTMLDivElement>(null)
   const nodeSlotRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const panRef = useRef<{
@@ -38,6 +41,7 @@ export function TreeView({ active }: TreeViewProps) {
     scrollTop: number
   } | null>(null)
   const [showPanHint, setShowPanHint] = useState(true)
+  const [localFocusId, setLocalFocusId] = useState<string | null>(null)
   const [scrollEdges, setScrollEdges] = useState<ScrollEdges>({
     top: false,
     right: false,
@@ -61,6 +65,23 @@ export function TreeView({ active }: TreeViewProps) {
   const dismissPanHint = useCallback(() => {
     setShowPanHint(false)
   }, [])
+
+  const handleSelectPerson = useCallback(
+    (personId: string) => {
+      openPerson(personId)
+      if (!phone) return
+      setLocalFocusId(personId)
+      const canvas = canvasRef.current
+      const node = layout.nodes.find((entry) => entry.person.id === personId)
+      if (!canvas || !node) return
+      canvas.scrollTo({
+        left: Math.max(0, node.x + TREE_CARD_WIDTH / 2 - canvas.clientWidth / 2),
+        top: Math.max(0, node.y + TREE_CARD_HEIGHT / 2 - canvas.clientHeight / 2),
+        behavior: 'smooth',
+      })
+    },
+    [layout.nodes, openPerson, phone],
+  )
 
   const updateScrollEdges = useCallback(() => {
     const canvas = canvasRef.current
@@ -238,8 +259,8 @@ export function TreeView({ active }: TreeViewProps) {
                   <TreeNodeCard
                     person={node.person}
                     isRoot={node.person.id === layout.rootId}
-                    focused={node.person.id === focusedTreePersonId}
-                    onSelect={openPerson}
+                    focused={node.person.id === focusedTreePersonId || node.person.id === localFocusId}
+                    onSelect={handleSelectPerson}
                   />
                 </div>
                 )

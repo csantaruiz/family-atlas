@@ -6845,6 +6845,20 @@
   display: none;
 }
 
+.follow-person-stage {
+  position: absolute;
+  inset: 0;
+}
+
+.follow-person-count {
+  display: none;
+}
+
+.follow-person-transport,
+.follow-person-actions {
+  display: contents;
+}
+
 .follow-person-map {
   position: absolute;
   inset: 0;
@@ -6919,8 +6933,12 @@
   color: rgba(170, 167, 159, 0.7);
 }
 
-.follow-person-copy {
+.follow-person-meta-copy {
   margin-top: 14px;
+}
+
+.follow-person-copy {
+  margin-top: 0;
 }
 
 .follow-person-year {
@@ -7101,35 +7119,6 @@
 
 .app--follow-person .family-event.is-follow-focus .event-copy {
   text-shadow: 0 0 18px rgba(9, 11, 13, 0.85);
-}
-
-@media (max-width: 760px) {
-  .follow-person-overlay {
-    top: 65px;
-    height: 46%;
-  }
-
-  .follow-person-hud {
-    left: 16px;
-    width: calc(100% - 32px);
-  }
-
-  .follow-person-title {
-    font-size: 26px;
-  }
-
-  .follow-person-caption {
-    font-size: 14px;
-  }
-
-  .follow-person-controls {
-    left: 16px;
-    right: 16px;
-  }
-
-  .follow-person-image {
-    display: none;
-  }
 }
 
 /* ── Atlas Debugger (DEV + ?atlasDebug=1 only) ── */
@@ -9361,6 +9350,7 @@ body {
 @media (max-width: 760px) {
   :root {
     --phone-touch: 48px;
+    --phone-header-h: calc(48px + env(safe-area-inset-top, 0px));
     --phone-dock-h: calc(64px + env(safe-area-inset-bottom));
     --phone-type-display: clamp(1.55rem, 6.4vw, 1.9rem);
     --phone-type-h1: clamp(1.32rem, 5.4vw, 1.62rem);
@@ -9675,19 +9665,65 @@ body {
     padding: 0 8px 4px;
   }
 
+  .app--follow-person .top {
+    position: relative;
+    z-index: 21;
+  }
+
+  .app--follow-person #timeline > :not(.phone-timeline-dock) {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .phone-timeline-dock.is-subordinate {
+    opacity: 0.38;
+  }
+
+  .phone-timeline-dock.is-subordinate .phone-toolbar-btn:disabled {
+    pointer-events: none;
+  }
+
   .follow-person-overlay {
-    top: 52px;
+    position: fixed;
+    top: 0;
     right: 0;
-    bottom: 0;
-    height: auto;
-    display: flex;
-    flex-direction: column;
+    left: 0;
+    bottom: var(--phone-dock-h);
+    height: calc(100dvh - var(--phone-dock-h));
+    max-height: calc(100dvh - var(--phone-dock-h));
+    padding-top: var(--phone-header-h);
+    display: grid;
+    grid-template-rows: 44% minmax(0, 1fr) auto;
+    grid-template-areas:
+      'stage'
+      'narrative'
+      'controls';
+    background: #0c0b0a;
+    pointer-events: auto;
+    overflow: hidden;
+    z-index: 12;
+  }
+
+  .follow-person-stage {
+    grid-area: stage;
+    position: relative;
+    min-height: 0;
   }
 
   .follow-person-map {
-    position: relative;
-    flex: 0 0 38dvh;
-    height: 38dvh;
+    position: absolute;
+    inset: 0;
+    flex: none;
+    height: auto;
+  }
+
+  .follow-person-stage .follow-person-map-vignette {
+    background: linear-gradient(
+      180deg,
+      rgba(9, 11, 13, 0.18) 0%,
+      rgba(9, 11, 13, 0.06) 40%,
+      rgba(9, 11, 13, 0.72) 100%
+    );
   }
 
   .follow-person-close {
@@ -9699,60 +9735,112 @@ body {
     pointer-events: auto;
   }
 
-  .follow-person-btn--ghost {
-    display: none;
+  .follow-person-hud {
+    display: contents;
   }
 
-  .follow-person-hud {
+  .follow-person-meta {
+    grid-area: stage;
     position: relative;
-    left: 0;
+    align-self: end;
+    justify-self: stretch;
+    z-index: 2;
+    width: auto;
+    left: auto;
     top: auto;
-    width: 100%;
-    flex: 1 1 auto;
+    padding: 12px 56px 14px 16px;
+    pointer-events: none;
+  }
+
+  .follow-person-meta-copy {
+    margin-top: 8px;
+  }
+
+  .follow-person-kicker {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .follow-person-copy {
+    margin-top: 0;
+  }
+
+  .follow-person-narrative {
+    grid-area: narrative;
     min-height: 0;
     overflow: auto;
-    padding: 10px 16px;
+    padding: 14px 18px 6px;
     pointer-events: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .follow-person-title {
-    font-size: var(--phone-type-h1);
+    font-size: clamp(1.15rem, 5.2vw, 1.42rem);
+    max-width: none;
   }
 
   .follow-person-caption {
+    margin: 0;
+    max-width: none;
     font-size: var(--phone-type-body);
   }
 
+  .follow-person-image {
+    display: none;
+  }
+
   .follow-person-controls {
+    grid-area: controls;
     position: relative;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    left: auto;
+    right: auto;
+    bottom: auto;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
     gap: 8px;
-    padding: 8px 12px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 12px 10px;
+  }
+
+  .follow-person-transport,
+  .follow-person-actions {
+    display: grid;
+    width: 100%;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .follow-person-transport {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+
+  .follow-person-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .follow-person-count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--phone-touch);
+    padding: 0 8px;
+    font: 12px/1 Inter, system-ui, sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(214, 181, 108, 0.86);
+    white-space: nowrap;
   }
 
   .follow-person-btn {
+    width: 100%;
     min-height: var(--phone-touch);
     padding: 0 10px;
     font-size: 11px;
   }
 
+  .follow-person-btn--ghost,
   .follow-person-dots {
-    grid-column: 1 / -1;
-    justify-content: center;
-    margin: 4px 0 0;
-  }
-
-  .follow-person-dot {
-    width: 12px;
-    height: 12px;
-    min-width: 44px;
-    min-height: 24px;
-    background-clip: content-box;
-    padding: 6px 16px;
+    display: none;
   }
 
   #about .about h2,

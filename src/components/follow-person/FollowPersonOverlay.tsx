@@ -2,88 +2,113 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useFollowPerson } from '../../context/FollowPersonContext'
 import { FollowPersonMap } from './FollowPersonMap'
 import { usePresence } from '../../hooks/usePresence'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
+
+function journeyHeading(givenName: string): string {
+  const name = givenName.trim().toUpperCase()
+  if (!name) return 'JOURNEY'
+  return name.endsWith('S') ? `${name}’ JOURNEY` : `${name}’S JOURNEY`
+}
 
 export function FollowPersonOverlay() {
   const { active, journey, beat, beatIndex, playing, togglePlay, next, prev, goToBeat, exit, exploreHere } =
     useFollowPerson()
   const prefersReducedMotion = useReducedMotion()
+  const phone = useMaxWidth(760)
 
   const overlay = usePresence(Boolean(active && journey && beat))
   if (!overlay.present || !journey || !beat) return null
 
   const fade = prefersReducedMotion
     ? { duration: 0.01 }
-    : { duration: 0.45, ease: [0.22, 0.8, 0.2, 1] as const }
+    : { duration: phone ? 0.2 : 0.45, ease: [0.22, 0.8, 0.2, 1] as const }
+  const total = journey.beats.length
+  const atStart = beatIndex === 0
+  const atEnd = beatIndex >= total - 1
 
   return (
     <div
       className={`follow-person-overlay${overlay.shown ? ' is-open' : ''}`}
       role="dialog"
-      aria-label={`Following ${journey.ctaLabel.replace(/^Follow /, '')}`}
+      aria-label={`${journeyHeading(journey.givenName)} · ${beatIndex + 1} of ${total}`}
     >
-      <FollowPersonMap journey={journey} beat={beat} />
-
-      <button type="button" className="phone-close follow-person-close" onClick={exit} aria-label="Close">
-        ×
-      </button>
-
+      <div className="follow-person-stage">
+        <FollowPersonMap journey={journey} beat={beat} compact={phone} />
+        <button type="button" className="phone-close follow-person-close" onClick={exit} aria-label="Close">
+          ×
+        </button>
+      </div>
       <div className="follow-person-hud">
-        <div className="follow-person-kicker">
-          {journey.ctaLabel.replace(/^Follow /, '')}
-          <span className="follow-person-progress">
-            {beatIndex + 1} / {journey.beats.length}
-          </span>
+        <div className="follow-person-meta">
+          <div className="follow-person-kicker">
+            {phone ? journeyHeading(journey.givenName) : journey.ctaLabel.replace(/^Follow /, '')}
+            <span className="follow-person-progress">
+              {phone ? `· ${beatIndex + 1} OF ${total}` : `${beatIndex + 1} / ${total}`}
+            </span>
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${beat.id}-meta`}
+              className="follow-person-meta-copy"
+              initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={fade}
+            >
+              {beat.yearLabel ? <div className="follow-person-year">{beat.yearLabel}</div> : null}
+              <h2 className="follow-person-title">{beat.title}</h2>
+              {beat.locationLabel ? <div className="follow-person-place">{beat.locationLabel}</div> : null}
+            </motion.div>
+          </AnimatePresence>
         </div>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={beat.id}
-            className="follow-person-copy"
-            initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: prefersReducedMotion ? 0 : -6 }}
-            transition={fade}
-          >
-            {beat.yearLabel ? <div className="follow-person-year">{beat.yearLabel}</div> : null}
-            <h2 className="follow-person-title">{beat.title}</h2>
-            {beat.locationLabel ? (
-              <div className="follow-person-place">{beat.locationLabel}</div>
-            ) : null}
-            <p className="follow-person-caption">{beat.caption}</p>
-            <div className={`follow-person-evidence follow-person-evidence--${beat.evidence}`}>
-              {beat.evidenceLabel}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {beat.image ? (
-          <figure className={`follow-person-image follow-person-image--${beat.imageKind}`}>
-            <img src={beat.image.src} alt={beat.image.alt} />
-            <figcaption>
-              {beat.imageKind === 'stock' ? 'Period stock' : 'Family photograph'}
-              {beat.image.credit ? ` · ${beat.image.credit}` : ''}
-            </figcaption>
-          </figure>
-        ) : null}
+        <div className="follow-person-narrative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${beat.id}-copy`}
+              className="follow-person-copy"
+              initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={fade}
+            >
+              <p className="follow-person-caption">{beat.caption}</p>
+              <div className={`follow-person-evidence follow-person-evidence--${beat.evidence}`}>
+                {beat.evidenceLabel}
+              </div>
+              {beat.image ? (
+                <figure className={`follow-person-image follow-person-image--${beat.imageKind}`}>
+                  <img src={beat.image.src} alt={beat.image.alt} />
+                  <figcaption>
+                    {beat.imageKind === 'stock' ? 'Period stock' : 'Family photograph'}
+                    {beat.image.credit ? ` · ${beat.image.credit}` : ''}
+                  </figcaption>
+                </figure>
+              ) : null}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
 
       <div className="follow-person-controls">
-        <button type="button" className="follow-person-btn" onClick={prev} disabled={beatIndex === 0}>
-          Prev
-        </button>
-        <button type="button" className="follow-person-btn follow-person-btn--primary" onClick={togglePlay}>
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button
-          type="button"
-          className="follow-person-btn"
-          onClick={next}
-          disabled={beatIndex >= journey.beats.length - 1}
-        >
-          Next
-        </button>
-        <button type="button" className="follow-person-btn" onClick={exploreHere}>
-          Explore here
-        </button>
+        <div className="follow-person-transport">
+          <button type="button" className="follow-person-btn" onClick={prev} disabled={atStart}>
+            ← Prev
+          </button>
+          <span className="follow-person-count">
+            {beatIndex + 1} / {total}
+          </span>
+          <button type="button" className="follow-person-btn" onClick={next} disabled={atEnd}>
+            Next →
+          </button>
+        </div>
+        <div className="follow-person-actions">
+          <button type="button" className="follow-person-btn follow-person-btn--primary" onClick={togglePlay}>
+            {playing ? 'Pause' : 'Play'}
+          </button>
+          <button type="button" className="follow-person-btn" onClick={exploreHere}>
+            Explore here
+          </button>
+        </div>
         <button type="button" className="follow-person-btn follow-person-btn--ghost" onClick={exit}>
           Exit
         </button>

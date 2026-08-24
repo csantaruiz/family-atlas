@@ -9,13 +9,15 @@ import type { LifeJourney, LifeJourneyBeat } from '../../types/lifeJourney'
 type FollowPersonMapProps = {
   journey: LifeJourney
   beat: LifeJourneyBeat
+  compact?: boolean
 }
 
-/** Follow-mode framing — left HUD reserve, no pan-coverage inflation. */
+/** Follow-mode framing — left HUD reserve on desktop, centered on phone. */
 function followViewBox(
   camera: MapCamera,
   containerWidth: number,
   containerHeight: number,
+  compact?: boolean,
 ): ViewBoxCamera {
   const zoom = Math.max(1.05, camera.scale)
   const aspect = containerWidth / Math.max(containerHeight, 1)
@@ -30,9 +32,8 @@ function followViewBox(
     width = height * aspect
   }
 
-  // Keep the focal place in the open map area (right of the narrative HUD).
-  const focusX = 0.64
-  const focusY = 0.46
+  const focusX = compact ? 0.5 : 0.64
+  const focusY = compact ? 0.54 : 0.46
   return {
     minX: camera.cx - width * focusX,
     minY: camera.cy - height * focusY,
@@ -56,7 +57,7 @@ function mapPlaceLabel(label: string | null): string | null {
   return withoutPerson || null
 }
 
-export function FollowPersonMap({ journey, beat }: FollowPersonMapProps) {
+export function FollowPersonMap({ journey, beat, compact }: FollowPersonMapProps) {
   const prefersReducedMotion = useReducedMotion()
   const frameRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
@@ -77,7 +78,7 @@ export function FollowPersonMap({ journey, beat }: FollowPersonMapProps) {
   const camera = cameraForBeat(beat)
   const viewBox =
     size.width > 0 && size.height > 0
-      ? followViewBox(camera, size.width, size.height)
+      ? followViewBox(camera, size.width, size.height, compact)
       : { minX: 0, minY: 0, width: MAP_VIEW_BOX.width, height: MAP_VIEW_BOX.height }
 
   // Keep dots/labels roughly constant on screen as the viewBox zooms.
@@ -146,7 +147,7 @@ export function FollowPersonMap({ journey, beat }: FollowPersonMapProps) {
               r={marker.current ? currentR : markerR}
               strokeWidth={unit * 0.08}
             />
-            {marker.current && marker.label ? (
+            {marker.current && marker.label && !compact ? (
               <text
                 className="follow-person-map-label"
                 x={0}

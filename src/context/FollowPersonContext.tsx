@@ -135,9 +135,10 @@ export function FollowPersonProvider({ children }: { children: ReactNode }) {
     const personId = journey?.personId
     const saved = savedViewportRef.current
     savedViewportRef.current = null
+    const phone = window.matchMedia('(max-width: 760px)').matches
     clearFollow()
     if (saved) animateView(saved.center, saved.span, prefersReducedMotion ? 0 : 560)
-    if (personId) openPerson(personId)
+    if (personId && !phone) openPerson(personId)
   }, [animateView, clearFollow, journey?.personId, openPerson, prefersReducedMotion])
 
   const goToBeat = useCallback(
@@ -172,6 +173,12 @@ export function FollowPersonProvider({ children }: { children: ReactNode }) {
   const exploreHere = useCallback(() => {
     if (!journey || !beat) return
     setPlaying(false)
+    const phone = window.matchMedia('(max-width: 760px)').matches
+    if (phone) {
+      savedViewportRef.current = null
+      clearFollow()
+      return
+    }
     const event = beat.eventId
       ? familyEvents.find((item) => canonicalEventId(item) === beat.eventId)
       : null
@@ -180,7 +187,7 @@ export function FollowPersonProvider({ children }: { children: ReactNode }) {
       return
     }
     openPerson(journey.personId)
-  }, [beat, familyEvents, journey, openFamilyEvent, openPerson])
+  }, [beat, clearFollow, familyEvents, journey, openFamilyEvent, openPerson])
 
   useEffect(() => {
     if (!active || !playing || !beat || prefersReducedMotion) return

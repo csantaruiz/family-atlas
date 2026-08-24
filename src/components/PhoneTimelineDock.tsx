@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
+import { useFollowPerson } from '../context/FollowPersonContext'
 import { TimelineFiltersPanel } from './TimelineFiltersPanel'
 import { PhoneSheet } from './phone/PhoneSheet'
 
@@ -12,7 +13,14 @@ const AtlasThinkingPanel = lazy(() =>
 
 export function PhoneTimelineDock() {
   const ui = usePhoneTimelineUi()
+  const { active: journeyActive } = useFollowPerson()
   const [helpOpen, setHelpOpen] = useState(false)
+
+  useEffect(() => {
+    if (!journeyActive) return
+    ui?.openSheet(null)
+    setHelpOpen(false)
+  }, [journeyActive, ui])
 
   useEffect(() => {
     if (!ui?.sheet && !helpOpen) return
@@ -33,12 +41,13 @@ export function PhoneTimelineDock() {
   }
 
   return (
-    <div className="phone-timeline-dock">
+    <div className={`phone-timeline-dock${journeyActive ? ' is-subordinate' : ''}`}>
       <div className="phone-toolbar" role="toolbar" aria-label="Timeline">
         <button
           type="button"
           className={`phone-toolbar-btn${ui.sheet === 'story' ? ' is-active' : ''}`}
           aria-expanded={ui.sheet === 'story'}
+          disabled={journeyActive}
           onClick={() => toggleSheet('story')}
         >
           <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -51,6 +60,7 @@ export function PhoneTimelineDock() {
           type="button"
           className={`phone-toolbar-btn${ui.sheet === 'thinking' ? ' is-active' : ''}`}
           aria-expanded={ui.sheet === 'thinking'}
+          disabled={journeyActive}
           onClick={() => toggleSheet('thinking')}
         >
           <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -63,6 +73,7 @@ export function PhoneTimelineDock() {
           type="button"
           className={`phone-toolbar-btn${ui.sheet === 'filters' ? ' is-active' : ''}`}
           aria-expanded={ui.sheet === 'filters'}
+          disabled={journeyActive}
           onClick={() => toggleSheet('filters')}
         >
           <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -74,6 +85,7 @@ export function PhoneTimelineDock() {
           type="button"
           className={`phone-toolbar-btn${helpOpen ? ' is-active' : ''}`}
           aria-expanded={helpOpen}
+          disabled={journeyActive}
           onClick={() => {
             ui.openSheet(null)
             setHelpOpen((open) => !open)

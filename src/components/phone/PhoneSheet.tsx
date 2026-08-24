@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { usePhoneOverlayLock } from '../../hooks/usePhoneOverlayLock'
-import { usePresence } from '../../hooks/usePresence'
+import { PHONE_OVERLAY_MS, usePresence } from '../../hooks/usePresence'
 
 export function PhoneCloseButton({
   onClick,
@@ -43,6 +44,7 @@ export function PhoneSheet({
   size = 'auto',
   placement = 'panel',
   titleSize = 'default',
+  list = false,
 }: {
   open: boolean
   title: string
@@ -52,9 +54,30 @@ export function PhoneSheet({
   size?: 'auto' | 'compact' | 'full'
   placement?: 'panel' | 'sheet'
   titleSize?: 'default' | 'display'
+  list?: boolean
 }) {
-  const { present, shown } = usePresence(open)
+  const { present, shown } = usePresence(open, PHONE_OVERLAY_MS)
   usePhoneOverlayLock(present)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [atEnd, setAtEnd] = useState(true)
+
+  useEffect(() => {
+    const node = bodyRef.current
+    if (!present || !node) return
+    const update = () => {
+      const remaining = node.scrollHeight - node.scrollTop - node.clientHeight
+      setAtEnd(remaining < 12)
+    }
+    update()
+    node.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    return () => {
+      node.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [present, children])
+
   if (!present) return null
 
   const sheetClass = [
@@ -63,12 +86,13 @@ export function PhoneSheet({
     size === 'compact' ? 'phone-sheet--compact' : '',
     size === 'full' ? 'phone-sheet--full' : '',
     titleSize === 'display' ? 'phone-sheet--display' : '',
+    list ? 'phone-sheet--list' : '',
     shown ? 'is-open' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
-  return (
+  const sheet = (
     <div className={`phone-sheet-layer${shown ? ' is-open' : ''}`}>
       <button type="button" className="phone-sheet-scrim" aria-label="Close" onClick={onClose} />
       <div className={sheetClass} role="dialog" aria-modal="true" aria-label={title}>
@@ -79,8 +103,15 @@ export function PhoneSheet({
           </div>
           <PhoneCloseButton onClick={onClose} />
         </div>
-        <div className="phone-sheet-body">{children}</div>
+        <div
+          ref={bodyRef}
+          className={`phone-sheet-body${list && !atEnd ? ' has-more' : ''}`}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )
+
+  return createPortal(sheet, document.body)
 }

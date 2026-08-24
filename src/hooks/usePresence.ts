@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const OVERLAY_MS = 200
+const OVERLAY_MS = 220
 
 /** Keep a surface mounted until its close animation finishes. */
 export function usePresence(open: boolean, durationMs = OVERLAY_MS) {

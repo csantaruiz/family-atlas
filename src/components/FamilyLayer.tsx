@@ -1321,14 +1321,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         <PhoneSheet
           open
           placement="sheet"
+          list
           title={phonePeek.title}
+          kicker={
+            phonePeek.from === phonePeek.to
+              ? String(phonePeek.from)
+              : `${phonePeek.from}–${phonePeek.to}`
+          }
           onClose={() => setPhonePeek(null)}
         >
-          <p className="phone-peek-meta">
-            {phonePeek.from === phonePeek.to ? phonePeek.from : `${phonePeek.from}–${phonePeek.to}`}
-          </p>
           <ul className="phone-peek-list">
-            {phonePeek.events.slice(0, 8).map((event) => (
+            {phonePeek.events.map((event) => (
               <li key={canonicalEventId(event)}>
                 <button
                   type="button"

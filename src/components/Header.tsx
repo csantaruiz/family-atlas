@@ -9,6 +9,7 @@ import { useAtlasReview } from '../atlas-review/AtlasReviewRoot'
 import { useManageFamilyTree } from '../atlas-manage/ManageFamilyTreeRoot'
 import { reviewMenuCount } from '../atlas-review/customerReviewCopy'
 import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
+import { usePresence } from '../hooks/usePresence'
 
 export function Header() {
   const { database: familyDatabase } = useFamilyData()
@@ -19,7 +20,8 @@ export function Header() {
   const stats = familyDatabase.stats
   const [exploreOpen, setExploreOpen] = useState(false)
   const exploreRef = useRef<HTMLDivElement>(null)
-  usePhoneOverlayLock(exploreOpen)
+  const menu = usePresence(exploreOpen)
+  usePhoneOverlayLock(menu.present)
   const badge = reviewMenuCount(count)
 
   useEffect(() => {
@@ -70,10 +72,10 @@ export function Header() {
       <div className="top-nav" ref={exploreRef}>
         <button
           type="button"
-          className="explore-toggle"
+          className={`explore-toggle${exploreOpen || menu.shown ? ' is-open' : ''}`}
           aria-expanded={exploreOpen}
           aria-controls="atlas-explore-menu"
-          aria-label={exploreMenuLabel()}
+          aria-label={exploreOpen || menu.shown ? 'Close menu' : exploreMenuLabel()}
           onClick={() => setExploreOpen((open) => !open)}
         >
           <span className="explore-toggle-label">{exploreMenuLabel()}</span>
@@ -83,14 +85,16 @@ export function Header() {
             <span />
           </span>
         </button>
-        <button
-          type="button"
-          className={`nav-menu-scrim${exploreOpen ? ' is-open' : ''}`}
-          aria-label="Close menu"
-          tabIndex={exploreOpen ? 0 : -1}
-          onClick={() => setExploreOpen(false)}
-        />
-        <div className={`nav-cluster${exploreOpen ? ' is-open' : ''}`}>
+        {menu.present ? (
+          <button
+            type="button"
+            className={`nav-menu-scrim${menu.shown ? ' is-open' : ''}`}
+            aria-label="Close menu"
+            tabIndex={menu.shown ? 0 : -1}
+            onClick={() => setExploreOpen(false)}
+          />
+        ) : null}
+        <div className={`nav-cluster${menu.shown ? ' is-open' : ''}${menu.present ? ' is-present' : ''}`}>
           <nav
             id="atlas-explore-menu"
             className="nav"

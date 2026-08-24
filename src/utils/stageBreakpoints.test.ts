@@ -61,7 +61,7 @@ describe('stageBreakpoints', () => {
   it('shrinks the chapter plaque on tablet widths', () => {
     expect(getPlaqueWidthPx(1400)).toBeGreaterThan(getPlaqueWidthPx(1024))
     expect(getPlaqueWidthPx(1024)).toBeLessThanOrEqual(400)
-    expect(getPlaqueWidthPx(390)).toBeLessThanOrEqual(280)
+    expect(getPlaqueWidthPx(390)).toBeLessThanOrEqual(336)
     expect(
       getCalloutLayoutProfile({
         zoomMode: 'near',

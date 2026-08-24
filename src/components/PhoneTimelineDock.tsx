@@ -42,6 +42,10 @@ export function PhoneTimelineDock() {
           aria-expanded={ui.sheet === 'story'}
           onClick={() => toggleSheet('story')}
         >
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <path d="M3 3.5h7.5L13 6v7.5H3z" />
+            <path d="M10.5 3.5V6H13" />
+          </svg>
           Story
         </button>
         <button
@@ -50,6 +54,10 @@ export function PhoneTimelineDock() {
           aria-expanded={ui.sheet === 'thinking'}
           onClick={() => toggleSheet('thinking')}
         >
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <circle cx="8" cy="7" r="3.2" />
+            <path d="M5.5 11.5 4 14h8l-1.5-2.5" />
+          </svg>
           Thinking
         </button>
         <button
@@ -58,19 +66,26 @@ export function PhoneTimelineDock() {
           aria-expanded={ui.sheet === 'filters'}
           onClick={() => toggleSheet('filters')}
         >
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <path d="M2 4h12M4 8h8M6 12h4" />
+          </svg>
           Filters
         </button>
         <button
           type="button"
-          className={`phone-toolbar-btn phone-toolbar-btn--icon${helpOpen ? ' is-active' : ''}`}
+          className={`phone-toolbar-btn${helpOpen ? ' is-active' : ''}`}
           aria-expanded={helpOpen}
-          aria-label="How to explore the timeline"
           onClick={() => {
             ui.openSheet(null)
             setHelpOpen((open) => !open)
           }}
         >
-          ?
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <circle cx="8" cy="8" r="5.5" />
+            <path d="M6.4 6.2a1.7 1.7 0 0 1 3.2.8c0 1.1-1.6 1.3-1.6 2.4" />
+            <path d="M8 11.6h.01" />
+          </svg>
+          Help
         </button>
       </div>
       {helpOpen ? (

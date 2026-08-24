@@ -8566,14 +8566,12 @@ body {
   .timeline-phone--exploring .chapter-callout-layer,
   .chapter-callout-layer--phone-compact {
     top: 8px !important;
-    width: min(78vw, 280px) !important;
+    width: min(90vw, 336px) !important;
     min-width: 0 !important;
-    max-width: min(78vw, 280px) !important;
+    max-width: min(90vw, 336px) !important;
   }
 
-  .chapter-callout-layer--phone-compact .chapter-callout-scenery,
   .chapter-callout-layer--phone-compact .chapter-callout-halo,
-  .chapter-callout-layer--phone-compact .chapter-callout-zoom-actions,
   .chapter-callout-layer--phone-compact .timeline-plaque-hint,
   .timeline-phone--exploring .timeline-plaque-hint {
     display: none;
@@ -8840,18 +8838,45 @@ body {
   }
 
   #timeline.timeline-phone .year-label {
-    font-size: 10px;
+    font-size: 13px;
     letter-spacing: 0.04em;
-    opacity: 0.55;
+    opacity: 0.82;
+    padding-top: 6px;
   }
 
   #timeline.timeline-phone .history-event .history-label,
   #timeline.timeline-phone .history-event .history-copy {
-    max-width: min(168px, calc(100vw - 28px));
+    max-width: min(188px, calc(100vw - 28px));
+    font-size: 0.95rem;
+  }
+
+  #timeline.timeline-phone .history-label b,
+  #timeline.timeline-phone .stage.stage--narrow .history-label b {
+    font-size: 1rem;
+  }
+
+  #timeline.timeline-phone .history-label small,
+  #timeline.timeline-phone .stage.stage--narrow .history-label small {
+    font-size: 0.82rem;
+  }
+
+  #timeline.timeline-phone .history-event.below .history-label {
+    top: 22px;
   }
 
   #timeline.timeline-phone .family-event .event-copy {
-    max-width: min(var(--label-width, 168px), calc(100vw - 24px));
+    max-width: min(var(--label-width, 188px), calc(100vw - 24px));
+  }
+
+  #timeline.timeline-phone .family-event .event-copy b {
+    font-size: var(--phone-type-event);
+    line-height: 1.2;
+    -webkit-line-clamp: 2;
+  }
+
+  #timeline.timeline-phone .family-event .event-copy em,
+  #timeline.timeline-phone .family-event .event-copy-year {
+    font-size: var(--phone-type-meta);
   }
 
   #timeline.timeline-phone .family-event-cluster .cluster-label,
@@ -8861,20 +8886,24 @@ body {
 
   #timeline.timeline-phone .family-event-marker-cluster,
   #timeline.timeline-phone .family-event-cluster {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
+    width: 36px;
+    height: 36px;
+    min-width: 44px;
+    min-height: 44px;
     padding: 0;
+    opacity: 1;
+    transform: translate(-50%, -50%);
   }
 
   #timeline.timeline-phone .family-event-cluster .cluster-count,
   #timeline.timeline-phone .family-event-marker-cluster .marker-cluster-count {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
-    padding: 0;
-    border-width: 1px;
-    box-shadow: none;
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+    padding: 0 0 3px;
+    border-width: 1.5px;
+    border-radius: 50%;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
   }
 
   #map.map-phone .map-page-visual,
@@ -9168,8 +9197,10 @@ body {
     --phone-type-display: clamp(1.55rem, 6.4vw, 1.9rem);
     --phone-type-h1: clamp(1.32rem, 5.4vw, 1.62rem);
     --phone-type-h2: clamp(1.08rem, 4.2vw, 1.28rem);
-    --phone-type-body: 1.05rem;
-    --phone-type-meta: 0.82rem;
+    --phone-type-body: 1.125rem;
+    --phone-type-meta: 0.875rem;
+    --phone-type-quote: 1.5rem;
+    --phone-type-event: 1.125rem;
   }
 
   .phone-close {
@@ -9199,20 +9230,35 @@ body {
   }
 
   .phone-toolbar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
     flex: 1 1 0;
     min-height: var(--phone-touch);
     min-width: 44px;
-    padding: 0 8px;
+    padding: 4px 4px 6px;
     border: 0;
     border-radius: 0;
     background: none;
     color: #ead9b4;
-    font: 400 0.92rem/1 Georgia, 'Times New Roman', serif;
+    font: 400 0.78rem/1 Georgia, 'Times New Roman', serif;
+  }
+
+  .phone-toolbar-btn svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.82;
   }
 
   .phone-toolbar-btn.is-active {
     color: #f3ead4;
     box-shadow: inset 0 -2px 0 #d6b56c;
+  }
+
+  .phone-toolbar-btn.is-active svg {
+    opacity: 1;
   }
 
   .phone-toolbar-btn--icon {
@@ -9312,7 +9358,7 @@ body {
   }
 
   #timeline.timeline-phone {
-    --phone-dock-h: calc(56px + env(safe-area-inset-bottom));
+    --phone-dock-h: calc(62px + env(safe-area-inset-bottom));
   }
 
   #timeline.timeline-phone .chapter-callout-title {
@@ -9321,34 +9367,35 @@ body {
     color: #100e0c;
   }
 
-  .chapter-callout--phone-chip .chapter-callout-title::before,
-  .chapter-callout--phone-chip .chapter-callout-title::after,
-  .chapter-callout-layer--phone-compact .chapter-callout-title::before,
-  .chapter-callout-layer--phone-compact .chapter-callout-title::after {
-    display: none;
-  }
-
   .chapter-callout-layer--phone-compact .chapter-callout-frame {
-    background: rgba(22, 18, 14, 0.86);
-    padding: 4px 8px;
+    padding: 10px 12px 8px;
   }
 
-  .chapter-callout-layer--phone-compact .chapter-callout-title,
-  .chapter-callout--phone-chip .chapter-callout-title {
-    width: auto;
-    margin: 0;
-    padding: 0;
-    background: none;
-    background-image: none;
-    color: #ead9b4;
-    font-size: 0.86rem;
+  .chapter-callout-layer--phone-compact .chapter-callout-title {
+    width: calc(100% + 28px);
+    margin-inline: -14px;
+    padding: 8px 22px 9px;
+    font-size: 1.12rem;
+    line-height: 1.22;
+    white-space: normal;
   }
 
-  #timeline.timeline-phone .family-event-marker-cluster,
-  #timeline.timeline-phone .family-event-cluster {
-    opacity: 0.55;
-    transform: scale(0.78);
-    transform-origin: center bottom;
+  .chapter-callout-layer--phone-compact .chapter-callout-zoom-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .chapter-callout-layer--phone-compact .chapter-callout-zoom-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .chapter-callout-layer--phone-compact .chapter-callout-zoom-label {
+    display: none;
   }
 
   #map.map-phone .map-page-intro h2 {
@@ -9533,6 +9580,109 @@ body {
   #about .about p,
   .about p {
     font-size: var(--phone-type-body);
+  }
+
+  .phone-sheet--compact {
+    top: auto;
+    height: auto;
+    max-height: min(62dvh, 520px);
+  }
+
+  .phone-peek-meta {
+    margin: 0 0 12px;
+    color: rgba(234, 217, 180, 0.72);
+    font-size: var(--phone-type-meta);
+  }
+
+  .phone-peek-actions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .phone-peek-actions button,
+  .phone-peek-list button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    border: 1px solid rgba(214, 181, 108, 0.2);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #ead9b4;
+    font: 400 1rem/1.3 Georgia, 'Times New Roman', serif;
+    text-align: left;
+  }
+
+  .phone-peek-list {
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .phone-peek-list span {
+    color: rgba(234, 217, 180, 0.68);
+    font-size: var(--phone-type-meta);
+  }
+
+  .phone-sheet-body .featured-story-headline {
+    font-size: var(--phone-type-h1);
+    line-height: 1.25;
+  }
+
+  .phone-sheet-body .featured-story-narrative,
+  .phone-sheet-body .atlas-thinking-narrative,
+  .person-body .story,
+  .drawer .story {
+    display: block;
+    max-width: none;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+    font-size: var(--phone-type-body);
+    line-height: 1.5;
+  }
+
+  .phone-sheet-body .atlas-thinking-body {
+    text-align: left;
+  }
+
+  .phone-sheet-body .atlas-thinking-headline {
+    font-size: var(--phone-type-quote);
+    line-height: 1.3;
+  }
+
+  .phone-sheet-body .featured-story-read,
+  .phone-sheet-body .atlas-thinking-read {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .timeline-filter-option {
+    min-height: 48px;
+    font-size: 1rem;
+  }
+
+  .header-manage {
+    display: none;
+  }
+
+  .drawer .detail-portrait,
+  .drawer .detail-portrait-frame {
+    width: calc(100% - 32px);
+    max-width: none;
+    margin: 0 auto;
+  }
+
+  .drawer .detail-portrait-frame img,
+  .drawer .detail-portrait-placeholder {
+    width: 100%;
+    object-fit: cover;
+  }
+
+  .follow-person-btn {
+    font-size: 0.95rem;
   }
 }
 

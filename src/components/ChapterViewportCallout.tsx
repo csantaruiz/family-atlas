@@ -439,17 +439,7 @@ export function ChapterViewportCallout({
 
   const zoomInIconSize = isWideTimelineView ? 24 : 20
 
-  const copyBlock = phoneCompact ? (
-    <button
-      type="button"
-      className="chapter-callout chapter-callout--phone-chip"
-      aria-label={`${accessibleLabel}. Show introduction`}
-      onClick={() => phoneUi?.restoreArrival()}
-    >
-      <span className="chapter-callout-title">{presentation.title}</span>
-      <span className="chapter-callout-years">{presentation.yearRange}</span>
-    </button>
-  ) : (
+  const copyBlock = (
     <div className="chapter-callout" aria-label={accessibleLabel}>
       <span className="chapter-callout-title">{presentation.title}</span>
       <span className="chapter-callout-divider" aria-hidden="true">
@@ -484,7 +474,7 @@ export function ChapterViewportCallout({
           <ChevronLeft size={22} strokeWidth={2.15} aria-hidden="true" />
         </button>
       ) : null}
-      {!isWideTimelineView ? (
+      {!isWideTimelineView || phoneUi?.phone ? (
         <button
           type="button"
           className="chapter-callout-zoom-btn chapter-callout-zoom-btn--out"
@@ -505,7 +495,7 @@ export function ChapterViewportCallout({
         onClick={handleZoomIn}
       >
         <ZoomIn size={zoomInIconSize} strokeWidth={2} aria-hidden="true" />
-        {isWideTimelineView ? (
+        {isWideTimelineView && !phoneUi?.phone ? (
           <span className="chapter-callout-zoom-label">Zoom into timeline</span>
         ) : null}
       </button>

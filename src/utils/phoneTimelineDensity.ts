@@ -2,11 +2,11 @@ import { isNarrowStage } from './stageBreakpoints'
 import type { FamilyEvent } from '../types'
 import { canonicalEventId } from './canonicalEvent'
 
-const PHONE_FAMILY_LABEL_SLOT_PX = 128
-const PHONE_HISTORY_LABEL_SLOT_PX = 176
+const PHONE_FAMILY_LABEL_SLOT_PX = 150
+const PHONE_HISTORY_LABEL_SLOT_PX = 188
 const PHONE_DEFAULT_SPAN_YEARS = 130
-const PHONE_MAX_NUMBERED_CLUSTERS = 3
-const PHONE_CLUSTER_MIN_COUNT = 5
+const PHONE_MAX_NUMBERED_CLUSTERS = 2
+const PHONE_CLUSTER_MIN_COUNT = 3
 
 /** Phone opens on a readable chapter of time, not the full atlas. Desktop stays full-span. */
 export function defaultTimelineSpan(fullSpan: number, width: number): number {
@@ -23,7 +23,7 @@ export function phoneFamilyLabelBudget(span: number, width: number): number {
   const centuries = Math.max(1, span / 100)
   const byCentury = Math.max(2, Math.round(centuries * 1.2))
   const byWidth = Math.max(2, Math.floor((width - 32) / PHONE_FAMILY_LABEL_SLOT_PX))
-  return Math.max(2, Math.min(4, byCentury, byWidth))
+  return Math.max(2, Math.min(3, byCentury, byWidth))
 }
 
 export function phoneHistoryLabelBudget(span: number, width: number): number {
@@ -35,15 +35,15 @@ export function phoneHistoryLabelBudget(span: number, width: number): number {
 
 /** 2–3 lanes, reaching up toward the plaque instead of hugging the axis. */
 export function phoneFamilyLaneOffsets(span: number): number[] {
-  if (span > 160) return [88, 156]
-  if (span > 80) return [80, 148, 208]
-  return [72, 136, 196]
+  if (span > 160) return [124, 208]
+  if (span > 80) return [118, 196, 268]
+  return [108, 186, 252]
 }
 
 /** Sit clearly below century ticks so world-event copy does not hit the axis. */
 export function phoneHistoryLaneOffsets(span: number): number[] {
-  if (span > 160) return [86, 148]
-  return [78, 132, 186]
+  if (span > 160) return [112, 176]
+  return [104, 168, 228]
 }
 
 export type UnlabeledMarkerGroup<T> = {
@@ -99,21 +99,14 @@ export function aggregatePhoneUnlabeledMarkers<T>(
   items: Array<{ item: T; x: number }>,
   width: number,
 ): PhoneUnlabeledLayout<T> {
-  const grouped = groupUnlabeledMarkers(items, Math.max(48, Math.round(width * 0.12)))
-  const ticks: UnlabeledMarkerGroup<T>[] = []
-  const crowded: UnlabeledMarkerGroup<T>[] = []
+  const grouped = groupUnlabeledMarkers(items, Math.max(72, Math.round(width * 0.2)))
+  const crowded = grouped
+    .filter((group) => group.items.length >= PHONE_CLUSTER_MIN_COUNT)
+    .sort((a, b) => b.items.length - a.items.length)
 
-  for (const group of grouped) {
-    if (group.items.length >= PHONE_CLUSTER_MIN_COUNT) crowded.push(group)
-    else ticks.push(group)
-  }
-
-  crowded.sort((a, b) => b.items.length - a.items.length)
-  const keep = crowded.slice(0, PHONE_MAX_NUMBERED_CLUSTERS)
-  const overflow = crowded.slice(PHONE_MAX_NUMBERED_CLUSTERS)
   return {
-    ticks: [...ticks, ...overflow],
-    clusters: keep.sort((a, b) => a.x - b.x),
+    ticks: [],
+    clusters: crowded.slice(0, PHONE_MAX_NUMBERED_CLUSTERS).sort((a, b) => a.x - b.x),
   }
 }
 

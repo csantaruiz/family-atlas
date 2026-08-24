@@ -150,7 +150,7 @@ export const TABLET_PLAQUE_WIDTH_VIEWPORT_RATIO = 0.4
 
 export function getPlaqueWidthPx(viewportWidth: number): number {
   if (viewportWidth <= 760) {
-    return Math.min(viewportWidth - 40, 280)
+    return Math.min(viewportWidth - 32, 336)
   }
   if (viewportWidth <= 1180) {
     return Math.min(

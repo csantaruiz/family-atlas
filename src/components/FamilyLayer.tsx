@@ -40,7 +40,19 @@ import { connectorStemColor, familyEventStemLength, familyLabelCeilingY } from '
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import { isNarrowStage } from '../utils/stageBreakpoints'
 import { clampLabelNudge, leftoverUnlabeledLayout } from '../utils/phoneTimelineDensity'
+import { PhoneSheet } from './phone/PhoneSheet'
 import type { FamilyEvent } from '../types'
+
+type PhonePeek =
+  | { kind: 'event'; event: FamilyEvent }
+  | {
+      kind: 'cluster'
+      title: string
+      events: FamilyEvent[]
+      from: number
+      to: number
+      onZoom: () => void
+    }
 
 type FamilyLayerProps = {
   start: number
@@ -225,7 +237,7 @@ function FamilyEventButton({
         onOpen(event)
       }}
     >
-      {onViewTree && onExplore ? (
+      {onViewTree && onExplore && !isNarrowStage(viewportWidth) ? (
         <FamilyMemberActionTip
           personId={event.person.id}
           onExplore={onExplore}
@@ -271,7 +283,8 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     isInertialScrolling,
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
-  const { active: followActive, journey } = useFollowPerson()
+  const { active: followActive, journey, startFollow, journeyForPerson } = useFollowPerson()
+  const [phonePeek, setPhonePeek] = useState<PhonePeek | null>(null)
 
   const modeLive = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
@@ -897,6 +910,10 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
   const handleEventOpen = (event: FamilyEvent) => {
     completeIntro()
+    if (isNarrowStage(width)) {
+      setPhonePeek({ kind: 'event', event })
+      return
+    }
     if (event.kind === 'move' || event.kind === 'service' || event.kind === 'marriage') {
       openFamilyEvent(event)
     } else {
@@ -1140,6 +1157,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                 onClick={(e) => {
                   e.stopPropagation()
                   completeIntro()
+                  if (isNarrowStage(width)) {
+                    setPhonePeek({
+                      kind: 'cluster',
+                      title: `${group.items.length} family events`,
+                      events: group.items,
+                      from,
+                      to,
+                      onZoom: () => zoomToCluster(from, to),
+                    })
+                    return
+                  }
                   zoomToCluster(from, to)
                 }}
                 aria-label={`${group.items.length} events from ${from} to ${to}. Zoom in to read them.`}
@@ -1160,10 +1188,21 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
               type="button"
               className="family-event-cluster"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => {
-                e.stopPropagation()
-                zoomToConflictCluster(cluster)
-              }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (isNarrowStage(width)) {
+                    setPhonePeek({
+                      kind: 'cluster',
+                      title: `${cluster.count} family events`,
+                      events: cluster.events,
+                      from: cluster.from,
+                      to: cluster.to,
+                      onZoom: () => zoomToConflictCluster(cluster),
+                    })
+                    return
+                  }
+                  zoomToConflictCluster(cluster)
+                }}
               aria-label={`${cluster.count} events from ${cluster.from} to ${cluster.to}. Zoom in to reveal.`}
               title={`Zoom in to reveal ${cluster.count} events`}
             >
@@ -1183,11 +1222,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
             className="node representative-wrap"
             style={{ left: Math.round(x), top: Math.round(y) }}
           >
-            <FamilyMemberActionTip
-              personId={p.id}
-              onExplore={openPerson}
-              onViewTree={viewOnTree}
-            />
+            {isNarrowStage(width) ? null : (
+              <FamilyMemberActionTip
+                personId={p.id}
+                onExplore={openPerson}
+                onViewTree={viewOnTree}
+              />
+            )}
             <button
               type="button"
               className={`node representative${
@@ -1216,6 +1257,96 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           </div>
         ))}
       </div>
+
+      {isNarrowStage(width) && phonePeek?.kind === 'event' ? (
+        <PhoneSheet
+          open
+          size="compact"
+          title={displayName(phonePeek.event)}
+          onClose={() => setPhonePeek(null)}
+        >
+          <p className="phone-peek-meta">
+            {categoryTypeLabel(phonePeek.event)} · {phonePeek.event.year}
+          </p>
+          <div className="phone-peek-actions">
+            <button
+              type="button"
+              onClick={() => {
+                const id = phonePeek.event.person.id
+                setPhonePeek(null)
+                openPerson(id)
+              }}
+            >
+              Explore family member
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const id = phonePeek.event.person.id
+                setPhonePeek(null)
+                viewOnTree(id)
+              }}
+            >
+              View on family tree
+            </button>
+            {journeyForPerson(phonePeek.event.person.id)?.eligible ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const id = phonePeek.event.person.id
+                  setPhonePeek(null)
+                  startFollow(id)
+                }}
+              >
+                {journeyForPerson(phonePeek.event.person.id)?.ctaLabel ?? 'Follow journey'}
+              </button>
+            ) : null}
+          </div>
+        </PhoneSheet>
+      ) : null}
+
+      {isNarrowStage(width) && phonePeek?.kind === 'cluster' ? (
+        <PhoneSheet
+          open
+          size="compact"
+          title={phonePeek.title}
+          onClose={() => setPhonePeek(null)}
+        >
+          <p className="phone-peek-meta">
+            {phonePeek.from === phonePeek.to ? phonePeek.from : `${phonePeek.from}–${phonePeek.to}`}
+          </p>
+          <ul className="phone-peek-list">
+            {phonePeek.events.slice(0, 8).map((event) => (
+              <li key={canonicalEventId(event)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhonePeek(null)
+                    openPerson(event.person.id)
+                  }}
+                >
+                  <strong>{displayName(event)}</strong>
+                  <span>
+                    {categoryTypeLabel(event)} · {event.year}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="phone-peek-actions">
+            <button
+              type="button"
+              onClick={() => {
+                const zoom = phonePeek.onZoom
+                setPhonePeek(null)
+                zoom()
+              }}
+            >
+              Zoom in to this period
+            </button>
+          </div>
+        </PhoneSheet>
+      ) : null}
     </>
   )
 }

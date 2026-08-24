@@ -59,8 +59,8 @@ describe('phone timeline density', () => {
       x: 20 + (i % 12) * 28 + Math.floor(i / 12) * 8,
     }))
     const layout = aggregatePhoneUnlabeledMarkers(items, 390)
-    expect(layout.clusters.length).toBeLessThanOrEqual(3)
-    expect(layout.clusters.every((cluster) => cluster.items.length >= 5)).toBe(true)
+    expect(layout.clusters.length).toBeLessThanOrEqual(2)
+    expect(layout.clusters.every((cluster) => cluster.items.length >= 3)).toBe(true)
   })
 
   it('nudges labels back inside the viewport without moving the marker year', () => {

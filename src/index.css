@@ -8617,9 +8617,9 @@ body {
     top: 8px !important;
     left: 50% !important;
     transform: translateX(-50%);
-    width: min(calc(100vw - 16px), 384px) !important;
+    width: 100vw !important;
     min-width: 0 !important;
-    max-width: min(calc(100vw - 16px), 384px) !important;
+    max-width: 100vw !important;
   }
 
   .chapter-callout-layer--phone-compact .chapter-callout-halo,
@@ -8971,17 +8971,31 @@ body {
     left: 50% !important;
     right: auto;
     transform: translateX(-50%);
-    width: min(calc(100vw - 16px), 384px) !important;
+    width: 100vw !important;
     min-width: 0 !important;
-    max-width: min(calc(100vw - 16px), 384px) !important;
+    max-width: 100vw !important;
     box-sizing: border-box;
-    padding-inline: 36px;
+    padding-inline: 0;
+    overflow: visible;
+  }
+
+  #timeline.timeline-phone .chapter-callout-frame {
+    --callout-pad-x: 16px;
+    width: min(260px, calc(100vw - 108px));
+    margin-inline: auto;
     overflow: visible;
   }
 
   #timeline.timeline-phone .chapter-callout-title {
-    width: 100%;
-    margin-inline: 0;
+    --callout-ribbon-overlap: 10px;
+    --callout-ribbon-wing: 32px;
+    width: calc(100% + 2 * (var(--callout-pad-x, 16px) + var(--callout-ribbon-overlap)));
+    margin-inline: calc(-1 * (var(--callout-pad-x, 16px) + var(--callout-ribbon-overlap)));
+  }
+
+  #timeline.timeline-phone .timeline-mountain-silhouette {
+    overflow: hidden;
+    clip-path: inset(0 0 calc(100% - var(--phone-axis)) 0);
   }
 
   #timeline.timeline-phone .history-event .history-label,
@@ -9347,6 +9361,7 @@ body {
 @media (max-width: 760px) {
   :root {
     --phone-touch: 48px;
+    --phone-dock-h: calc(64px + env(safe-area-inset-bottom));
     --phone-type-display: clamp(1.55rem, 6.4vw, 1.9rem);
     --phone-type-h1: clamp(1.32rem, 5.4vw, 1.62rem);
     --phone-type-h2: clamp(1.08rem, 4.2vw, 1.28rem);
@@ -9356,19 +9371,34 @@ body {
     --phone-type-event: 1.125rem;
   }
 
-  .phone-close {
+  .phone-close,
+  .drawer-close,
+  .atlas-review-close,
+  .atlas-manage-close,
+  .place-detail-close,
+  .follow-person-close {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 4;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: transparent;
     color: #ead9b4;
-    font: 400 1.55rem/1 Georgia, 'Times New Roman', serif;
+    font: 400 24px/1 Georgia, 'Times New Roman', serif;
+  }
+
+  .atlas-review-close svg,
+  .atlas-manage-close svg {
+    width: 22px;
+    height: 22px;
   }
 
   .phone-toolbar {
@@ -9471,7 +9501,7 @@ body {
     align-items: center;
     justify-content: space-between;
     flex: 0 0 auto;
-    padding: 8px 8px 8px 18px;
+    padding: 8px 52px 8px 18px;
     color: #ead9b4;
     border-bottom: 1px solid rgba(214, 181, 108, 0.12);
   }
@@ -9529,8 +9559,6 @@ body {
   }
 
   .chapter-callout-layer--phone-compact .chapter-callout-title {
-    width: calc(100% + 28px);
-    margin-inline: -14px;
     padding: 8px 22px 9px;
     font-size: 1.12rem;
     line-height: 1.22;
@@ -9586,10 +9614,10 @@ body {
   .atlas-manage-close,
   .drawer-close {
     display: grid;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
     border: 0;
     border-radius: 50%;
     background: transparent;
@@ -9741,8 +9769,26 @@ body {
 
   .phone-sheet--compact {
     top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--phone-dock-h) + 10px);
     height: auto;
-    max-height: min(62dvh, 520px);
+    max-height: min(48dvh, 380px);
+    border-radius: 16px;
+  }
+
+  .phone-sheet--compact .phone-sheet-body {
+    padding-bottom: 16px;
+  }
+
+  .person-body h2,
+  #personName {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(1.85rem, 7.6vw, 2.4rem);
+    font-weight: 400;
+    line-height: 1.12;
+    letter-spacing: 0.008em;
+    color: #ead9b4;
   }
 
   .phone-peek-meta {
@@ -9815,10 +9861,10 @@ body {
   .drawer-close,
   .place-detail-close,
   .follow-person-close {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
   }
 
   .phone-sheet-body .featured-story-headline {

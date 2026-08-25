@@ -3031,6 +3031,7 @@
   position: relative;
   width: 100%;
   max-width: 280px;
+  background: #050506;
 }
 
 .detail-portrait-overlay {
@@ -3060,6 +3061,27 @@
   box-shadow:
     inset 0 0 56px rgba(0, 0, 0, 0.45),
     inset 0 0 18px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transition: opacity 0.32s ease;
+}
+
+.detail-portrait-img.is-visible {
+  opacity: 1;
+}
+
+.detail-portrait-pending-fill {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background: #050506;
+  border: 1px solid rgba(214, 181, 108, 0.18);
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-portrait-img {
+    transition: none;
+    opacity: 1;
+  }
 }
 
 .detail-portrait--placeholder .detail-portrait-img {
@@ -3068,6 +3090,7 @@
   background: #1a1612;
   filter: sepia(0.18) contrast(1.04) brightness(0.94);
   padding: 0;
+  opacity: 1;
 }
 
 .detail-portrait-caption {
@@ -8863,6 +8886,11 @@ body {
     max-width: none;
   }
 
+  .featured-story--sheet .featured-story-kicker,
+  .atlas-thinking--sheet .atlas-thinking-kicker {
+    display: none;
+  }
+
   .featured-story--sheet .editorial-cloud-vapor,
   .atlas-thinking--sheet .editorial-cloud-vapor {
     display: none;
@@ -9644,7 +9672,7 @@ body {
     --phone-sheet-border: rgba(214, 181, 108, 0.22);
     --phone-sheet-shadow: 0 -16px 42px rgba(0, 0, 0, 0.5);
     --phone-sheet-scrim: rgba(6, 7, 9, 0.58);
-    --phone-sheet-head-h: 56px;
+    --phone-sheet-head-h: 76px;
     --phone-motion: 220ms;
     --phone-motion-ease: cubic-bezier(0.22, 0.8, 0.2, 1);
     --phone-z-dock: 40;
@@ -9853,12 +9881,12 @@ body {
 
   .phone-sheet-head {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 8px;
     flex: 0 0 auto;
     min-height: var(--phone-sheet-head-h);
-    padding: 12px 8px 10px var(--phone-sheet-pad-x);
+    padding: 12px 8px 12px var(--phone-sheet-pad-x);
     color: #ead9b4;
     border-bottom: 1px solid var(--phone-sheet-border);
   }
@@ -9876,11 +9904,13 @@ body {
 
   .phone-sheet-title {
     display: block;
-    font: 500 1.05rem/1.25 Georgia, 'Times New Roman', serif;
+    font: 500 1.625rem/1.15 Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.01em;
+    color: #f3ead4;
   }
 
   .phone-sheet--display .phone-sheet-title {
-    font: 600 clamp(1.75rem, 7.2vw, 2rem) / 1.12 Georgia, 'Times New Roman', serif;
+    font: 500 1.75rem/1.12 Georgia, 'Times New Roman', serif;
     letter-spacing: 0.01em;
     color: #f3ead4;
   }
@@ -9901,13 +9931,17 @@ body {
   }
 
   .phone-sheet-body {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 14px var(--phone-sheet-pad-x) 24px;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .phone-sheet--full .phone-sheet-body {
+    flex: 1 1 auto;
   }
 
   .phone-sheet--sheet .phone-sheet-body {
@@ -10375,7 +10409,7 @@ body {
     justify-content: center;
     width: 100%;
     min-height: 48px;
-    padding: 10px 12px;
+    padding: 12px 14px;
     border: 1px solid rgba(214, 181, 108, 0.2);
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.03);
@@ -10385,6 +10419,8 @@ body {
   }
 
   .phone-peek-list {
+    display: grid;
+    gap: 10px;
     margin: 0 0 12px;
     padding: 0 0 22px;
     list-style: none;
@@ -10400,6 +10436,44 @@ body {
     font-size: var(--phone-type-body);
     line-height: 1.45;
     color: rgba(243, 236, 220, 0.88);
+  }
+
+  .phone-help-guide {
+    margin: 0;
+    padding: 4px 0 8px;
+    list-style: none;
+    display: grid;
+    gap: 18px;
+  }
+
+  .phone-help-row {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .phone-help-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-top: 1px;
+    color: #ead9b4;
+  }
+
+  .phone-help-copy strong {
+    display: block;
+    margin: 0 0 4px;
+    color: #f3ead4;
+    font: 500 1.15rem/1.25 Georgia, 'Times New Roman', serif;
+  }
+
+  .phone-help-copy p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+    color: rgba(234, 217, 180, 0.78);
   }
 
   .phone-help dl {
@@ -10466,7 +10540,25 @@ body {
 
   .timeline-filter-option {
     min-height: 48px;
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+
+  .timeline-filters-group-title {
+    font-size: 0.9rem;
+    letter-spacing: 0.14em;
+  }
+
+  .timeline-filter-branch-surname {
     font-size: 1rem;
+  }
+
+  .timeline-filters-list {
+    gap: 10px;
+  }
+
+  .nav-cluster .nav {
+    padding-top: 16px;
   }
 
   .header-manage {

@@ -5,6 +5,10 @@ import {
   removePersonPortrait,
   uploadPersonPortrait,
 } from '../utils/personPortraitStore'
+import {
+  resolvePortraitPresentation,
+  type PortraitAvailability,
+} from '../utils/portraitPresentation'
 
 type DetailPortraitProps = {
   image?: PersonImage | null
@@ -14,6 +18,7 @@ type DetailPortraitProps = {
   /** When set with a person name, placeholder portraits can accept uploads. */
   personId?: string
   personName?: string
+  availability?: PortraitAvailability
 }
 
 function downloadPortrait(personId: string, src: string) {
@@ -38,17 +43,21 @@ export function DetailPortrait({
   variant = 'portrait',
   personId,
   personName,
+  availability = 'empty',
 }: DetailPortraitProps) {
   const isHistoryHero = variant === 'history-hero'
   const [imageFailed, setImageFailed] = useState(false)
+  const [imageDecoded, setImageDecoded] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
   const inputId = useId()
 
   useEffect(() => {
     setImageFailed(false)
+    setImageDecoded(false)
     setUploadError(null)
   }, [image?.src, personId])
 
@@ -60,6 +69,11 @@ export function DetailPortrait({
       : apiPortraitSrc(image) ?? image?.src ?? null
   const previewFailed = isUserUpload && Boolean(previewSrc) && (imageFailed || Boolean(image?.loadError))
   const previewError = image?.loadError ?? (imageFailed ? 'Portrait preview could not be loaded.' : null)
+
+  useEffect(() => {
+    const node = imageRef.current
+    if (node?.complete && node.naturalWidth > 0) setImageDecoded(true)
+  }, [previewSrc])
   const isUnavailable =
     !previewSrc || Boolean(useArchivalPlaceholder || image?.isPlaceholder) || previewFailed
   const showUploadChrome = canUpload && (isUnavailable || isUserUpload)
@@ -163,10 +177,22 @@ export function DetailPortrait({
     </div>
   ) : null
 
+  const presentation = resolvePortraitPresentation({
+    hasConcreteImage: Boolean(
+      previewSrc && !useArchivalPlaceholder && !image?.isPlaceholder && !previewFailed,
+    ),
+    availability,
+    decodeFailed: previewFailed,
+  })
   const overlayCaption =
-    image?.caption ??
-    (useArchivalPlaceholder || image?.isPlaceholder ? 'Portrait unavailable' : null)
-  const portraitOverlay = overlayCaption ? (
+    presentation === 'placeholder'
+      ? (image?.caption ??
+        (useArchivalPlaceholder || image?.isPlaceholder ? 'Portrait unavailable' : null))
+      : image?.caption && presentation === 'photo'
+        ? image.caption
+        : null
+  const portraitOverlay =
+    overlayCaption && presentation !== 'pending' ? (
       <figcaption className="detail-portrait-overlay">
         <span className="detail-portrait-caption">{overlayCaption}</span>
       </figcaption>
@@ -179,27 +205,44 @@ export function DetailPortrait({
     </div>
   )
 
-  if (previewSrc && !previewFailed && (useArchivalPlaceholder || image?.isPlaceholder)) {
+  if (presentation === 'pending') {
+    return (
+      <figure className="detail-portrait detail-portrait--pending" aria-busy="true">
+        {portraitFrame(<div className="detail-portrait-pending-fill" />)}
+        {uploadControl}
+      </figure>
+    )
+  }
+
+  if (previewSrc && presentation === 'placeholder') {
     return (
       <figure className="detail-portrait detail-portrait--placeholder">
         {portraitFrame(
-          <img className="detail-portrait-img" src={previewSrc} alt={image?.alt ?? ''} />,
+          <img className="detail-portrait-img is-visible" src={previewSrc} alt={image?.alt ?? ''} />,
         )}
         {uploadControl}
       </figure>
     )
   }
 
-  if (previewSrc && !previewFailed) {
+  if (previewSrc && presentation === 'photo') {
     return (
-      <figure className={`detail-portrait${isHistoryHero ? ' detail-portrait--history-hero' : ''}`}>
+      <figure
+        className={`detail-portrait${isHistoryHero ? ' detail-portrait--history-hero' : ''}${
+          imageDecoded ? '' : ' detail-portrait--pending'
+        }`}
+      >
         {portraitFrame(
           <img
-            className={`detail-portrait-img${isHistoryHero ? ' detail-portrait-img--history-hero' : ''}`}
+            ref={imageRef}
+            className={`detail-portrait-img${isHistoryHero ? ' detail-portrait-img--history-hero' : ''}${
+              imageDecoded ? ' is-visible' : ''
+            }`}
             src={previewSrc}
             alt={image?.alt ?? ''}
             loading={isUserUpload ? 'eager' : 'lazy'}
             decoding="async"
+            onLoad={() => setImageDecoded(true)}
             onError={() => setImageFailed(true)}
           />,
         )}

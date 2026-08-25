@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { useFollowPerson } from '../context/FollowPersonContext'
 import { TimelineFiltersPanel } from './TimelineFiltersPanel'
+import { PhoneHelpGuide } from './phone/PhoneHelpGuide'
 import { PhoneSheet } from './phone/PhoneSheet'
 
 const FeaturedStory = lazy(() =>
@@ -106,30 +107,7 @@ export function PhoneTimelineDock() {
         size="auto"
         placement="panel"
       >
-        <div className="phone-help">
-          <p>
-            Gold marks family lives. Teal diamonds mark world history. They never share the same
-            side of the axis.
-          </p>
-          <dl>
-            <div>
-              <dt>Zoom</dt>
-              <dd>Pinch the canvas, or use + and − on the chapter plaque.</dd>
-            </div>
-            <div>
-              <dt>Pan</dt>
-              <dd>Drag to move through years. The chapter header stays put.</dd>
-            </div>
-            <div>
-              <dt>Open a record</dt>
-              <dd>Tap a named family event, then choose Explore, Tree, or Follow.</dd>
-            </div>
-            <div>
-              <dt>Grouped events</dt>
-              <dd>A numbered circle is several lives in one year-band. Tap it to list them.</dd>
-            </div>
-          </dl>
-        </div>
+        <PhoneHelpGuide />
       </PhoneSheet>
       <PhoneSheet
         open={ui.sheet === 'story'}

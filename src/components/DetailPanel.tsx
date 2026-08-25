@@ -15,7 +15,10 @@ import { initials } from '../utils/format'
 import { formatAmericanDate } from '../utils/formatDate'
 import { primaryLocations } from '../utils/personDirectory'
 import { peopleRelevantToEvent } from '../utils/placeUtils'
-import { ensurePersonPortraitLoaded } from '../utils/personPortraitStore'
+import {
+  ensurePersonPortraitLoaded,
+  getPortraitAvailability,
+} from '../utils/personPortraitStore'
 import { resolvePersonPortrait } from '../utils/resolvePersonPortrait'
 import { DetailPortrait } from './DetailPortrait'
 import { PersonJourneyButton } from './PersonJourneyButton'
@@ -30,7 +33,12 @@ export function DetailPanel() {
 
   const isOpen = Boolean(detail)
   usePhoneOverlayLock(isOpen)
-  const portraitPersonKey = detail?.type === 'person' ? detail.personId : null
+  const portraitPersonKey =
+    detail?.type === 'person'
+      ? detail.personId
+      : detail?.type === 'familyEvent'
+        ? detail.event.person.id
+        : null
   useEffect(() => {
     if (!portraitPersonKey) return
     void ensurePersonPortraitLoaded(portraitPersonKey)
@@ -223,6 +231,9 @@ export function DetailPanel() {
             variant={portraitVariant}
             personId={portraitPersonId}
             personName={portraitPersonName}
+            availability={
+              portraitPersonId ? getPortraitAvailability(portraitPersonId) : 'empty'
+            }
           />
           <div className="person-body">
             <div className="eyebrow" id="personGen">

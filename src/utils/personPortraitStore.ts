@@ -5,6 +5,7 @@ import {
   uploadPrimaryPortrait,
   type CloudPortrait,
 } from './mediaApi'
+import type { PortraitAvailability } from './portraitPresentation'
 
 const MAX_EDGE_PX = 900
 const JPEG_QUALITY = 0.84
@@ -15,6 +16,7 @@ const listeners = new Set<() => void>()
 let snapshot: PersonPortraitMap = {}
 const inflight = new Map<string, Promise<void>>()
 const objectUrls = new Map<string, string>()
+const availability: Record<string, PortraitAvailability> = {}
 
 function revokePortraitObjectUrl(personId: string): void {
   const url = objectUrls.get(personId)
@@ -57,6 +59,7 @@ async function portraitWithDisplayUrl(portrait: CloudPortrait): Promise<PersonIm
 }
 
 function emit(): void {
+  snapshot = { ...snapshot }
   for (const listener of listeners) listener()
 }
 
@@ -77,28 +80,47 @@ export function getPersonPortrait(personId: string): PersonImage | undefined {
 
 function setLocalPortrait(personId: string, image: PersonImage): void {
   snapshot = { ...snapshot, [personId]: image }
+  availability[personId] = image.loadError ? 'failed' : 'ready'
   emit()
 }
 
 function clearLocalPortrait(personId: string): void {
-  if (!(personId in snapshot)) return
   revokePortraitObjectUrl(personId)
-  const next = { ...snapshot }
-  delete next[personId]
-  snapshot = next
+  if (personId in snapshot) {
+    const next = { ...snapshot }
+    delete next[personId]
+    snapshot = next
+  }
+  availability[personId] = 'empty'
   emit()
+}
+
+export function getPortraitAvailability(personId: string): PortraitAvailability {
+  if (snapshot[personId]?.loadError) return 'failed'
+  if (snapshot[personId]) return 'ready'
+  return availability[personId] ?? 'unknown'
 }
 
 /** Load primary cloud portrait for a person (no-op if already cached). */
 export function ensurePersonPortraitLoaded(personId: string): Promise<void> {
   if (snapshot[personId]) return Promise.resolve()
+  if (availability[personId] === 'empty' || availability[personId] === 'failed') {
+    return Promise.resolve()
+  }
+  if (!availability[personId] || availability[personId] === 'unknown') {
+    availability[personId] = 'loading'
+  }
   const existing = inflight.get(personId)
   if (existing) return existing
 
   const task = (async () => {
     try {
       const portrait = await fetchPrimaryPortrait(personId)
-      if (!portrait) return
+      if (!portrait) {
+        availability[personId] = 'empty'
+        emit()
+        return
+      }
       try {
         setLocalPortrait(personId, await portraitWithDisplayUrl(portrait))
       } catch (error) {
@@ -108,6 +130,8 @@ export function ensurePersonPortraitLoaded(personId: string): Promise<void> {
       }
     } catch (error) {
       console.warn('Portrait load failed', personId, error)
+      availability[personId] = 'failed'
+      emit()
     } finally {
       inflight.delete(personId)
     }
@@ -200,7 +224,14 @@ export async function uploadPersonPortrait(
 
 /** Force a fresh metadata + byte fetch (e.g. after fixing Blob env). */
 export function reloadPersonPortrait(personId: string): Promise<void> {
-  clearLocalPortrait(personId)
+  revokePortraitObjectUrl(personId)
+  if (personId in snapshot) {
+    const next = { ...snapshot }
+    delete next[personId]
+    snapshot = next
+  }
+  availability[personId] = 'loading'
+  emit()
   return ensurePersonPortraitLoaded(personId)
 }
 

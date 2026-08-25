@@ -141,6 +141,7 @@ export function fitCameraToBounds(
 
   const { min, max } = scaleLimitsForLevel(level)
   scale = Math.max(min, Math.min(max, scale))
+  scale = Math.max(1, scale)
 
   const cx = geoCx - (usable.centerXPercent - 50) / scale
   const cy = geoCy - (usable.centerYPercent - 50) / scale

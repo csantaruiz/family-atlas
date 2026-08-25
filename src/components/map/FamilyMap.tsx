@@ -126,12 +126,27 @@ export function FamilyMap({
   useEffect(() => {
     const el = frameRef.current
     if (!el) return
+    const applySize = (width: number, height: number) => {
+      if (width <= 0 || height <= 0) return
+      setFrameSize((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height },
+      )
+    }
+    const fromBox = () => {
+      const rect = el.getBoundingClientRect()
+      applySize(rect.width, rect.height)
+    }
+    fromBox()
+    const raf = window.requestAnimationFrame(fromBox)
     const ro = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect
-      if (rect) setFrameSize({ width: rect.width, height: rect.height })
+      if (rect) applySize(rect.width, rect.height)
     })
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      window.cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
   }, [])
 
   useEffect(() => {

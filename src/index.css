@@ -9487,6 +9487,82 @@ body {
     margin-bottom: 4px;
   }
 
+  #map.map-phone .map-atlas-frame--touch {
+    touch-action: none;
+  }
+
+  #map.map-phone .map-filters-chip,
+  #map.map-phone .map-reset-view {
+    position: absolute;
+    z-index: 5;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(186, 168, 132, 0.28);
+    border-radius: 999px;
+    background: rgba(14, 13, 12, 0.72);
+    color: rgba(234, 217, 180, 0.82);
+    font: 400 12px/1 Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.04em;
+  }
+
+  #map.map-phone .map-filters-chip {
+    top: 12px;
+    left: 12px;
+  }
+
+  #map.map-phone .map-reset-view {
+    top: 12px;
+    left: 92px;
+  }
+
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) {
+    max-height: none;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded)::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 99px;
+    background: rgba(234, 217, 180, 0.28);
+  }
+
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-lede,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-synopsis,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-meta,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-section,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-actions,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-unresolved-disclosure {
+    display: none;
+  }
+
+  #map.map-phone .map-detail-panel--phone.is-expanded .map-sheet-peek-meta,
+  #map.map-phone .map-detail-panel--phone.is-expanded .map-sheet-expand {
+    display: none;
+  }
+
+  #map.map-phone .map-sheet-peek-meta {
+    margin: 4px 0 8px;
+    color: rgba(220, 210, 190, 0.72);
+    font: 400 13px/1.35 Georgia, 'Times New Roman', serif;
+  }
+
+  #map.map-phone .map-sheet-expand {
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #ead9b4;
+    font: 400 14px/1 Georgia, 'Times New Roman', serif;
+  }
+
+  #map.map-phone .map-detail-panel--phone.is-expanded {
+    max-height: min(72dvh, 640px);
+  }
+
   #map.map-phone .map-filter-sheet {
     padding: 4px 16px 8px;
   }
@@ -10232,7 +10308,10 @@ body {
   }
 
   #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-section,
-  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-synopsis {
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-synopsis,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-meta,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-lede,
+  #map.map-phone .map-detail-panel--phone:not(.is-expanded) .map-inspector-actions {
     display: none;
   }
 

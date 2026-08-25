@@ -1,15 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useMapExploration } from '../../context/MapExplorationContext'
-import { usePinchZoom } from '../../hooks/usePinchZoom'
+import { useMapCameraGestures } from '../../hooks/useMapCameraGestures'
+import { useMaxWidth } from '../../hooks/useMaxWidth'
+import {
+  cameraHasLeftOverview,
+  clampCameraToContent,
+  zoomCameraAt,
+} from '../../utils/mapCameraGestures'
+import { MAP_CAMERA_TRANSITION_MS, MAP_PEEK_INSET_PX } from '../../utils/mapCamera'
 import type { Person } from '../../types'
 import type { LineagePalette } from '../../utils/lineageColors'
 import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
 import type { MapSubregion } from '../../utils/mapSubregions'
 import type { RegionalRoute, SubregionRoute } from '../../utils/mapRoutes'
-import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
   cameraTransform,
+  DEFAULT_CAMERA,
   effectiveMapScale,
   heatIntensity,
   regionVisibleAtLevel,
@@ -35,6 +42,7 @@ type FamilyMapProps = {
   filterKey: string
   lineagePalette: LineagePalette | null
   people: Person[]
+  onOpenFilters?: () => void
 }
 
 const VB = MAP_VIEW_BOX
@@ -57,6 +65,7 @@ export function FamilyMap({
   filterKey,
   lineagePalette,
   people,
+  onOpenFilters,
 }: FamilyMapProps) {
   const prefersReducedMotion = useReducedMotion()
   const frameRef = useRef<HTMLDivElement>(null)
@@ -82,7 +91,14 @@ export function FamilyMap({
     zoomOut,
     resetExploration,
     clearSelection,
+    updateCameraLive,
+    refitFilteredView,
   } = useMapExploration()
+  const phone = useMaxWidth(760)
+  const [liveCamera, setLiveCamera] = useState(false)
+  const [gestureMoved, setGestureMoved] = useState(false)
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
 
   const [hoveredRegionId, setHoveredRegionId] = useState<FamilyRegionId | null>(null)
   const [routeTooltipPos, setRouteTooltipPos] = useState<{ x: number; y: number } | null>(null)
@@ -121,8 +137,9 @@ export function FamilyMap({
       frameWidthPx: frameSize.width,
       frameHeightPx: frameSize.height,
       panelOpen: selection !== null,
+      bottomInsetPx: phone && selection ? MAP_PEEK_INSET_PX : 0,
     })
-  }, [frameSize, selection, setViewportLayout])
+  }, [frameSize, selection, phone, setViewportLayout])
 
   const selectedRegionId =
     selection?.type === 'region' ? selection.region.id : focusRegionId
@@ -152,21 +169,37 @@ export function FamilyMap({
   const onWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault()
+      if (phone) {
+        const rect = frameRef.current?.getBoundingClientRect()
+        if (!rect) return
+        const originLeft = ((e.clientX - rect.left) / rect.width) * 100
+        const originTop = ((e.clientY - rect.top) / rect.height) * 100
+        const factor = e.deltaY > 0 ? 0.94 : 1.06
+        updateCameraLive(
+          clampCameraToContent(
+            zoomCameraAt(cameraRef.current, factor, originLeft, originTop),
+            familyContentBounds,
+          ),
+        )
+        setGestureMoved(true)
+        return
+      }
       if (e.deltaY > 0) zoomOut()
       else zoomIn()
     },
-    [zoomIn, zoomOut],
+    [phone, zoomIn, zoomOut, updateCameraLive, familyContentBounds],
   )
 
-  const handleMapPinch = useCallback(
-    ({ delta }: { centerX: number; delta: number; width: number }) => {
-      if (delta > 0) zoomOut()
-      else zoomIn()
+  useMapCameraGestures(frameRef, phone, {
+    getCamera: () => cameraRef.current,
+    applyCamera: (next) => {
+      updateCameraLive(next)
+      setGestureMoved(true)
     },
-    [zoomIn, zoomOut],
-  )
-
-  usePinchZoom(frameRef, true, handleMapPinch)
+    bounds: familyContentBounds,
+    onGestureStart: () => setLiveCamera(true),
+    onGestureEnd: () => setLiveCamera(false),
+  })
 
   const activeRoutes = layers.showMajorRoutes ? routes : layers.showLocalRoutes ? subroutes : []
   const routeKind = layers.showMajorRoutes ? 'route' : 'subroute'
@@ -212,7 +245,11 @@ export function FamilyMap({
   const outlineWidth = 0.22 / Math.max(zoomScale, 1)
 
   return (
-    <div className="map-atlas-frame" ref={frameRef} onWheel={onWheel}>
+    <div
+      className={`map-atlas-frame${phone ? ' map-atlas-frame--touch' : ''}`}
+      ref={frameRef}
+      onWheel={onWheel}
+    >
       {routeTooltipRoute && routeTooltipPos && (
         <MigrationRouteTooltip
           fromName={routeTooltipRoute.fromName}
@@ -239,7 +276,7 @@ export function FamilyMap({
       <motion.div
         className="map-atlas-zoom"
         animate={{ transform: cameraTransform(camera) }}
-        transition={{ duration: transitionDuration, ease: motionEase }}
+        transition={{ duration: liveCamera ? 0 : transitionDuration, ease: motionEase }}
       >
         <div className="map-atlas-plate">
           <svg
@@ -401,12 +438,37 @@ export function FamilyMap({
         <span className="map-zoom-level">{ZOOM_LEVEL_LABELS[level]}</span>
       </div>
 
+      {phone && onOpenFilters ? (
+        <button
+          type="button"
+          className="map-filters-chip"
+          onClick={onOpenFilters}
+        >
+          Filters
+        </button>
+      ) : null}
+
+      {phone && (gestureMoved || cameraHasLeftOverview(camera, DEFAULT_CAMERA)) ? (
+        <button
+          type="button"
+          className="map-reset-view"
+          onClick={() => {
+            if (selection) refitFilteredView()
+            else resetExploration()
+            setGestureMoved(false)
+          }}
+        >
+          Reset view
+        </button>
+      ) : null}
+
       {selection && (
         <button type="button" className="map-clear-selection pill" onClick={clearSelection}>
           Clear selection
         </button>
       )}
 
+      {!(phone && selection) ? (
       <div className="map-hint">
         {level === 'family' ? (
           <>
@@ -420,6 +482,7 @@ export function FamilyMap({
           </>
         )}
       </div>
+      ) : null}
     </div>
   )
 }

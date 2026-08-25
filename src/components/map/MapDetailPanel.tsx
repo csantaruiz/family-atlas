@@ -4,7 +4,7 @@ import type { PlaceRecord } from '../../utils/placeIndex'
 import { getMapClusterPresentation } from '../../utils/mapClusterTitles'
 import { generateMapClusterSynopsis } from '../../utils/mapClusterSynopsis'
 import { generateMigrationRouteSynopsis, generateMigrationRouteTitle } from '../../utils/mapRoutes'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
@@ -12,43 +12,40 @@ import { useMaxWidth } from '../../hooks/useMaxWidth'
 import { MapUnresolvedDisclosure } from './MapUnresolvedDisclosure'
 import { PhoneCloseButton } from '../phone/PhoneSheet'
 
-function MapDetailsToggle({
-  phone,
-  expanded,
-  onToggle,
-}: {
-  phone: boolean
-  expanded: boolean
-  onToggle: () => void
-}) {
-  if (!phone) return null
-  return (
-    <button type="button" className="map-detail-more map-action-primary" onClick={onToggle}>
-      {expanded ? 'Show less' : 'Full details'}
-    </button>
-  )
-}
-
 export function MapDetailPanel({
   subregions = [],
   unresolved = [],
-  onOpenFilters,
 }: {
   subregions?: MapSubregion[]
   unresolved?: PlaceRecord[]
-  onOpenFilters?: () => void
 }) {
   const { selection, level, clearSelection } = useMapExploration()
   const { openPerson, openFamilyEvent } = useTimeline()
   const { viewOnTimeline } = useAppNavigation()
   const phone = useMaxWidth(760)
   const [expanded, setExpanded] = useState(false)
+  const dragStartY = useRef<number | null>(null)
 
   useEffect(() => {
     setExpanded(false)
   }, [selection])
 
   const panelClass = `place-detail-panel open map-detail-panel${phone && expanded ? ' is-expanded' : ''}${phone ? ' map-detail-panel--phone' : ''}`
+  const sheetDrag = phone
+    ? {
+        onPointerDown: (event: ReactPointerEvent) => {
+          if ((event.target as HTMLElement).closest('button, a, input, select')) return
+          dragStartY.current = event.clientY
+        },
+        onPointerUp: (event: ReactPointerEvent) => {
+          if (dragStartY.current == null) return
+          const dy = event.clientY - dragStartY.current
+          dragStartY.current = null
+          if (dy < -32) setExpanded(true)
+          else if (dy > 32) setExpanded(false)
+        },
+      }
+    : {}
 
   if (!selection) return null
 
@@ -76,10 +73,20 @@ export function MapDetailPanel({
     const routeSynopsis = generateMigrationRouteSynopsis(route)
 
     return (
-      <aside className={panelClass}>
+      <aside className={panelClass} {...sheetDrag}>
         <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
         <div className="eyebrow map-inspector-kicker">Migration corridor</div>
         <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
+        {phone ? (
+          <>
+            <p className="map-sheet-peek-meta">
+              {yearLabel} · {route.people.length} {route.people.length === 1 ? 'person' : 'people'} · {route.confidence}
+            </p>
+            <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+              View details
+            </button>
+          </>
+        ) : null}
         <p className="map-inspector-lede place-region">
           {route.fromName} → {route.toName}
         </p>
@@ -141,10 +148,9 @@ export function MapDetailPanel({
           <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
             View on timeline
           </button>
-          <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
-          {phone && onOpenFilters ? (
-            <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
-              Filters
+          {phone ? (
+            <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
+              Close details
             </button>
           ) : null}
         </div>
@@ -172,10 +178,20 @@ export function MapDetailPanel({
     })
 
     return (
-      <aside className={panelClass}>
+      <aside className={panelClass} {...sheetDrag}>
         <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
         <div className="eyebrow map-inspector-kicker">Regional chapter</div>
         <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
+        {phone ? (
+          <>
+            <p className="map-sheet-peek-meta">
+              {yearLabel} · {sub.placeCount} places · {sub.peopleCount} people
+            </p>
+            <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+              View details
+            </button>
+          </>
+        ) : null}
         <p className="map-inspector-lede place-region">{sub.name}</p>
         <p className="map-inspector-synopsis">{subSynopsis}</p>
         <div className="place-detail-stats map-inspector-meta">
@@ -209,10 +225,9 @@ export function MapDetailPanel({
           </ul>
         </div>
         <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
-          <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
-          {phone && onOpenFilters ? (
-            <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
-              Filters
+          {phone ? (
+            <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
+              Close details
             </button>
           ) : null}
         </div>
@@ -282,7 +297,7 @@ export function MapDetailPanel({
       : null
 
   return (
-    <aside className={panelClass}>
+    <aside className={panelClass} {...sheetDrag}>
       <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
       <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
       <h3 className="map-inspector-title">
@@ -292,6 +307,19 @@ export function MapDetailPanel({
             ? placeChapterTitle ?? place.name
             : place.name}
       </h3>
+      {phone ? (
+        <>
+          <p className="map-sheet-peek-meta">
+            {yearLabel}
+            {selection.type === 'region'
+              ? ` · ${selection.region.placeCount} places · ${place.people.length} people`
+              : ` · ${place.people.length} ${place.people.length === 1 ? 'person' : 'people'}`}
+          </p>
+          <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+            View details
+          </button>
+        </>
+      ) : null}
       {selection.type === 'region' && (
         <p className="map-inspector-lede place-region">{selection.region.name}</p>
       )}
@@ -397,10 +425,9 @@ export function MapDetailPanel({
         <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
           View on timeline
         </button>
-        <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
-        {phone && onOpenFilters ? (
-          <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
-            Filters
+        {phone ? (
+          <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
+            Close details
           </button>
         ) : null}
       </div>

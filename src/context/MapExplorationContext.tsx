@@ -17,6 +17,7 @@ import {
   fitCameraToBounds,
   fitOverviewCamera,
   MAP_CAMERA_TRANSITION_MS,
+  MAP_PEEK_INSET_PX,
   type MapViewportLayout,
 } from '../utils/mapCamera'
 import { boundsFromEllipse, type MapBounds } from '../utils/mapRegionGeometry'
@@ -71,13 +72,18 @@ type MapExplorationContextValue = {
   resetExploration: () => void
   clearSelection: () => void
   refitFilteredView: () => void
+  updateCameraLive: (camera: MapCamera) => void
 }
 
 const MapExplorationContext = createContext<MapExplorationContextValue | null>(null)
 
 function layoutWithPanel(layout: MapViewportLayout): MapViewportLayout {
+  if (layout.frameWidthPx < 760) {
+    return { ...layout, panelOpen: true, bottomInsetPx: MAP_PEEK_INSET_PX }
+  }
   return { ...layout, panelOpen: true }
 }
+
 
 function overviewCamera(
   layout: MapViewportLayout,
@@ -137,6 +143,11 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
     setIsTransitioning(true)
     setCamera(next)
     window.setTimeout(() => setIsTransitioning(false), MAP_CAMERA_TRANSITION_MS + 40)
+  }, [])
+
+  const updateCameraLive = useCallback((next: MapCamera) => {
+    setIsTransitioning(false)
+    setCamera(next)
   }, [])
 
   useEffect(() => {
@@ -338,6 +349,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       resetExploration,
       clearSelection,
       refitFilteredView,
+      updateCameraLive,
     }),
     [
       level,
@@ -361,6 +373,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       resetExploration,
       clearSelection,
       refitFilteredView,
+      updateCameraLive,
     ],
   )
 

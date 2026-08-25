@@ -30,12 +30,16 @@ export const MAP_BOTTOM_CHROME_PX = 40
 
 export const DEFAULT_OVERVIEW_CAMERA: MapCamera = { cx: 50, cy: 50, scale: MAP_OVERVIEW_SCALE }
 
+export const MAP_PEEK_INSET_PX = 148
+
 export type MapViewportLayout = {
   frameWidthPx: number
   frameHeightPx: number
   panelOpen: boolean
   panelWidthPx?: number
   panelGapPx?: number
+  /** Extra bottom inset (px) so a mobile peek sheet does not cover the focused feature. */
+  bottomInsetPx?: number
 }
 
 export type UsableViewport = {
@@ -64,7 +68,9 @@ export function usableViewport(layout: MapViewportLayout): UsableViewport {
   const rightReserve = compact ? 12 : Math.max(MAP_RIGHT_CHROME_PX, panelReserve)
   const leftReserve = compact ? 12 : MAP_LEFT_CHROME_PX
   const topReserve = compact ? 16 : MAP_TOP_CHROME_PX
-  const bottomReserve = compact ? 16 : MAP_BOTTOM_CHROME_PX
+  const bottomReserve = compact
+    ? Math.max(16, layout.bottomInsetPx ?? 16)
+    : MAP_BOTTOM_CHROME_PX
 
   const usableWidthPx = Math.max(120, frameWidthPx - pad - rightReserve - leftReserve)
   const usableHeightPx = Math.max(120, frameHeightPx - pad - topReserve - bottomReserve)

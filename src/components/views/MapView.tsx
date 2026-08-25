@@ -217,6 +217,7 @@ function MapViewContent({ active }: MapViewProps) {
             filterKey={filterKey}
             lineagePalette={lineagePalette}
             people={people}
+            onOpenFilters={phone ? () => setFiltersOpen(true) : undefined}
           />
 
           <header className={`map-page-intro map-title${phone ? ' map-page-intro--compact' : ''}`}>
@@ -249,19 +250,6 @@ function MapViewContent({ active }: MapViewProps) {
             )}
           </header>
 
-          {phone && !selection ? (
-            <div className="map-phone-toolbar">
-              <button
-                type="button"
-                className="phone-toolbar-btn"
-                aria-expanded={filtersOpen}
-                onClick={() => setFiltersOpen((open) => !open)}
-              >
-                Filters
-              </button>
-            </div>
-          ) : null}
-
           {phone ? (
             <PhoneSheet open={filtersOpen} title="Filters" onClose={() => setFiltersOpen(false)}>
               <div className="map-filter-sheet">
@@ -283,7 +271,6 @@ function MapViewContent({ active }: MapViewProps) {
           <MapDetailPanel
             subregions={subregions}
             unresolved={unresolved}
-            onOpenFilters={phone ? () => setFiltersOpen(true) : undefined}
           />
 
           {phone ? (

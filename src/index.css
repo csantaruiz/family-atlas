@@ -273,6 +273,37 @@
   backdrop-filter: blur(10px);
 }
 
+@media (min-width: 761px) {
+  .nav-cluster {
+    padding-right: 20px;
+    overflow: visible;
+  }
+
+  .header-manage {
+    padding-right: 0;
+    margin-right: 0;
+  }
+
+  .header-manage-toggle {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    line-height: 1;
+  }
+
+  .header-manage-gear-wrap {
+    overflow: visible;
+  }
+
+  .header-manage::before {
+    margin-right: 8px;
+  }
+}
+
 .nav-cluster .nav {
   background: none;
   border: 0;
@@ -820,6 +851,13 @@
 #timeline .history-label small {
   user-select: none;
   -webkit-user-select: none;
+}
+
+@media (min-width: 761px) {
+  #timeline .history-event .history-label,
+  #timeline .history-event.below .history-label {
+    top: calc(50% + 20px);
+  }
 }
 
 #timeline .history-label small {
@@ -8005,6 +8043,42 @@
   display: none;
 }
 
+@media (min-width: 761px) {
+  .phone-close,
+  .drawer-close,
+  .atlas-review-close,
+  .place-detail-close {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 50%;
+    font-size: 0;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .phone-close svg,
+  .drawer-close svg,
+  .atlas-review-close svg,
+  .place-detail-close svg {
+    display: block;
+    width: 23px;
+    height: 23px;
+    margin: 0;
+  }
+
+  .atlas-review-sheet {
+    padding-top: 60px;
+  }
+}
+
 .atlas-manage-scrim {
   position: fixed;
   inset: 0;
@@ -8257,6 +8331,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding-right: 20px;
     background: var(--menu-beige-bg);
     border: 1px solid var(--menu-beige-border);
     border-radius: 999px;
@@ -8293,11 +8368,11 @@ body {
   }
 
   .header-manage {
-    margin-right: 2px;
-    padding-right: 6px;
+    margin-right: 0;
+    padding-right: 0;
   }
 
-  .nav button.header-manage-toggle {
+  .header-manage-toggle {
     position: relative;
     width: 44px;
     min-width: 44px;
@@ -8370,7 +8445,7 @@ body {
   }
 
   #timeline .stage.stage--tablet .history-event .history-label {
-    top: 18px;
+    top: calc(50% + 20px);
   }
 
   #timeline .stage.stage--tablet .history-event,

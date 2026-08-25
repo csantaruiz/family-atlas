@@ -9,6 +9,7 @@ import {
   projectLabelPoint,
   topPlacesByWeight,
   type PlacedMapLabel,
+  type ScreenExclusion,
 } from '../../utils/mapLabelLayout'
 import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
@@ -44,6 +45,8 @@ type MapOverlayProps = {
   onPlaceClick: (place: PlaceRecord) => void
   onRegionHover: (id: FamilyRegionId | null) => void
   instant?: boolean
+  zoomScale?: number
+  exclusionRects?: ScreenExclusion[]
 }
 
 export function MapOverlay({
@@ -65,6 +68,8 @@ export function MapOverlay({
   onPlaceClick,
   onRegionHover,
   instant = false,
+  zoomScale = 1,
+  exclusionRects = [],
 }: MapOverlayProps) {
   const project = useMemo(
     () => (x: number, y: number) =>
@@ -82,11 +87,15 @@ export function MapOverlay({
 
     const candidates: Parameters<typeof layoutMapLabels>[0] = []
 
-    if (layers.showMajorLabels || focusRegionId) {
+    const showMajorLabels = layers.showMajorLabels || Boolean(focusRegionId)
+    const showSubLabels = layers.showSubregionLabels && zoomScale >= 1.45
+
+    if (showMajorLabels) {
       for (const region of regions) {
         const selected = region.id === focusRegionId
         if (!layers.showMajorLabels && !selected) continue
         if (focusRegionId && region.id !== focusRegionId && level !== 'family') continue
+        if (zoomScale >= 2.4 && !selected && focusRegionId) continue
         candidates.push({
           id: `major-label-${region.id}`,
           x: region.anchor.x,
@@ -95,12 +104,12 @@ export function MapOverlay({
           priority: selected ? 140 : 100,
           kind: 'major',
           widthPx: estimateLabelWidthPx('major', region.name, frameWidth),
-          heightPx: 34,
+          heightPx: selected ? 36 : 30,
         })
       }
     }
 
-    if (layers.showSubregionLabels) {
+    if (showSubLabels) {
       for (const sub of subregions) {
         if (focusRegionId && sub.parentRegionId !== focusRegionId) continue
         const selected = sub.id === focusSubregionId
@@ -109,10 +118,10 @@ export function MapOverlay({
           x: sub.anchor.x,
           y: sub.anchor.y,
           text: sub.name,
-          priority: selected ? 120 : 80,
+          priority: selected ? 120 : 50,
           kind: 'sub',
           widthPx: estimateLabelWidthPx('sub', sub.name, frameWidth),
-          heightPx: 28,
+          heightPx: 24,
         })
       }
     }
@@ -141,6 +150,7 @@ export function MapOverlay({
       frameHeight,
       labelBudgetForLevel(level),
       project,
+      exclusionRects,
     )
   }, [
     frameWidth,
@@ -155,6 +165,8 @@ export function MapOverlay({
     level,
     topPlaceIds,
     project,
+    zoomScale,
+    exclusionRects,
   ])
 
   const markers = useMemo(() => {
@@ -282,7 +294,7 @@ export function MapOverlay({
         {labels.map((label) => (
           <motion.div
             key={`${label.id}-${filterKey}`}
-            className={`map-overlay-label map-overlay-label--${label.kind}`}
+            className={`map-overlay-label map-overlay-label--${label.kind}${label.priority >= 140 ? ' map-overlay-label--selected' : ''}`}
             style={{ left: `${label.left}%`, top: `${label.top}%` }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

@@ -217,6 +217,10 @@ export function containerPercentToViewBoxPoint(
   }
 }
 
+/**
+ * Screen percent → world using the SVG viewBox camera (no CSS transform).
+ * viewBox aspect matches the viewport, so mapping is linear.
+ */
 export function screenPercentToWorld(
   leftPct: number,
   topPct: number,
@@ -224,34 +228,14 @@ export function screenPercentToWorld(
   containerWidth: number,
   containerHeight: number,
 ): { x: number; y: number } {
-  if (containerWidth <= 0 || containerHeight <= 0) {
-    return {
-      x: camera.cx + (leftPct - 50) / camera.scale,
-      y: camera.cy + (topPct - 50) / camera.scale,
-    }
+  const viewBox = viewBoxCameraForContainer(camera, containerWidth, containerHeight)
+  return {
+    x: viewBox.minX + (leftPct / 100) * viewBox.width,
+    y: viewBox.minY + (topPct / 100) * viewBox.height,
   }
-
-  const scale = camera.scale
-  const focal = viewBoxPointToContainerPercent(
-    camera.cx,
-    camera.cy,
-    containerWidth,
-    containerHeight,
-  )
-  const screenX = (leftPct / 100) * containerWidth
-  const screenY = (topPct / 100) * containerHeight
-  const focalX = (focal.left / 100) * containerWidth
-  const focalY = (focal.top / 100) * containerHeight
-  const localX = focalX + (screenX - containerWidth / 2) / scale
-  const localY = focalY + (screenY - containerHeight / 2) / scale
-  return containerPercentToViewBoxPoint(
-    (localX / containerWidth) * 100,
-    (localY / containerHeight) * 100,
-    containerWidth,
-    containerHeight,
-  )
 }
 
+/** Keep `world` under a screen percent after changing scale. */
 export function cameraFromScaleAndScreenAnchor(
   scale: number,
   world: { x: number; y: number },
@@ -260,35 +244,28 @@ export function cameraFromScaleAndScreenAnchor(
   containerWidth: number,
   containerHeight: number,
 ): MapCamera {
-  if (containerWidth <= 0 || containerHeight <= 0) {
-    return {
-      scale,
-      cx: world.x - (originLeftPct - 50) / scale,
-      cy: world.y - (originTopPct - 50) / scale,
-    }
+  const viewBox = viewBoxCameraForContainer(
+    { cx: 0, cy: 0, scale },
+    containerWidth,
+    containerHeight,
+  )
+  return {
+    scale,
+    cx: world.x - (originLeftPct / 100 - 0.5) * viewBox.width,
+    cy: world.y - (originTopPct / 100 - 0.5) * viewBox.height,
   }
+}
 
-  const local = viewBoxPointToContainerPercent(
-    world.x,
-    world.y,
-    containerWidth,
-    containerHeight,
-  )
-  const originX = (originLeftPct / 100) * containerWidth
-  const originY = (originTopPct / 100) * containerHeight
-  const localX = (local.left / 100) * containerWidth
-  const localY = (local.top / 100) * containerHeight
-  const tx = originX - containerWidth / 2 - (localX - containerWidth / 2) * scale
-  const ty = originY - containerHeight / 2 - (localY - containerHeight / 2) * scale
-  const focalX = containerWidth / 2 - tx / scale
-  const focalY = containerHeight / 2 - ty / scale
-  const focal = containerPercentToViewBoxPoint(
-    (focalX / containerWidth) * 100,
-    (focalY / containerHeight) * 100,
-    containerWidth,
-    containerHeight,
-  )
-  return { scale, cx: focal.x, cy: focal.y }
+/** World → overlay percent using the same viewBox the SVG renders. */
+export function projectWorldThroughViewBoxCamera(
+  x: number,
+  y: number,
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+): { left: number; top: number } {
+  const viewBox = viewBoxCameraForContainer(camera, containerWidth, containerHeight)
+  return projectPointInViewBoxCamera(x, y, viewBox, containerWidth, containerHeight)
 }
 
 /** Visible SVG viewBox region — vector zoom without CSS scale rasterization. */
@@ -333,24 +310,16 @@ export function projectPointInViewBoxCamera(
   x: number,
   y: number,
   viewBox: ViewBoxCamera,
-  containerWidth: number,
-  containerHeight: number,
+  _containerWidth?: number,
+  _containerHeight?: number,
 ): { left: number; top: number } {
-  if (containerWidth <= 0 || containerHeight <= 0) {
+  if (viewBox.width <= 0 || viewBox.height <= 0) {
     return { left: 50, top: 50 }
   }
 
-  const scale = Math.max(containerWidth / viewBox.width, containerHeight / viewBox.height)
-  const renderedWidth = viewBox.width * scale
-  const renderedHeight = viewBox.height * scale
-  const offsetX = (containerWidth - renderedWidth) / 2
-  const offsetY = (containerHeight - renderedHeight) / 2
-  const px = (x - viewBox.minX) * scale + offsetX
-  const py = (y - viewBox.minY) * scale + offsetY
-
   return {
-    left: (px / containerWidth) * 100,
-    top: (py / containerHeight) * 100,
+    left: ((x - viewBox.minX) / viewBox.width) * 100,
+    top: ((y - viewBox.minY) / viewBox.height) * 100,
   }
 }
 

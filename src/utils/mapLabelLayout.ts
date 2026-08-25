@@ -1,7 +1,7 @@
 import type { MapCamera, MapZoomLevel } from './mapSemanticZoom'
 import {
   viewBoxPointToContainerPercent,
-  projectViewBoxPointThroughCamera,
+  projectWorldThroughViewBoxCamera,
 } from './mapSemanticZoom'
 
 export type MapLabelCandidate = {
@@ -21,6 +21,8 @@ export type PlacedMapLabel = MapLabelCandidate & {
   top: number
   offsetY: number
 }
+
+export type ScreenExclusion = { left: number; top: number; w: number; h: number }
 
 export type MapPointProjector = (x: number, y: number) => { left: number; top: number }
 
@@ -76,16 +78,17 @@ export function layoutMapLabels(
   maxLabels?: number,
   project: MapPointProjector = (x, y) =>
     viewBoxPointToContainerPercent(x, y, frameWidthPx, frameHeightPx),
+  exclusions: ScreenExclusion[] = [],
 ): PlacedMapLabel[] {
   const sorted = [...candidates].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
   const placed: PlacedMapLabel[] = []
-  const occupied: { left: number; top: number; w: number; h: number }[] = []
+  const occupied: ScreenExclusion[] = [...exclusions]
 
   for (const cand of sorted) {
     if (maxLabels != null && placed.length >= maxLabels) break
 
     const proj = project(cand.x, cand.y)
-    if (proj.left < -8 || proj.left > 108 || proj.top < -8 || proj.top > 108) continue
+    if (proj.left < -12 || proj.left > 112 || proj.top < -12 || proj.top > 112) continue
 
     const w = cand.widthPx ?? DEFAULT_WIDTH[cand.kind]
     const h = cand.heightPx ?? DEFAULT_HEIGHT[cand.kind]
@@ -93,15 +96,17 @@ export function layoutMapLabels(
     const markerY = (proj.top / 100) * frameHeightPx
 
     const slots = [
-      { left: markerX - w / 2, top: markerY - h - 8, w, h },
-      { left: markerX - w / 2, top: markerY + 12, w, h },
+      { left: markerX - w / 2, top: markerY - h - 10, w, h },
+      { left: markerX - w / 2, top: markerY + 14, w, h },
+      { left: markerX + 12, top: markerY - h / 2, w, h },
+      { left: markerX - w - 12, top: markerY - h / 2, w, h },
     ]
 
-    let chosen: { left: number; top: number; w: number; h: number } | null = null
+    let chosen: ScreenExclusion | null = null
     for (const slot of slots) {
-      if (slot.left + w < 4 || slot.left > frameWidthPx - 4) continue
-      if (slot.top + h < 4 || slot.top > frameHeightPx - 4) continue
-      if (occupied.some((o) => rectsOverlap(slot, o))) continue
+      if (slot.top < 4 || slot.top + h > frameHeightPx - 4) continue
+      if (slot.left + w < 8 || slot.left > frameWidthPx - 8) continue
+      if (occupied.some((o) => rectsOverlap(slot, o, 8))) continue
       chosen = slot
       break
     }
@@ -111,8 +116,8 @@ export function layoutMapLabels(
     occupied.push(chosen)
     placed.push({
       ...cand,
-      left: proj.left,
-      top: proj.top,
+      left: ((chosen.left + w / 2) / frameWidthPx) * 100,
+      top: ((chosen.top + h + 10) / frameHeightPx) * 100,
       offsetY: 0,
     })
   }
@@ -127,7 +132,7 @@ export function projectLabelPoint(
   frameWidthPx: number,
   frameHeightPx: number,
 ): { left: number; top: number } {
-  return projectViewBoxPointThroughCamera(x, y, camera, frameWidthPx, frameHeightPx)
+  return projectWorldThroughViewBoxCamera(x, y, camera, frameWidthPx, frameHeightPx)
 }
 
 export function labelBudgetForLevel(level: MapZoomLevel): number {

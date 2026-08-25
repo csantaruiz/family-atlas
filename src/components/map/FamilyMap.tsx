@@ -16,12 +16,11 @@ import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
 import type { MapSubregion } from '../../utils/mapSubregions'
 import type { RegionalRoute, SubregionRoute } from '../../utils/mapRoutes'
 import {
-  cameraTransformForContainer,
-  cameraTransformPartsForContainer,
   DEFAULT_CAMERA,
   heatIntensity,
   regionVisibleAtLevel,
   subregionVisibleAtLevel,
+  viewBoxCameraForContainer,
   visibleLayers,
 } from '../../utils/mapSemanticZoom'
 import { boundsFromRegionGeography } from '../../utils/mapRegionGeometry'
@@ -95,6 +94,7 @@ export function FamilyMap({
     clearSelection,
     updateCameraLive,
     beginManualCamera,
+    isTransitioning,
   } = useMapExploration()
   const phone = useMaxWidth(760)
   const [liveCamera, setLiveCamera] = useState(false)
@@ -268,27 +268,33 @@ export function FamilyMap({
   }, [clearHoverRoute])
 
   const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
-  const zoomScale = camera.scale
-  const outlineWidth = 0.22 / Math.max(zoomScale, 1)
-  const geographyTransform = cameraTransformForContainer(
-    camera,
-    frameSize.width,
-    frameSize.height,
-  )
-  const transformParts = cameraTransformPartsForContainer(
-    camera,
-    frameSize.width,
-    frameSize.height,
-  )
+  const outlineWidth = 1.15
+  const viewBox = viewBoxCameraForContainer(camera, frameSize.width, frameSize.height)
+  const viewBoxAttr =
+    frameSize.width > 0 && frameSize.height > 0
+      ? `${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}`
+      : `0 0 ${VB.width} ${VB.height}`
   const panLimits = familyContentBounds
     ? panLimitsForCamera(camera, familyContentBounds, frameSize)
     : null
+  const exclusionRects =
+    phone && frameSize.width > 0
+      ? [
+          { left: 8, top: 8, w: 96, h: 40 },
+          ...(gestureMoved || cameraHasLeftOverview(camera, DEFAULT_CAMERA)
+            ? [{ left: 108, top: 8, w: 108, h: 40 }]
+            : []),
+          ...(!selection ? [{ left: 12, top: frameSize.height - 52, w: frameSize.width - 24, h: 40 }] : []),
+          ...(selection
+            ? [{ left: 0, top: frameSize.height - 148, w: frameSize.width, h: 148 }]
+            : []),
+        ]
+      : []
 
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     ;(window as Window & { __ATLAS_MAP_CAMERA?: unknown }).__ATLAS_MAP_CAMERA = {
       scale: camera.scale,
-      translateX: transformParts.translateX,
-      translateY: transformParts.translateY,
+      viewBox,
       cx: camera.cx,
       cy: camera.cy,
       minPan: panLimits ? { x: panLimits.minCx, y: panLimits.minCy } : null,
@@ -327,15 +333,12 @@ export function FamilyMap({
         </button>
       )}
 
-      <div
-        className="map-atlas-zoom"
-        style={{ transform: geographyTransform, transformOrigin: '50% 50%' }}
-      >
+      <div className="map-atlas-zoom">
         <div className="map-atlas-plate">
           <svg
             className="map-atlas-svg"
-            viewBox={`0 0 ${VB.width} ${VB.height}`}
-            preserveAspectRatio="xMidYMid slice"
+            viewBox={viewBoxAttr}
+            preserveAspectRatio="none"
             role="img"
             aria-label="Interactive family migration map"
           >
@@ -476,7 +479,9 @@ export function FamilyMap({
             onSubregionClick={exploreSubregion}
             onPlaceClick={explorePlace}
             onRegionHover={setHoveredRegionId}
-            instant={liveCamera}
+            instant={liveCamera || isTransitioning}
+            zoomScale={camera.scale}
+            exclusionRects={exclusionRects}
           />
 
       <MapDebugOverlay
@@ -525,7 +530,10 @@ export function FamilyMap({
       {MAP_CAMERA_DEBUG ? (
         <div className="map-camera-hud" aria-hidden="true">
           <div>scale {camera.scale.toFixed(3)}</div>
-          <div>tx {transformParts.translateX.toFixed(1)} ty {transformParts.translateY.toFixed(1)}</div>
+          <div>
+            vb {viewBox.minX.toFixed(1)} {viewBox.minY.toFixed(1)} {viewBox.width.toFixed(1)}×
+            {viewBox.height.toFixed(1)}
+          </div>
           <div>cx {camera.cx.toFixed(2)} cy {camera.cy.toFixed(2)}</div>
           {panLimits ? (
             <div>

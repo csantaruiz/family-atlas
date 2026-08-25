@@ -10,6 +10,7 @@ import type { RegionalRoute, SubregionRoute } from '../../utils/mapRoutes'
 import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
   cameraTransform,
+  effectiveMapScale,
   heatIntensity,
   regionVisibleAtLevel,
   subregionVisibleAtLevel,
@@ -207,6 +208,8 @@ export function FamilyMap({
   }, [clearHoverRoute])
 
   const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
+  const zoomScale = effectiveMapScale(camera)
+  const outlineWidth = 0.22 / Math.max(zoomScale, 1)
 
   return (
     <div className="map-atlas-frame" ref={frameRef} onWheel={onWheel}>
@@ -314,6 +317,8 @@ export function FamilyMap({
                       rx={rx}
                       ry={ry}
                       className={`map-region-oval map-region-oval--major${isSelected ? ' map-region-group--selected' : ''}${dimmed ? ' map-layer-dimmed' : ''}${faded ? ' map-region-group--faded' : ''}`}
+                      vectorEffect="non-scaling-stroke"
+                      strokeWidth={outlineWidth}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: dimmed ? 0.22 : faded ? 0.38 : isSelected ? 0.72 : 0.58 }}
                       exit={{ opacity: 0 }}
@@ -346,6 +351,8 @@ export function FamilyMap({
                       rx={rx}
                       ry={ry}
                       className={`map-region-oval map-region-oval--sub${isSelected ? ' map-region-group--selected' : ''}${dimmed ? ' map-layer-dimmed' : ''}`}
+                      vectorEffect="non-scaling-stroke"
+                      strokeWidth={outlineWidth}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: dimmed ? 0.35 : 1 }}
                       exit={{ opacity: 0 }}
@@ -358,10 +365,13 @@ export function FamilyMap({
             </g>
           )}
         </svg>
+        </div>
+      </motion.div>
 
           <MapOverlay
             level={level}
             layers={layers}
+            camera={camera}
             frameWidth={frameSize.width}
             frameHeight={frameSize.height}
             regions={regions}
@@ -377,8 +387,6 @@ export function FamilyMap({
             onPlaceClick={explorePlace}
             onRegionHover={setHoveredRegionId}
           />
-        </div>
-      </motion.div>
 
       <MapDebugOverlay
         regions={regions}

@@ -3,21 +3,23 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
 import type { MapSubregion } from '../../utils/mapSubregions'
 import {
+  estimateLabelWidthPx,
   labelBudgetForLevel,
   layoutMapLabels,
+  projectLabelPoint,
   topPlacesByWeight,
   type PlacedMapLabel,
 } from '../../utils/mapLabelLayout'
 import { MAP_CAMERA_TRANSITION_MS } from '../../utils/mapCamera'
 import {
-  markerDiameterPx,
-  viewBoxPointToContainerPercent,
+  type MapCamera,
   type MapLayerVisibility,
   type MapZoomLevel,
 } from '../../utils/mapSemanticZoom'
 import type { PlaceRecord } from '../../utils/placeIndex'
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
+const MARKER_HIT_PX = 48
 
 function placeShortName(name: string): string {
   return name.split(',')[0].trim() || name
@@ -26,6 +28,7 @@ function placeShortName(name: string): string {
 type MapOverlayProps = {
   level: MapZoomLevel
   layers: MapLayerVisibility
+  camera: MapCamera
   frameWidth: number
   frameHeight: number
   regions: FamilyRegion[]
@@ -45,6 +48,7 @@ type MapOverlayProps = {
 export function MapOverlay({
   level,
   layers,
+  camera,
   frameWidth,
   frameHeight,
   regions,
@@ -60,6 +64,12 @@ export function MapOverlay({
   onPlaceClick,
   onRegionHover,
 }: MapOverlayProps) {
+  const project = useMemo(
+    () => (x: number, y: number) =>
+      projectLabelPoint(x, y, camera, frameWidth, frameHeight),
+    [camera, frameWidth, frameHeight],
+  )
+
   const topPlaceIds = useMemo(() => {
     if (layers.showAllPlaces) return new Set(places.map((p) => p.id))
     return topPlacesByWeight(places, Math.max(6, Math.floor(places.length * 0.35)))
@@ -70,16 +80,20 @@ export function MapOverlay({
 
     const candidates: Parameters<typeof layoutMapLabels>[0] = []
 
-    if (layers.showMajorLabels) {
+    if (layers.showMajorLabels || focusRegionId) {
       for (const region of regions) {
+        const selected = region.id === focusRegionId
+        if (!layers.showMajorLabels && !selected) continue
         if (focusRegionId && region.id !== focusRegionId && level !== 'family') continue
         candidates.push({
           id: `major-label-${region.id}`,
           x: region.anchor.x,
           y: region.anchor.y,
           text: region.name,
-          priority: 100,
+          priority: selected ? 140 : 100,
           kind: 'major',
+          widthPx: estimateLabelWidthPx('major', region.name, frameWidth),
+          heightPx: 34,
         })
       }
     }
@@ -87,13 +101,16 @@ export function MapOverlay({
     if (layers.showSubregionLabels) {
       for (const sub of subregions) {
         if (focusRegionId && sub.parentRegionId !== focusRegionId) continue
+        const selected = sub.id === focusSubregionId
         candidates.push({
           id: `sub-label-${sub.id}`,
           x: sub.anchor.x,
           y: sub.anchor.y,
           text: sub.name,
-          priority: 85,
+          priority: selected ? 120 : 80,
           kind: 'sub',
+          widthPx: estimateLabelWidthPx('sub', sub.name, frameWidth),
+          heightPx: 28,
         })
       }
     }
@@ -101,18 +118,28 @@ export function MapOverlay({
     if (layers.showPlaceLabels) {
       for (const place of places) {
         if (!topPlaceIds.has(place.id)) continue
+        const name = placeShortName(place.name)
+        const selected = place.id === selectedPlaceId
         candidates.push({
           id: `place-label-${place.id}`,
           x: place.coordinate.x,
           y: place.coordinate.y,
-          text: placeShortName(place.name),
-          priority: layers.showAllPlaces ? 70 : 60,
+          text: name,
+          priority: selected ? 110 : layers.showAllPlaces ? 55 : 48,
           kind: 'place',
+          widthPx: estimateLabelWidthPx('place', name, frameWidth),
+          heightPx: 22,
         })
       }
     }
 
-    return layoutMapLabels(candidates, frameWidth, frameHeight, labelBudgetForLevel(level))
+    return layoutMapLabels(
+      candidates,
+      frameWidth,
+      frameHeight,
+      labelBudgetForLevel(level),
+      project,
+    )
   }, [
     frameWidth,
     frameHeight,
@@ -121,8 +148,11 @@ export function MapOverlay({
     subregions,
     places,
     focusRegionId,
+    focusSubregionId,
+    selectedPlaceId,
     level,
     topPlaceIds,
+    project,
   ])
 
   const markers = useMemo(() => {
@@ -130,7 +160,6 @@ export function MapOverlay({
       id: string
       left: number
       top: number
-      size: number
       kind: 'major' | 'sub' | 'place'
       opacity: number
       onClick?: () => void
@@ -143,18 +172,12 @@ export function MapOverlay({
     if (layers.showMajorMarkers) {
       for (const region of regions) {
         if (level !== 'family') continue
-        const pos = viewBoxPointToContainerPercent(
-          region.anchor.x,
-          region.anchor.y,
-          frameWidth,
-          frameHeight,
-        )
-        if (pos.left < -5 || pos.left > 105 || pos.top < -5 || pos.top > 105) continue
+        const pos = project(region.anchor.x, region.anchor.y)
+        if (pos.left < -8 || pos.left > 108 || pos.top < -8 || pos.top > 108) continue
         items.push({
           id: `major-${region.id}`,
           left: pos.left,
           top: pos.top,
-          size: markerDiameterPx(level, 'major'),
           kind: 'major',
           opacity: 1,
           onClick: () => onRegionClick(region),
@@ -169,21 +192,16 @@ export function MapOverlay({
       for (const sub of subregions) {
         if (focusRegionId && sub.parentRegionId !== focusRegionId) continue
         if (level === 'local' && focusSubregionId && sub.id !== focusSubregionId) continue
-        const pos = viewBoxPointToContainerPercent(
-          sub.anchor.x,
-          sub.anchor.y,
-          frameWidth,
-          frameHeight,
-        )
+        const pos = project(sub.anchor.x, sub.anchor.y)
         const dimmed = focusSubregionId != null && sub.id !== focusSubregionId
         items.push({
           id: `sub-${sub.id}`,
           left: pos.left,
           top: pos.top,
-          size: markerDiameterPx(level, 'sub'),
           kind: 'sub',
           opacity: dimmed ? 0.35 : 0.9,
           onClick: () => onSubregionClick(sub),
+          selected: focusSubregionId === sub.id,
         })
       }
     }
@@ -191,17 +209,11 @@ export function MapOverlay({
     if (layers.showPlaces) {
       for (const place of places) {
         if (!topPlaceIds.has(place.id)) continue
-        const pos = viewBoxPointToContainerPercent(
-          place.coordinate.x,
-          place.coordinate.y,
-          frameWidth,
-          frameHeight,
-        )
+        const pos = project(place.coordinate.x, place.coordinate.y)
         items.push({
           id: `place-${place.id}`,
           left: pos.left,
           top: pos.top,
-          size: markerDiameterPx(level, 'place'),
           kind: 'place',
           opacity: 1,
           onClick: () => onPlaceClick(place),
@@ -219,8 +231,6 @@ export function MapOverlay({
     focusRegionId,
     focusSubregionId,
     level,
-    frameWidth,
-    frameHeight,
     topPlaceIds,
     hoveredRegionId,
     selectedPlaceId,
@@ -228,9 +238,13 @@ export function MapOverlay({
     onSubregionClick,
     onPlaceClick,
     onRegionHover,
+    project,
   ])
 
   const selectedPlace = places.find((p) => p.id === selectedPlaceId)
+  const flyoutPos = selectedPlace
+    ? project(selectedPlace.coordinate.x, selectedPlace.coordinate.y)
+    : null
 
   return (
     <div className="map-overlay" aria-hidden={false}>
@@ -243,13 +257,13 @@ export function MapOverlay({
             style={{
               left: `${m.left}%`,
               top: `${m.top}%`,
-              width: m.size,
-              height: m.size,
+              width: MARKER_HIT_PX,
+              height: MARKER_HIT_PX,
               opacity: m.opacity,
             }}
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: m.opacity, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: m.opacity }}
+            exit={{ opacity: 0 }}
             transition={{ duration: MAP_CAMERA_TRANSITION_MS / 1000, ease: motionEase }}
             onClick={(e) => {
               e.stopPropagation()
@@ -279,12 +293,12 @@ export function MapOverlay({
         ))}
       </AnimatePresence>
 
-      {layers.showRecordDetail && selectedPlace && (
+      {layers.showRecordDetail && selectedPlace && flyoutPos ? (
         <motion.div
           className="map-record-flyout"
           style={{
-            left: `${viewBoxPointToContainerPercent(selectedPlace.coordinate.x, selectedPlace.coordinate.y, frameWidth, frameHeight).left}%`,
-            top: `${viewBoxPointToContainerPercent(selectedPlace.coordinate.x, selectedPlace.coordinate.y, frameWidth, frameHeight).top}%`,
+            left: `${flyoutPos.left}%`,
+            top: `${flyoutPos.top}%`,
           }}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -296,7 +310,7 @@ export function MapOverlay({
             {selectedPlace.people.length} people · {selectedPlace.eventCount} records
           </div>
         </motion.div>
-      )}
+      ) : null}
     </div>
   )
 }

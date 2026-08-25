@@ -23,7 +23,7 @@ function MapDetailsToggle({
 }) {
   if (!phone) return null
   return (
-    <button type="button" className="map-detail-more" onClick={onToggle}>
+    <button type="button" className="map-detail-more map-action-primary" onClick={onToggle}>
       {expanded ? 'Show less' : 'Full details'}
     </button>
   )
@@ -32,9 +32,11 @@ function MapDetailsToggle({
 export function MapDetailPanel({
   subregions = [],
   unresolved = [],
+  onOpenFilters,
 }: {
   subregions?: MapSubregion[]
   unresolved?: PlaceRecord[]
+  onOpenFilters?: () => void
 }) {
   const { selection, level, clearSelection } = useMapExploration()
   const { openPerson, openFamilyEvent } = useTimeline()
@@ -135,11 +137,16 @@ export function MapDetailPanel({
             </ul>
           </div>
         )}
-        <div className="place-detail-actions map-inspector-actions">
-          <button type="button" className="pill" onClick={handleViewTimeline}>
+        <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
+          <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
             View on timeline
           </button>
           <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+          {phone && onOpenFilters ? (
+            <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
+              Filters
+            </button>
+          ) : null}
         </div>
         <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
@@ -201,7 +208,14 @@ export function MapDetailPanel({
             )}
           </ul>
         </div>
-        <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+        <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
+          <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+          {phone && onOpenFilters ? (
+            <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
+              Filters
+            </button>
+          ) : null}
+        </div>
         <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
@@ -379,11 +393,16 @@ export function MapDetailPanel({
         </div>
       )}
 
-      <div className="place-detail-actions map-inspector-actions">
-        <button type="button" className="pill" onClick={handleViewTimeline}>
+      <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
+        <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
           View on timeline
         </button>
         <MapDetailsToggle phone={phone} expanded={expanded} onToggle={() => setExpanded((open) => !open)} />
+        {phone && onOpenFilters ? (
+          <button type="button" className="pill map-action-secondary" onClick={onOpenFilters}>
+            Filters
+          </button>
+        ) : null}
       </div>
       <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
     </aside>

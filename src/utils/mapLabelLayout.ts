@@ -1,5 +1,8 @@
-import type { MapZoomLevel } from './mapSemanticZoom'
-import { viewBoxPointToContainerPercent } from './mapSemanticZoom'
+import type { MapCamera, MapZoomLevel } from './mapSemanticZoom'
+import {
+  viewBoxPointToContainerPercent,
+  projectViewBoxPointThroughCamera,
+} from './mapSemanticZoom'
 
 export type MapLabelCandidate = {
   id: string
@@ -19,6 +22,8 @@ export type PlacedMapLabel = MapLabelCandidate & {
   offsetY: number
 }
 
+export type MapPointProjector = (x: number, y: number) => { left: number; top: number }
+
 const DEFAULT_WIDTH: Record<MapLabelCandidate['kind'], number> = {
   major: 148,
   sub: 112,
@@ -28,8 +33,8 @@ const DEFAULT_WIDTH: Record<MapLabelCandidate['kind'], number> = {
 }
 
 const DEFAULT_HEIGHT: Record<MapLabelCandidate['kind'], number> = {
-  major: 52,
-  sub: 40,
+  major: 36,
+  sub: 28,
   place: 22,
   stats: 16,
   cta: 14,
@@ -48,15 +53,52 @@ function rectsOverlap(
   )
 }
 
+export function estimateLabelWidthPx(
+  kind: MapLabelCandidate['kind'],
+  text: string,
+  frameWidthPx: number,
+): number {
+  const char = kind === 'major' ? 9.2 : kind === 'sub' ? 7.6 : 6.6
+  const raw = 16 + text.length * char
+  const cap = kind === 'major' ? Math.min(frameWidthPx * 0.78, 220) : kind === 'sub' ? 150 : 120
+  return Math.min(cap, Math.max(DEFAULT_WIDTH[kind] * 0.7, raw))
+}
+
+function clampRect(
+  rect: { left: number; top: number; w: number; h: number },
+  frameWidthPx: number,
+  frameHeightPx: number,
+): { left: number; top: number; w: number; h: number } {
+  const pad = 8
+  const left = Math.min(Math.max(rect.left, pad), Math.max(pad, frameWidthPx - rect.w - pad))
+  const top = Math.min(Math.max(rect.top, pad), Math.max(pad, frameHeightPx - rect.h - pad))
+  return { ...rect, left, top }
+}
+
+function markerPercentFromRect(
+  rect: { left: number; top: number; w: number; h: number },
+  frameWidthPx: number,
+  frameHeightPx: number,
+  gap = 8,
+): { left: number; top: number } {
+  return {
+    left: ((rect.left + rect.w / 2) / frameWidthPx) * 100,
+    top: ((rect.top + rect.h + gap) / frameHeightPx) * 100,
+  }
+}
+
 /**
- * Greedy label placement with collision rejection.
- * Returns highest-priority labels that fit without overlap.
+ * Screen-space greedy placement. Coordinates must already be projected into
+ * container percentages (camera applied). Labels clamp inward at the frame
+ * edge instead of overflowing.
  */
 export function layoutMapLabels(
   candidates: MapLabelCandidate[],
   frameWidthPx: number,
   frameHeightPx: number,
   maxLabels?: number,
+  project: MapPointProjector = (x, y) =>
+    viewBoxPointToContainerPercent(x, y, frameWidthPx, frameHeightPx),
 ): PlacedMapLabel[] {
   const sorted = [...candidates].sort((a, b) => b.priority - a.priority)
   const placed: PlacedMapLabel[] = []
@@ -65,22 +107,46 @@ export function layoutMapLabels(
   for (const cand of sorted) {
     if (maxLabels != null && placed.length >= maxLabels) break
 
-    const proj = viewBoxPointToContainerPercent(cand.x, cand.y, frameWidthPx, frameHeightPx)
-    if (proj.left < 4 || proj.left > 96 || proj.top < 6 || proj.top > 94) continue
+    const proj = project(cand.x, cand.y)
+    if (proj.left < -8 || proj.left > 108 || proj.top < -8 || proj.top > 108) continue
 
     const w = cand.widthPx ?? DEFAULT_WIDTH[cand.kind]
     const h = cand.heightPx ?? DEFAULT_HEIGHT[cand.kind]
-    const leftPx = (proj.left / 100) * frameWidthPx - w / 2
-    const topPx = (proj.top / 100) * frameHeightPx - h - 8
+    const markerX = (proj.left / 100) * frameWidthPx
+    const markerY = (proj.top / 100) * frameHeightPx
 
-    const rect = { left: leftPx, top: topPx, w, h }
-    if (occupied.some((o) => rectsOverlap(rect, o))) continue
+    const slots = [
+      { left: markerX - w / 2, top: markerY - h - 8 },
+      { left: markerX - w / 2, top: markerY + 12 },
+      { left: markerX + 10, top: markerY - h / 2 },
+      { left: markerX - w - 10, top: markerY - h / 2 },
+    ]
 
-    occupied.push(rect)
+    let chosen: { left: number; top: number; w: number; h: number } | null = null
+    for (const slot of slots) {
+      const clamped = clampRect({ ...slot, w, h }, frameWidthPx, frameHeightPx)
+      if (occupied.some((o) => rectsOverlap(clamped, o))) continue
+      chosen = clamped
+      break
+    }
+
+    if (!chosen) {
+      if (cand.priority < 90) continue
+      const fallback = clampRect(
+        { left: markerX - w / 2, top: markerY - h - 8, w, h },
+        frameWidthPx,
+        frameHeightPx,
+      )
+      if (occupied.some((o) => rectsOverlap(fallback, o))) continue
+      chosen = fallback
+    }
+
+    occupied.push(chosen)
+    const anchor = markerPercentFromRect(chosen, frameWidthPx, frameHeightPx)
     placed.push({
       ...cand,
-      left: proj.left,
-      top: proj.top,
+      left: anchor.left,
+      top: anchor.top,
       offsetY: 0,
     })
   }
@@ -88,18 +154,28 @@ export function layoutMapLabels(
   return placed
 }
 
+export function projectLabelPoint(
+  x: number,
+  y: number,
+  camera: MapCamera,
+  frameWidthPx: number,
+  frameHeightPx: number,
+): { left: number; top: number } {
+  return projectViewBoxPointThroughCamera(x, y, camera, frameWidthPx, frameHeightPx)
+}
+
 export function labelBudgetForLevel(level: MapZoomLevel): number {
   switch (level) {
     case 'family':
-      return 12
+      return 8
     case 'regional':
-      return 16
+      return 10
     case 'local':
-      return 22
+      return 12
     case 'place':
-      return 32
+      return 14
     case 'record':
-      return 40
+      return 16
   }
 }
 

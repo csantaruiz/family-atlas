@@ -249,7 +249,7 @@ function MapViewContent({ active }: MapViewProps) {
             )}
           </header>
 
-          {phone ? (
+          {phone && !selection ? (
             <div className="map-phone-toolbar">
               <button
                 type="button"
@@ -264,10 +264,12 @@ function MapViewContent({ active }: MapViewProps) {
 
           {phone ? (
             <PhoneSheet open={filtersOpen} title="Filters" onClose={() => setFiltersOpen(false)}>
-              {filterFields}
-              {unresolved.length > 0 && level === 'family' && !selection ? (
-                <MapUnresolvedDisclosure places={unresolved} variant="filters" />
-              ) : null}
+              <div className="map-filter-sheet">
+                {filterFields}
+                {unresolved.length > 0 ? (
+                  <MapUnresolvedDisclosure places={unresolved} variant="filters" />
+                ) : null}
+              </div>
             </PhoneSheet>
           ) : (
             <div className="map-page-controls map-filters">
@@ -278,7 +280,11 @@ function MapViewContent({ active }: MapViewProps) {
             </div>
           )}
 
-          <MapDetailPanel subregions={subregions} unresolved={unresolved} />
+          <MapDetailPanel
+            subregions={subregions}
+            unresolved={unresolved}
+            onOpenFilters={phone ? () => setFiltersOpen(true) : undefined}
+          />
 
           {phone ? (
             <PhoneSheet open={overviewOpen} title="Overview" onClose={() => setOverviewOpen(false)}>

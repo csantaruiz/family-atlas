@@ -64,33 +64,10 @@ export function estimateLabelWidthPx(
   return Math.min(cap, Math.max(DEFAULT_WIDTH[kind] * 0.7, raw))
 }
 
-function clampRect(
-  rect: { left: number; top: number; w: number; h: number },
-  frameWidthPx: number,
-  frameHeightPx: number,
-): { left: number; top: number; w: number; h: number } {
-  const pad = 8
-  const left = Math.min(Math.max(rect.left, pad), Math.max(pad, frameWidthPx - rect.w - pad))
-  const top = Math.min(Math.max(rect.top, pad), Math.max(pad, frameHeightPx - rect.h - pad))
-  return { ...rect, left, top }
-}
-
-function markerPercentFromRect(
-  rect: { left: number; top: number; w: number; h: number },
-  frameWidthPx: number,
-  frameHeightPx: number,
-  gap = 8,
-): { left: number; top: number } {
-  return {
-    left: ((rect.left + rect.w / 2) / frameWidthPx) * 100,
-    top: ((rect.top + rect.h + gap) / frameHeightPx) * 100,
-  }
-}
-
 /**
  * Screen-space greedy placement. Coordinates must already be projected into
- * container percentages (camera applied). Labels clamp inward at the frame
- * edge instead of overflowing.
+ * container percentages (camera applied). Labels stay on their geographic
+ * projection; overlapping lower-priority labels are hidden.
  */
 export function layoutMapLabels(
   candidates: MapLabelCandidate[],
@@ -100,7 +77,7 @@ export function layoutMapLabels(
   project: MapPointProjector = (x, y) =>
     viewBoxPointToContainerPercent(x, y, frameWidthPx, frameHeightPx),
 ): PlacedMapLabel[] {
-  const sorted = [...candidates].sort((a, b) => b.priority - a.priority)
+  const sorted = [...candidates].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
   const placed: PlacedMapLabel[] = []
   const occupied: { left: number; top: number; w: number; h: number }[] = []
 
@@ -116,37 +93,26 @@ export function layoutMapLabels(
     const markerY = (proj.top / 100) * frameHeightPx
 
     const slots = [
-      { left: markerX - w / 2, top: markerY - h - 8 },
-      { left: markerX - w / 2, top: markerY + 12 },
-      { left: markerX + 10, top: markerY - h / 2 },
-      { left: markerX - w - 10, top: markerY - h / 2 },
+      { left: markerX - w / 2, top: markerY - h - 8, w, h },
+      { left: markerX - w / 2, top: markerY + 12, w, h },
     ]
 
     let chosen: { left: number; top: number; w: number; h: number } | null = null
     for (const slot of slots) {
-      const clamped = clampRect({ ...slot, w, h }, frameWidthPx, frameHeightPx)
-      if (occupied.some((o) => rectsOverlap(clamped, o))) continue
-      chosen = clamped
+      if (slot.left + w < 4 || slot.left > frameWidthPx - 4) continue
+      if (slot.top + h < 4 || slot.top > frameHeightPx - 4) continue
+      if (occupied.some((o) => rectsOverlap(slot, o))) continue
+      chosen = slot
       break
     }
 
-    if (!chosen) {
-      if (cand.priority < 90) continue
-      const fallback = clampRect(
-        { left: markerX - w / 2, top: markerY - h - 8, w, h },
-        frameWidthPx,
-        frameHeightPx,
-      )
-      if (occupied.some((o) => rectsOverlap(fallback, o))) continue
-      chosen = fallback
-    }
+    if (!chosen) continue
 
     occupied.push(chosen)
-    const anchor = markerPercentFromRect(chosen, frameWidthPx, frameHeightPx)
     placed.push({
       ...cand,
-      left: anchor.left,
-      top: anchor.top,
+      left: proj.left,
+      top: proj.top,
       offsetY: 0,
     })
   }

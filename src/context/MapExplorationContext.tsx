@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -73,6 +74,8 @@ type MapExplorationContextValue = {
   clearSelection: () => void
   refitFilteredView: () => void
   updateCameraLive: (camera: MapCamera) => void
+  manualCamera: boolean
+  beginManualCamera: () => void
 }
 
 const MapExplorationContext = createContext<MapExplorationContextValue | null>(null)
@@ -138,30 +141,82 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [viewportLayout, setViewportLayout] = useState<MapViewportLayout | null>(null)
   const [familyContentBounds, setFamilyContentBounds] = useState<MapBounds | null>(null)
+  const [manualCamera, setManualCamera] = useState(false)
+  const cameraRef = useRef(camera)
+  cameraRef.current = camera
+  const animFrameRef = useRef<number | null>(null)
+
+  const stopCameraAnimation = useCallback(() => {
+    if (animFrameRef.current != null) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+    setIsTransitioning(false)
+  }, [])
 
   const animateCamera = useCallback((next: MapCamera) => {
+    stopCameraAnimation()
+    const reduced =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) {
+      setCamera(next)
+      return
+    }
+    const from = cameraRef.current
+    const start = performance.now()
     setIsTransitioning(true)
-    setCamera(next)
-    window.setTimeout(() => setIsTransitioning(false), MAP_CAMERA_TRANSITION_MS + 40)
-  }, [])
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / MAP_CAMERA_TRANSITION_MS)
+      const e = 1 - (1 - t) ** 3
+      setCamera({
+        cx: from.cx + (next.cx - from.cx) * e,
+        cy: from.cy + (next.cy - from.cy) * e,
+        scale: from.scale + (next.scale - from.scale) * e,
+      })
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(tick)
+        return
+      }
+      setCamera(next)
+      setIsTransitioning(false)
+      animFrameRef.current = null
+    }
+    animFrameRef.current = requestAnimationFrame(tick)
+  }, [stopCameraAnimation])
 
   const updateCameraLive = useCallback((next: MapCamera) => {
-    setIsTransitioning(false)
+    stopCameraAnimation()
+    setManualCamera(true)
     setCamera(next)
-  }, [])
+  }, [stopCameraAnimation])
+
+  const beginManualCamera = useCallback(() => {
+    stopCameraAnimation()
+    setManualCamera(true)
+  }, [stopCameraAnimation])
+
+  useEffect(() => () => stopCameraAnimation(), [stopCameraAnimation])
+
+  const familyBoundsKey = familyContentBounds
+    ? `${familyContentBounds.minX}:${familyContentBounds.maxX}:${familyContentBounds.minY}:${familyContentBounds.maxY}`
+    : ''
 
   useEffect(() => {
+    if (manualCamera) return
     if (level === 'family' || !selection || !viewportLayout) return
     animateCamera(cameraForSelection(selection, level, viewportLayout, familyContentBounds))
     // Refit when viewport dimensions or panel visibility change — not on duplicate selection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    manualCamera,
     viewportLayout?.frameWidthPx,
     viewportLayout?.frameHeightPx,
     viewportLayout?.panelOpen,
   ])
 
   useEffect(() => {
+    if (manualCamera) return
     if (level !== 'family' || !viewportLayout) return
     animateCamera(
       overviewCamera(viewportLayout, familyContentBounds, viewportLayout.panelOpen),
@@ -169,8 +224,9 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
     // Refit family overview when content bounds or chrome layout change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    manualCamera,
     level,
-    familyContentBounds,
+    familyBoundsKey,
     viewportLayout?.frameWidthPx,
     viewportLayout?.frameHeightPx,
     viewportLayout?.panelOpen,
@@ -178,6 +234,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
 
   const exploreRegion = useCallback(
     (region: FamilyRegion) => {
+      setManualCamera(false)
       setFocusRegionId(region.id)
       setFocusSubregionId(null)
       setLevel('regional')
@@ -192,6 +249,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
 
   const exploreSubregion = useCallback(
     (sub: MapSubregion) => {
+      setManualCamera(false)
       setFocusRegionId(sub.parentRegionId)
       setFocusSubregionId(sub.id)
       setLevel('local')
@@ -206,6 +264,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
 
   const explorePlace = useCallback(
     (place: PlaceRecord) => {
+      setManualCamera(false)
       setLevel('place')
       setSelection({ type: 'place', place })
       const { x, y } = place.coordinate
@@ -282,6 +341,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
   }, [selection, viewportLayout, familyContentBounds, animateCamera])
 
   const resetExploration = useCallback(() => {
+    setManualCamera(false)
     setLevel('family')
     setFocusRegionId(null)
     setFocusSubregionId(null)
@@ -350,6 +410,8 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       clearSelection,
       refitFilteredView,
       updateCameraLive,
+      manualCamera,
+      beginManualCamera,
     }),
     [
       level,
@@ -374,6 +436,8 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       clearSelection,
       refitFilteredView,
       updateCameraLive,
+      manualCamera,
+      beginManualCamera,
     ],
   )
 

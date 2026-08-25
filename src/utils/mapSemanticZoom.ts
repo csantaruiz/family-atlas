@@ -25,25 +25,27 @@ export const MAP_FRAME_COVERAGE = 1.08
 /** Compensates for preserveAspectRatio="slice" letterboxing inside the plate. */
 export const MAP_PLATE_SLICE_BLEED = 1.045
 
+export type MapCameraTransform = {
+  scale: number
+  translateX: number
+  translateY: number
+}
+
 /**
- * Minimum scale so a panned camera never reveals the frame backdrop.
- * Derived from plate edges: left = 50 − cx × scale (with center transform origin).
+ * Authoritative visual scale. Pan must never change this.
+ * Coverage padding belongs in the stored `camera.scale` (overview/fit), not in pan math.
  */
 export function effectiveMapScale(camera: MapCamera): number {
-  const { cx, cy, scale } = camera
+  return camera.scale
+}
 
-  const horizontal =
-    cx <= 50 ? 50 / Math.max(cx, 1) : 50 / Math.max(100 - cx, 1)
-  const vertical =
-    cy <= 50 ? 50 / Math.max(cy, 1) : 50 / Math.max(100 - cy, 1)
-  const panCoverage = Math.max(horizontal, vertical, 1)
-
-  const zoomPadding = Math.min(Math.max(0, scale - 1) * 0.14, 0.05)
-  const baseCoverage = (MAP_FRAME_COVERAGE + zoomPadding) * MAP_PLATE_SLICE_BLEED
-  const panAwareCoverage = panCoverage * MAP_PLATE_SLICE_BLEED
-
-  // Tiny margin so eased transitions never flash the frame color.
-  return scale * Math.max(baseCoverage, panAwareCoverage) * 1.008
+/** Percentage-space transform: screen = (world − 50) * scale + 50 + translate, origin at 50%. */
+export function cameraTransformParts(camera: MapCamera): MapCameraTransform {
+  return {
+    scale: camera.scale,
+    translateX: (50 - camera.cx) * camera.scale,
+    translateY: (50 - camera.cy) * camera.scale,
+  }
 }
 
 export const DEFAULT_CAMERA: MapCamera = { cx: 50, cy: 50, scale: 1 }
@@ -140,10 +142,8 @@ export function viewBoxPointToContainerPercent(
 }
 
 export function cameraTransform(camera: MapCamera): string {
-  const scale = effectiveMapScale(camera)
-  const tx = (50 - camera.cx) * scale
-  const ty = (50 - camera.cy) * scale
-  return `translate(${tx}%, ${ty}%) scale(${scale})`
+  const { scale, translateX, translateY } = cameraTransformParts(camera)
+  return `translate(${translateX}%, ${translateY}%) scale(${scale})`
 }
 
 /**
@@ -159,7 +159,24 @@ export function cameraTransformForContainer(
     return cameraTransform(camera)
   }
 
-  const scale = effectiveMapScale(camera)
+  const { scale, translateX, translateY } = cameraTransformPartsForContainer(
+    camera,
+    containerWidth,
+    containerHeight,
+  )
+  return `translate(${translateX}px, ${translateY}px) scale(${scale})`
+}
+
+export function cameraTransformPartsForContainer(
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+): MapCameraTransform {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return cameraTransformParts(camera)
+  }
+
+  const scale = camera.scale
   const focal = viewBoxPointToContainerPercent(
     camera.cx,
     camera.cy,
@@ -168,10 +185,110 @@ export function cameraTransformForContainer(
   )
   const focalX = (focal.left / 100) * containerWidth
   const focalY = (focal.top / 100) * containerHeight
-  const tx = -scale * (focalX - containerWidth / 2)
-  const ty = -scale * (focalY - containerHeight / 2)
+  return {
+    scale,
+    translateX: -scale * (focalX - containerWidth / 2),
+    translateY: -scale * (focalY - containerHeight / 2),
+  }
+}
 
-  return `translate(${tx}px, ${ty}px) scale(${scale})`
+export function containerPercentToViewBoxPoint(
+  left: number,
+  top: number,
+  containerWidth: number,
+  containerHeight: number,
+  viewBoxWidth = MAP_VIEW_BOX.width,
+  viewBoxHeight = MAP_VIEW_BOX.height,
+): { x: number; y: number } {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return { x: left, y: top }
+  }
+
+  const slice = Math.max(containerWidth / viewBoxWidth, containerHeight / viewBoxHeight)
+  const renderedWidth = viewBoxWidth * slice
+  const renderedHeight = viewBoxHeight * slice
+  const offsetX = (containerWidth - renderedWidth) / 2
+  const offsetY = (containerHeight - renderedHeight) / 2
+  const px = (left / 100) * containerWidth
+  const py = (top / 100) * containerHeight
+  return {
+    x: (px - offsetX) / slice,
+    y: (py - offsetY) / slice,
+  }
+}
+
+export function screenPercentToWorld(
+  leftPct: number,
+  topPct: number,
+  camera: MapCamera,
+  containerWidth: number,
+  containerHeight: number,
+): { x: number; y: number } {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return {
+      x: camera.cx + (leftPct - 50) / camera.scale,
+      y: camera.cy + (topPct - 50) / camera.scale,
+    }
+  }
+
+  const scale = camera.scale
+  const focal = viewBoxPointToContainerPercent(
+    camera.cx,
+    camera.cy,
+    containerWidth,
+    containerHeight,
+  )
+  const screenX = (leftPct / 100) * containerWidth
+  const screenY = (topPct / 100) * containerHeight
+  const focalX = (focal.left / 100) * containerWidth
+  const focalY = (focal.top / 100) * containerHeight
+  const localX = focalX + (screenX - containerWidth / 2) / scale
+  const localY = focalY + (screenY - containerHeight / 2) / scale
+  return containerPercentToViewBoxPoint(
+    (localX / containerWidth) * 100,
+    (localY / containerHeight) * 100,
+    containerWidth,
+    containerHeight,
+  )
+}
+
+export function cameraFromScaleAndScreenAnchor(
+  scale: number,
+  world: { x: number; y: number },
+  originLeftPct: number,
+  originTopPct: number,
+  containerWidth: number,
+  containerHeight: number,
+): MapCamera {
+  if (containerWidth <= 0 || containerHeight <= 0) {
+    return {
+      scale,
+      cx: world.x - (originLeftPct - 50) / scale,
+      cy: world.y - (originTopPct - 50) / scale,
+    }
+  }
+
+  const local = viewBoxPointToContainerPercent(
+    world.x,
+    world.y,
+    containerWidth,
+    containerHeight,
+  )
+  const originX = (originLeftPct / 100) * containerWidth
+  const originY = (originTopPct / 100) * containerHeight
+  const localX = (local.left / 100) * containerWidth
+  const localY = (local.top / 100) * containerHeight
+  const tx = originX - containerWidth / 2 - (localX - containerWidth / 2) * scale
+  const ty = originY - containerHeight / 2 - (localY - containerHeight / 2) * scale
+  const focalX = containerWidth / 2 - tx / scale
+  const focalY = containerHeight / 2 - ty / scale
+  const focal = containerPercentToViewBoxPoint(
+    (focalX / containerWidth) * 100,
+    (focalY / containerHeight) * 100,
+    containerWidth,
+    containerHeight,
+  )
+  return { scale, cx: focal.x, cy: focal.y }
 }
 
 /** Visible SVG viewBox region — vector zoom without CSS scale rasterization. */
@@ -249,7 +366,7 @@ export function projectViewBoxPointThroughCamera(
     return projectMapPoint(x, y, camera)
   }
 
-  const scale = effectiveMapScale(camera)
+  const scale = camera.scale
   const local = viewBoxPointToContainerPercent(x, y, containerWidth, containerHeight)
   const localX = (local.left / 100) * containerWidth
   const localY = (local.top / 100) * containerHeight

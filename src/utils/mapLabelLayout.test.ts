@@ -4,7 +4,7 @@ import { layoutMapLabels } from './mapLabelLayout'
 describe('layoutMapLabels', () => {
   const project = (x: number, y: number) => ({ left: x, top: y })
 
-  it('clamps labels inward instead of overflowing the frame', () => {
+  it('keeps labels on their geographic projection', () => {
     const placed = layoutMapLabels(
       [
         {
@@ -25,12 +25,11 @@ describe('layoutMapLabels', () => {
     )
 
     expect(placed).toHaveLength(1)
-    const leftPx = (placed[0].left / 100) * 390
-    expect(leftPx).toBeGreaterThan(20)
-    expect(leftPx).toBeLessThan(370)
+    expect(placed[0].left).toBeCloseTo(98)
+    expect(placed[0].top).toBeCloseTo(8)
   })
 
-  it('keeps the highest-priority label when many share the same screen point', () => {
+  it('hides lower-priority labels that overlap in screen space', () => {
     const crowded = Array.from({ length: 8 }, (_, i) => ({
       id: i === 0 ? 'keep' : `drop-${i}`,
       x: 50,

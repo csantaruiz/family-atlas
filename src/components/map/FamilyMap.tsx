@@ -6,6 +6,7 @@ import { useMaxWidth } from '../../hooks/useMaxWidth'
 import {
   cameraHasLeftOverview,
   clampCameraToContent,
+  panLimitsForCamera,
   zoomCameraAt,
 } from '../../utils/mapCameraGestures'
 import { MAP_CAMERA_TRANSITION_MS, MAP_PEEK_INSET_PX } from '../../utils/mapCamera'
@@ -15,15 +16,16 @@ import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
 import type { MapSubregion } from '../../utils/mapSubregions'
 import type { RegionalRoute, SubregionRoute } from '../../utils/mapRoutes'
 import {
-  cameraTransform,
+  cameraTransformForContainer,
+  cameraTransformPartsForContainer,
   DEFAULT_CAMERA,
-  effectiveMapScale,
   heatIntensity,
   regionVisibleAtLevel,
   subregionVisibleAtLevel,
   visibleLayers,
 } from '../../utils/mapSemanticZoom'
-import { boundsFromRegionAnchors } from '../../utils/mapRegionGeometry'
+import { boundsFromRegionGeography } from '../../utils/mapRegionGeometry'
+import { MAP_CAMERA_DEBUG } from '../../utils/mapDebug'
 import { MAP_VIEW_BOX } from '../../utils/mapProjection'
 import { formatRouteTravelers, formatRouteYearLabel } from '../../utils/mapMigrationMotion'
 import { MigrationRouteLayer, MigrationRouteTooltip } from './MigrationRouteLayer'
@@ -92,11 +94,12 @@ export function FamilyMap({
     resetExploration,
     clearSelection,
     updateCameraLive,
-    refitFilteredView,
+    beginManualCamera,
   } = useMapExploration()
   const phone = useMaxWidth(760)
   const [liveCamera, setLiveCamera] = useState(false)
   const [gestureMoved, setGestureMoved] = useState(false)
+  const [gestureMode, setGestureMode] = useState<'idle' | 'pan' | 'pinch' | 'auto-focus'>('idle')
   const cameraRef = useRef(camera)
   cameraRef.current = camera
 
@@ -112,7 +115,7 @@ export function FamilyMap({
   )
 
   const familyContentBounds = useMemo(
-    () => boundsFromRegionAnchors(regions),
+    () => boundsFromRegionGeography(regions),
     [regions],
   )
 
@@ -175,10 +178,12 @@ export function FamilyMap({
         const originLeft = ((e.clientX - rect.left) / rect.width) * 100
         const originTop = ((e.clientY - rect.top) / rect.height) * 100
         const factor = e.deltaY > 0 ? 0.94 : 1.06
+        beginManualCamera()
         updateCameraLive(
           clampCameraToContent(
-            zoomCameraAt(cameraRef.current, factor, originLeft, originTop),
+            zoomCameraAt(cameraRef.current, factor, originLeft, originTop, rect),
             familyContentBounds,
+            rect,
           ),
         )
         setGestureMoved(true)
@@ -187,7 +192,7 @@ export function FamilyMap({
       if (e.deltaY > 0) zoomOut()
       else zoomIn()
     },
-    [phone, zoomIn, zoomOut, updateCameraLive, familyContentBounds],
+    [phone, zoomIn, zoomOut, updateCameraLive, beginManualCamera, familyContentBounds],
   )
 
   useMapCameraGestures(frameRef, phone, {
@@ -197,8 +202,15 @@ export function FamilyMap({
       setGestureMoved(true)
     },
     bounds: familyContentBounds,
-    onGestureStart: () => setLiveCamera(true),
-    onGestureEnd: () => setLiveCamera(false),
+    onGestureStart: (mode) => {
+      beginManualCamera()
+      setLiveCamera(true)
+      setGestureMode(mode)
+    },
+    onGestureEnd: () => {
+      setLiveCamera(false)
+      setGestureMode('idle')
+    },
   })
 
   const activeRoutes = layers.showMajorRoutes ? routes : layers.showLocalRoutes ? subroutes : []
@@ -241,8 +253,35 @@ export function FamilyMap({
   }, [clearHoverRoute])
 
   const transitionDuration = prefersReducedMotion ? 0.01 : MAP_CAMERA_TRANSITION_MS / 1000
-  const zoomScale = effectiveMapScale(camera)
+  const zoomScale = camera.scale
   const outlineWidth = 0.22 / Math.max(zoomScale, 1)
+  const geographyTransform = cameraTransformForContainer(
+    camera,
+    frameSize.width,
+    frameSize.height,
+  )
+  const transformParts = cameraTransformPartsForContainer(
+    camera,
+    frameSize.width,
+    frameSize.height,
+  )
+  const panLimits = familyContentBounds
+    ? panLimitsForCamera(camera, familyContentBounds, frameSize)
+    : null
+
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    ;(window as Window & { __ATLAS_MAP_CAMERA?: unknown }).__ATLAS_MAP_CAMERA = {
+      scale: camera.scale,
+      translateX: transformParts.translateX,
+      translateY: transformParts.translateY,
+      cx: camera.cx,
+      cy: camera.cy,
+      minPan: panLimits ? { x: panLimits.minCx, y: panLimits.minCy } : null,
+      maxPan: panLimits ? { x: panLimits.maxCx, y: panLimits.maxCy } : null,
+      selectedRegion: focusRegionId,
+      gestureMode: liveCamera ? gestureMode : 'idle',
+    }
+  }
 
   return (
     <div
@@ -273,10 +312,9 @@ export function FamilyMap({
         </button>
       )}
 
-      <motion.div
+      <div
         className="map-atlas-zoom"
-        animate={{ transform: cameraTransform(camera) }}
-        transition={{ duration: liveCamera ? 0 : transitionDuration, ease: motionEase }}
+        style={{ transform: geographyTransform, transformOrigin: '50% 50%' }}
       >
         <div className="map-atlas-plate">
           <svg
@@ -403,7 +441,7 @@ export function FamilyMap({
           )}
         </svg>
         </div>
-      </motion.div>
+      </div>
 
           <MapOverlay
             level={level}
@@ -423,6 +461,7 @@ export function FamilyMap({
             onSubregionClick={exploreSubregion}
             onPlaceClick={explorePlace}
             onRegionHover={setHoveredRegionId}
+            instant={liveCamera}
           />
 
       <MapDebugOverlay
@@ -453,9 +492,9 @@ export function FamilyMap({
           type="button"
           className="map-reset-view"
           onClick={() => {
-            if (selection) refitFilteredView()
-            else resetExploration()
+            resetExploration()
             setGestureMoved(false)
+            setGestureMode('idle')
           }}
         >
           Reset view
@@ -467,6 +506,21 @@ export function FamilyMap({
           Clear selection
         </button>
       )}
+
+      {MAP_CAMERA_DEBUG ? (
+        <div className="map-camera-hud" aria-hidden="true">
+          <div>scale {camera.scale.toFixed(3)}</div>
+          <div>tx {transformParts.translateX.toFixed(1)} ty {transformParts.translateY.toFixed(1)}</div>
+          <div>cx {camera.cx.toFixed(2)} cy {camera.cy.toFixed(2)}</div>
+          {panLimits ? (
+            <div>
+              pan {panLimits.minCx.toFixed(1)}–{panLimits.maxCx.toFixed(1)} / {panLimits.minCy.toFixed(1)}–{panLimits.maxCy.toFixed(1)}
+            </div>
+          ) : null}
+          <div>sel {focusRegionId ?? 'none'}</div>
+          <div>gesture {liveCamera ? gestureMode : 'idle'}</div>
+        </div>
+      ) : null}
 
       {!(phone && selection) ? (
       <div className="map-hint">

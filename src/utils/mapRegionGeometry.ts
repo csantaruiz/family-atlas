@@ -46,20 +46,42 @@ export function expandBounds(bounds: MapBounds, padding: number): MapBounds {
 
 /** Fallback extent when no regions are visible (US + Britain cluster). */
 export const DEFAULT_FAMILY_CONTENT_BOUNDS: MapBounds = {
-  minX: 25,
-  maxX: 55,
-  minY: 32,
-  maxY: 48,
+  minX: 10,
+  maxX: 62,
+  minY: 26,
+  maxY: 54,
 }
 
 export function boundsFromRegionAnchors(
   regions: { anchor: { x: number; y: number } }[],
   padding = REGION_MARKER_PADDING,
 ): MapBounds {
+  if (!regions.length) return DEFAULT_FAMILY_CONTENT_BOUNDS
   return expandBounds(
     boundsFromPoints(regions.map((region) => ({ x: region.anchor.x, y: region.anchor.y }))),
     padding,
   )
+}
+
+export function boundsFromRegionGeography(
+  regions: {
+    anchor: { x: number; y: number }
+    ellipse?: { cx: number; cy: number; rx: number; ry: number }
+    bounds?: MapBounds
+  }[],
+): MapBounds {
+  if (!regions.length) return DEFAULT_FAMILY_CONTENT_BOUNDS
+  const parts: MapBounds[] = regions.map((region) => {
+    if (region.bounds) return region.bounds
+    if (region.ellipse) return boundsFromEllipse(region.ellipse)
+    return {
+      minX: region.anchor.x,
+      maxX: region.anchor.x,
+      minY: region.anchor.y,
+      maxY: region.anchor.y,
+    }
+  })
+  return expandBounds(unionMapBounds(parts), 2)
 }
 
 export function unionMapBounds(boundsList: MapBounds[]): MapBounds {

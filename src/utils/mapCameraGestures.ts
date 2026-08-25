@@ -1,19 +1,39 @@
 import type { MapBounds } from './mapRegionGeometry'
-import { effectiveMapScale, type MapCamera } from './mapSemanticZoom'
+import {
+  cameraFromScaleAndScreenAnchor,
+  screenPercentToWorld,
+  type MapCamera,
+} from './mapSemanticZoom'
 
 export const GESTURE_MIN_SCALE = 1
 export const GESTURE_MAX_SCALE = 5.5
+export const PAN_EDGE_PAD_PX = 40
+
+export type MapViewportSize = {
+  width: number
+  height: number
+}
+
+export type MapPanLimits = {
+  minCx: number
+  maxCx: number
+  minCy: number
+  maxCy: number
+}
 
 export function mapPointFromScreenPercent(
   leftPct: number,
   topPct: number,
   camera: MapCamera,
+  viewport?: MapViewportSize | null,
 ): { x: number; y: number } {
-  const scale = effectiveMapScale(camera)
-  return {
-    x: camera.cx + (leftPct - 50) / scale,
-    y: camera.cy + (topPct - 50) / scale,
-  }
+  return screenPercentToWorld(
+    leftPct,
+    topPct,
+    camera,
+    viewport?.width ?? 0,
+    viewport?.height ?? 0,
+  )
 }
 
 export function zoomCameraAt(
@@ -21,21 +41,26 @@ export function zoomCameraAt(
   factor: number,
   originLeftPct: number,
   originTopPct: number,
+  viewport?: MapViewportSize | null,
 ): MapCamera {
-  const point = mapPointFromScreenPercent(originLeftPct, originTopPct, camera)
-  const nextScale = Math.min(GESTURE_MAX_SCALE, Math.max(GESTURE_MIN_SCALE, camera.scale * factor))
-  let next: MapCamera = { ...camera, scale: nextScale }
-  for (let i = 0; i < 4; i++) {
-    const scale = effectiveMapScale(next)
-    next = {
-      scale: nextScale,
-      cx: point.x - (originLeftPct - 50) / scale,
-      cy: point.y - (originTopPct - 50) / scale,
-    }
-  }
-  return next
+  const width = viewport?.width ?? 0
+  const height = viewport?.height ?? 0
+  const world = mapPointFromScreenPercent(originLeftPct, originTopPct, camera, viewport)
+  const nextScale = Math.min(
+    GESTURE_MAX_SCALE,
+    Math.max(GESTURE_MIN_SCALE, camera.scale * factor),
+  )
+  return cameraFromScaleAndScreenAnchor(
+    nextScale,
+    world,
+    originLeftPct,
+    originTopPct,
+    width,
+    height,
+  )
 }
 
+/** Pan changes translation only — scale is unchanged. */
 export function panCamera(
   camera: MapCamera,
   dxPx: number,
@@ -44,32 +69,59 @@ export function panCamera(
   frameHeight: number,
 ): MapCamera {
   if (frameWidth <= 0 || frameHeight <= 0) return camera
-  const scale = effectiveMapScale(camera)
+  const originLeft = 50
+  const originTop = 50
+  const world = mapPointFromScreenPercent(originLeft, originTop, camera, {
+    width: frameWidth,
+    height: frameHeight,
+  })
+  const nextLeft = originLeft + (dxPx / frameWidth) * 100
+  const nextTop = originTop + (dyPx / frameHeight) * 100
+  return cameraFromScaleAndScreenAnchor(
+    camera.scale,
+    world,
+    nextLeft,
+    nextTop,
+    frameWidth,
+    frameHeight,
+  )
+}
+
+export function panLimitsForCamera(
+  camera: MapCamera,
+  bounds: MapBounds,
+  viewport?: MapViewportSize | null,
+): MapPanLimits {
+  const scale = Math.min(GESTURE_MAX_SCALE, Math.max(GESTURE_MIN_SCALE, camera.scale))
+  const width = viewport?.width ?? 0
+  const height = viewport?.height ?? 0
+  const padX =
+    width > 0 ? PAN_EDGE_PAD_PX / ((width / 100) * scale) : 2
+  const padY =
+    height > 0 ? PAN_EDGE_PAD_PX / ((height / 100) * scale) : 2
+
   return {
-    ...camera,
-    cx: camera.cx - ((dxPx / frameWidth) * 100) / scale,
-    cy: camera.cy - ((dyPx / frameHeight) * 100) / scale,
+    minCx: bounds.minX - padX,
+    maxCx: bounds.maxX + padX,
+    minCy: bounds.minY - padY,
+    maxCy: bounds.maxY + padY,
   }
 }
 
-export function clampCameraToContent(camera: MapCamera, bounds: MapBounds | null): MapCamera {
+export function clampCameraToContent(
+  camera: MapCamera,
+  bounds: MapBounds | null,
+  viewport?: MapViewportSize | null,
+): MapCamera {
   const scale = Math.min(GESTURE_MAX_SCALE, Math.max(GESTURE_MIN_SCALE, camera.scale))
   const next: MapCamera = { ...camera, scale }
   if (!bounds) return next
 
-  const visual = effectiveMapScale(next)
-  const halfW = 50 / visual
-  const halfH = 50 / visual
-  const margin = 10
-  const minCx = bounds.minX - halfW + margin
-  const maxCx = bounds.maxX + halfW - margin
-  const minCy = bounds.minY - halfH + margin
-  const maxCy = bounds.maxY + halfH - margin
-
+  const limits = panLimitsForCamera(next, bounds, viewport)
   return {
     scale,
-    cx: clamp(next.cx, minCx, maxCx),
-    cy: clamp(next.cy, minCy, maxCy),
+    cx: clamp(next.cx, limits.minCx, limits.maxCx),
+    cy: clamp(next.cy, limits.minCy, limits.maxCy),
   }
 }
 

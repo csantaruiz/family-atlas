@@ -9,11 +9,13 @@ import type { MapCamera } from '../utils/mapSemanticZoom'
 
 const PAN_THRESHOLD_PX = 8
 
+export type MapGestureMode = 'idle' | 'pan' | 'pinch'
+
 type GestureOptions = {
   getCamera: () => MapCamera
   applyCamera: (camera: MapCamera) => void
   bounds: MapBounds | null
-  onGestureStart?: () => void
+  onGestureStart?: (mode: MapGestureMode) => void
   onGestureEnd?: () => void
 }
 
@@ -51,28 +53,52 @@ export function useMapCameraGestures(
     let lastPinchDistance: number | null = null
     let lastPan: { x: number; y: number } | null = null
     let panning = false
+    let pinching = false
     let startedOnControl = false
     let active = false
+    let suppressClick = false
+    let suppressTimer: number | null = null
+
+    const viewport = () => {
+      const rect = node.getBoundingClientRect()
+      return { width: rect.width, height: rect.height }
+    }
 
     const commit = (next: MapCamera) => {
       const { bounds, applyCamera } = optionsRef.current
-      applyCamera(clampCameraToContent(next, bounds))
+      applyCamera(clampCameraToContent(next, bounds, viewport()))
     }
 
-    const begin = () => {
-      if (active) return
-      active = true
-      optionsRef.current.onGestureStart?.()
+    const begin = (mode: MapGestureMode) => {
+      if (!active) {
+        active = true
+        optionsRef.current.onGestureStart?.(mode)
+      }
     }
 
     const finish = () => {
       if (!active) return
       active = false
+      if (panning || pinching) {
+        suppressClick = true
+        if (suppressTimer != null) window.clearTimeout(suppressTimer)
+        suppressTimer = window.setTimeout(() => {
+          suppressClick = false
+          suppressTimer = null
+        }, 400)
+      }
+      panning = false
+      pinching = false
       optionsRef.current.onGestureEnd?.()
     }
 
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType === 'mouse' && event.button !== 0) return
+      try {
+        node.setPointerCapture(event.pointerId)
+      } catch {
+        /* Safari may throw if the target is gone */
+      }
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
       if (pointers.size === 1) {
         startedOnControl = isInteractiveTarget(event.target)
@@ -82,8 +108,9 @@ export function useMapCameraGestures(
       if (pointers.size === 2) {
         startedOnControl = false
         panning = false
+        pinching = true
         lastPinchDistance = pinchDistance([...pointers.values()])
-        begin()
+        begin('pinch')
       }
     }
 
@@ -92,9 +119,12 @@ export function useMapCameraGestures(
       pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
       const rect = node.getBoundingClientRect()
       const camera = optionsRef.current.getCamera()
+      const size = { width: rect.width, height: rect.height }
 
       if (pointers.size >= 2 && lastPinchDistance != null) {
         event.preventDefault()
+        pinching = true
+        panning = false
         const points = [...pointers.values()]
         const distance = pinchDistance(points)
         if (distance < 4 || lastPinchDistance < 4) {
@@ -106,7 +136,8 @@ export function useMapCameraGestures(
         const originTop = ((mid.y - rect.top) / rect.height) * 100
         const factor = distance / lastPinchDistance
         lastPinchDistance = distance
-        commit(zoomCameraAt(camera, factor, originLeft, originTop))
+        begin('pinch')
+        commit(zoomCameraAt(camera, factor, originLeft, originTop, size))
         return
       }
 
@@ -116,7 +147,7 @@ export function useMapCameraGestures(
       if (!panning) {
         if (Math.hypot(dx, dy) < PAN_THRESHOLD_PX) return
         panning = true
-        begin()
+        begin('pan')
       }
       event.preventDefault()
       lastPan = { x: event.clientX, y: event.clientY }
@@ -127,6 +158,7 @@ export function useMapCameraGestures(
       pointers.delete(event.pointerId)
       if (pointers.size < 2) {
         lastPinchDistance = null
+        pinching = false
       }
       if (pointers.size === 1) {
         const remaining = [...pointers.values()][0]
@@ -135,24 +167,46 @@ export function useMapCameraGestures(
       }
       if (pointers.size === 0) {
         lastPan = null
-        panning = false
         startedOnControl = false
         finish()
       }
+    }
+
+    const onClickCapture = (event: Event) => {
+      if (!suppressClick) return
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    const preventGesture = (event: Event) => {
+      event.preventDefault()
+    }
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (active || pointers.size > 0) event.preventDefault()
     }
 
     node.addEventListener('pointerdown', onPointerDown)
     node.addEventListener('pointermove', onPointerMove, { passive: false })
     node.addEventListener('pointerup', onPointerUp)
     node.addEventListener('pointercancel', onPointerUp)
-    node.addEventListener('pointerleave', onPointerUp)
+    node.addEventListener('click', onClickCapture, true)
+    node.addEventListener('gesturestart', preventGesture)
+    node.addEventListener('gesturechange', preventGesture)
+    node.addEventListener('gestureend', preventGesture)
+    node.addEventListener('touchmove', onTouchMove, { passive: false })
 
     return () => {
+      if (suppressTimer != null) window.clearTimeout(suppressTimer)
       node.removeEventListener('pointerdown', onPointerDown)
       node.removeEventListener('pointermove', onPointerMove)
       node.removeEventListener('pointerup', onPointerUp)
       node.removeEventListener('pointercancel', onPointerUp)
-      node.removeEventListener('pointerleave', onPointerUp)
+      node.removeEventListener('click', onClickCapture, true)
+      node.removeEventListener('gesturestart', preventGesture)
+      node.removeEventListener('gesturechange', preventGesture)
+      node.removeEventListener('gestureend', preventGesture)
+      node.removeEventListener('touchmove', onTouchMove)
     }
   }, [enabled, ref])
 }

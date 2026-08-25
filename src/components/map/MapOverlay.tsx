@@ -43,6 +43,7 @@ type MapOverlayProps = {
   onSubregionClick: (sub: MapSubregion) => void
   onPlaceClick: (place: PlaceRecord) => void
   onRegionHover: (id: FamilyRegionId | null) => void
+  instant?: boolean
 }
 
 export function MapOverlay({
@@ -63,6 +64,7 @@ export function MapOverlay({
   onSubregionClick,
   onPlaceClick,
   onRegionHover,
+  instant = false,
 }: MapOverlayProps) {
   const project = useMemo(
     () => (x: number, y: number) =>
@@ -264,7 +266,7 @@ export function MapOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: m.opacity }}
             exit={{ opacity: 0 }}
-            transition={{ duration: MAP_CAMERA_TRANSITION_MS / 1000, ease: motionEase }}
+            transition={{ duration: instant ? 0 : MAP_CAMERA_TRANSITION_MS / 1000, ease: motionEase }}
             onClick={(e) => {
               e.stopPropagation()
               m.onClick?.()
@@ -285,7 +287,7 @@ export function MapOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: MAP_CAMERA_TRANSITION_MS / 1000, ease: motionEase }}
+            transition={{ duration: instant ? 0 : MAP_CAMERA_TRANSITION_MS / 1000, ease: motionEase }}
           >
             <span className="map-overlay-label-text">{label.text}</span>
             {label.subtext && <span className="map-overlay-label-sub">{label.subtext}</span>}

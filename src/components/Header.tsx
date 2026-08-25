@@ -7,7 +7,7 @@ import { EXPLORE_NAV, OWNER_ACTIONS, exploreMenuLabel } from '../navigation/atla
 import { HeaderManageMenu } from './HeaderManageMenu'
 import { useAtlasReview } from '../atlas-review/AtlasReviewRoot'
 import { useManageFamilyTree } from '../atlas-manage/ManageFamilyTreeRoot'
-import { reviewMenuCount } from '../atlas-review/customerReviewCopy'
+import { reviewMenuItemLabel } from '../atlas-review/customerReviewCopy'
 import { usePhoneOverlayLock } from '../hooks/usePhoneOverlayLock'
 import { usePresence } from '../hooks/usePresence'
 
@@ -22,7 +22,6 @@ export function Header() {
   const exploreRef = useRef<HTMLDivElement>(null)
   const menu = usePresence(exploreOpen)
   usePhoneOverlayLock(menu.present)
-  const badge = reviewMenuCount(count)
 
   useEffect(() => {
     if (!exploreOpen) return
@@ -128,10 +127,7 @@ export function Header() {
                     if (action.id === 'update-tree') openManage()
                   }}
                 >
-                  {action.title}
-                  {action.id === 'review' && badge ? (
-                    <span className="header-manage-count">{badge}</span>
-                  ) : null}
+                  {action.id === 'review' ? reviewMenuItemLabel(count) : action.title}
                 </button>
               ))}
             </div>

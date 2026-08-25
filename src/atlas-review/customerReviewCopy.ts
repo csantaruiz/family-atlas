@@ -20,6 +20,17 @@ export function reviewMenuCount(count: number): string | null {
   return String(count)
 }
 
+/** Gear-menu row on tablet/desktop — not shown as header text. */
+export function reviewMenuItemLabel(count: number): string {
+  if (count <= 0) return 'Atlas Review'
+  return count === 1 ? 'Atlas Review — 1 item' : `Atlas Review — ${count} items`
+}
+
+export function reviewGearAriaLabel(count: number, fallback: string): string {
+  if (count <= 0) return fallback
+  return count === 1 ? '1 Atlas Review item' : `${count} Atlas Review items`
+}
+
 export function introBody(count: number): string {
   const n = count === 1 ? '1 detail' : `${count} details`
   return `Family records are sometimes abbreviated, misspelled, or contradictory. We found ${n} where your knowledge may help make the Atlas more accurate.`

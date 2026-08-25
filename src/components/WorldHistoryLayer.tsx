@@ -8,7 +8,7 @@ import { MIN_VIEWPORT_EVENTS } from '../utils/semanticZoom'
 import { activeCountriesAt } from '../utils/placeUtils'
 import { yearX } from '../utils/timelineMath'
 import { timelineAxisY } from '../utils/chapterCalloutLayout'
-import { isNarrowStage, stageLayoutProfile } from '../utils/stageBreakpoints'
+import { isNarrowStage, isTabletStage, stageLayoutProfile } from '../utils/stageBreakpoints'
 import {
   phoneHistoryLabelBudget,
   phoneHistoryLaneOffsets,
@@ -548,10 +548,25 @@ function HistoryEventButton({
   )
 }
 
-function historyLanes(span: number, viewportWidth = 1200): number[] {
+/** Space reserved for Filters + zoom controls under the history lane. */
+const TABLET_CONTROL_CLEARANCE_PX = 112
+const TABLET_HISTORY_LABEL_EXTENT_PX = 46
+
+function tabletHistoryLaneOffsets(span: number, height: number, width: number): number[] {
+  const axisY = timelineAxisY(height, width)
+  const maxOffset = Math.max(36, height - axisY - TABLET_CONTROL_CLEARANCE_PX - TABLET_HISTORY_LABEL_EXTENT_PX)
+  const candidates = span > 280 ? [38, 76] : span > 140 ? [36, 74, 110] : [36, 72, 108]
+  const lanes = candidates.filter((offset) => offset <= maxOffset)
+  return lanes.length > 0 ? lanes : [Math.min(36, maxOffset)]
+}
+
+function historyLanes(span: number, viewportWidth = 1200, height = 800): number[] {
   // Offsets below the axis. Keep the nearest lane clear of century year labels (~axis+17).
   if (isNarrowStage(viewportWidth)) {
     return phoneHistoryLaneOffsets(span)
+  }
+  if (isTabletStage(viewportWidth)) {
+    return tabletHistoryLaneOffsets(span, height, viewportWidth)
   }
   if (span > 320) return [78, 148, 218]
   if (span > 150) return [78, 138, 198, 258]
@@ -566,7 +581,7 @@ function placeHistoryEvents(
   height: number,
   mustKeepKeys: ReadonlySet<string> = new Set(),
 ): RenderedHistoryEvent[] {
-  const lanes = historyLanes(span, width)
+  const lanes = historyLanes(span, width, height)
   const minGap = minHistoryPixelGap(span, width)
   const gapSteps = isNarrowStage(width)
     ? span > 320

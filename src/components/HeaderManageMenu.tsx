@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useAtlasReview } from '../atlas-review/AtlasReviewRoot'
-import { reviewMenuCount } from '../atlas-review/customerReviewCopy'
+import { reviewGearAriaLabel, reviewMenuCount, reviewMenuItemLabel } from '../atlas-review/customerReviewCopy'
 import { manageCopy } from '../atlas-manage/customerCopy'
 import { useManageFamilyTree } from '../atlas-manage/ManageFamilyTreeRoot'
 import { OWNER_ACTIONS, type OwnerActionId } from '../navigation/atlasNav'
@@ -106,11 +106,12 @@ export function HeaderManageMenu() {
         className="header-manage-toggle"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={manageCopy.menuLabel}
-        title={manageCopy.menuLabel}
+        aria-label={reviewGearAriaLabel(count, manageCopy.menuLabel)}
+        title={reviewGearAriaLabel(count, manageCopy.menuLabel)}
         onClick={() => void toggle()}
       >
         <ManageGearIcon />
+        {badge ? <span className="header-manage-badge">{badge}</span> : null}
       </button>
       {open ? (
         <div
@@ -130,10 +131,7 @@ export function HeaderManageMenu() {
               onClick={() => runAction(action.id)}
             >
               <span className="header-manage-item-title">
-                {action.title}
-                {action.id === 'review' && badge ? (
-                  <span className="header-manage-count">{badge}</span>
-                ) : null}
+                {action.id === 'review' ? reviewMenuItemLabel(count) : action.title}
               </span>
               <small>{action.description}</small>
             </button>

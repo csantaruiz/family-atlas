@@ -7,8 +7,10 @@ import {
   dateConflictQuestion,
   dismissAction,
   itemQuestion,
+  reviewGearAriaLabel,
   reviewMenuCount,
   reviewMenuHint,
+  reviewMenuItemLabel,
   reviewShortcutLabel,
   skipAction,
 } from '../customerReviewCopy'
@@ -132,6 +134,10 @@ describe('Atlas Review presentation', () => {
     expect(reviewMenuHint(4)).toBe('4 items need your help')
     expect(reviewMenuCount(0)).toBeNull()
     expect(reviewMenuCount(8)).toBe('8')
+    expect(reviewMenuItemLabel(0)).toBe('Atlas Review')
+    expect(reviewMenuItemLabel(1)).toBe('Atlas Review — 1 item')
+    expect(reviewMenuItemLabel(9)).toBe('Atlas Review — 9 items')
+    expect(reviewGearAriaLabel(9, 'Manage Atlas')).toBe('9 Atlas Review items')
   })
 
   it('uses conflict copy that does not pick a wrong date in advance', () => {

@@ -110,8 +110,10 @@ export function HeaderManageMenu() {
         title={reviewGearAriaLabel(count, manageCopy.menuLabel)}
         onClick={() => void toggle()}
       >
-        <ManageGearIcon />
-        {badge ? <span className="header-manage-badge">{badge}</span> : null}
+        <span className="header-manage-gear-wrap">
+          <ManageGearIcon />
+          {badge ? <span className="header-manage-badge">{badge}</span> : null}
+        </span>
       </button>
       {open ? (
         <div

@@ -274,7 +274,7 @@ export function staggerFamilyEventLanes<
   if (placed.length <= 1) return placed
 
   const offsets = familyLaneOffsets(span, viewportWidth, phoneExploring)
-  const pad = familyLanePad(span)
+  const pad = isTabletStage(viewportWidth) ? Math.max(familyLanePad(span), 36) : familyLanePad(span)
   const maxKeep = maxFamilyEventsForSpan(span, viewportWidth)
   const compact = span > 90 || isNarrowStage(viewportWidth)
   const axisY = timelineAxisY(height, viewportWidth)

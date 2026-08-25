@@ -7444,6 +7444,13 @@
   cursor: pointer;
 }
 
+.header-manage-gear-wrap {
+  position: relative;
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
 .header-manage-badge {
   display: none;
 }
@@ -8298,19 +8305,19 @@ body {
   }
 
   .header-manage-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     position: absolute;
-    top: 4px;
-    right: 2px;
+    top: -7px;
+    right: -8px;
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
     border-radius: 999px;
-    background: rgba(214, 181, 108, 0.28);
-    color: #f3ead4;
-    font: 600 9px/16px Inter, system-ui, sans-serif;
+    background: rgba(214, 181, 108, 0.92);
+    color: #1a1208;
+    font: 700 9px/16px Inter, system-ui, sans-serif;
     letter-spacing: 0;
     text-align: center;
     pointer-events: none;
@@ -8318,12 +8325,12 @@ body {
 
   .controls {
     bottom: 22px;
-    padding: 8px 12px;
-    border-radius: 16px;
-    background: rgba(12, 12, 11, 0.82);
-    border: 1px solid rgba(214, 181, 108, 0.16);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    border: 0;
+    backdrop-filter: none;
+    box-shadow: none;
   }
 
   .controls .pill,
@@ -8342,6 +8349,28 @@ body {
 
   #timeline .stage.stage--tablet .chapter-callout-layer {
     top: 12px;
+  }
+
+  #timeline .stage.stage--tablet .year-label {
+    top: calc(60% + 16px);
+  }
+
+  #timeline .stage.stage--tablet .century {
+    top: calc(60% - 15px);
+  }
+
+  #timeline .stage.stage--tablet .history-event-anchor .history-event {
+    transform: translate(-50%, 0);
+  }
+
+  #timeline .stage.stage--tablet .history-stem {
+    bottom: auto !important;
+    top: 4px;
+    transform: translate(-50%, -100%);
+  }
+
+  #timeline .stage.stage--tablet .history-event .history-label {
+    top: 18px;
   }
 
   #timeline .stage.stage--tablet .history-event,

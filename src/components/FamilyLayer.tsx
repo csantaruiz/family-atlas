@@ -177,9 +177,10 @@ function FamilyEventButton({
   }
 
   const labelWidth = measureDetailedFootprint(event, viewportWidth, compact).width
-  const phonePlace = isNarrowStage(viewportWidth)
-    ? phoneLabelPlacement(markerX ?? x, labelWidth, viewportWidth)
-    : null
+  const phonePlace =
+    isNarrowStage(viewportWidth) || (viewportWidth > 760 && viewportWidth <= 1180)
+      ? phoneLabelPlacement(markerX ?? x, labelWidth, viewportWidth)
+      : null
   const edgeNudge = phonePlace ? phonePlace.nudge : nudge
   const resolvedAlignment = phonePlace?.align ?? alignment
 
@@ -1017,7 +1018,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
 
     const separated = deconflictFamilyAnchorYs(
       prepared,
-      width <= 1180 ? 22 : 16,
+      width <= 760 ? 22 : width <= 1180 ? 28 : 16,
       familyLabelCeilingY(axisY),
     )
 

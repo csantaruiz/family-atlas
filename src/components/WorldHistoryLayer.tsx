@@ -469,7 +469,7 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
             <div
               key={`history-cluster:${eventKey}:${group.items.length}`}
               className="history-event-anchor history-event-marker-cluster-anchor"
-              style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) ? 40 : 22)) }}
+              style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) || isTabletStage(width) ? 40 : 22)) }}
             >
               <button
                 type="button"
@@ -490,11 +490,11 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
           <div
             key={`history-marker:${eventKey}`}
             className="history-event-anchor"
-            style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) ? 40 : 22)) }}
+            style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) || isTabletStage(width) ? 40 : 22)) }}
           >
             <HistoryEventButton
               event={event}
-              stemHeight={isNarrowStage(width) ? 40 : 22}
+              stemHeight={isNarrowStage(width) || isTabletStage(width) ? 40 : 22}
               isAmbientPulse={false}
               onOpen={openHistory}
               markerOnly
@@ -549,15 +549,33 @@ function HistoryEventButton({
 }
 
 /** Space reserved for Filters + zoom controls under the history lane. */
-const TABLET_CONTROL_CLEARANCE_PX = 112
-const TABLET_HISTORY_LABEL_EXTENT_PX = 46
+const TABLET_CONTROL_CLEARANCE_PX = 88
+const TABLET_HISTORY_LABEL_EXTENT_PX = 58
+/** Diamond offset below the axis — clears year labels (~16–36px) plus 25–35px rest. */
+const TABLET_HISTORY_FIRST_LANE_PX = 92
+const TABLET_HISTORY_LANE_STEP_PX = 58
 
 function tabletHistoryLaneOffsets(span: number, height: number, width: number): number[] {
   const axisY = timelineAxisY(height, width)
-  const maxOffset = Math.max(36, height - axisY - TABLET_CONTROL_CLEARANCE_PX - TABLET_HISTORY_LABEL_EXTENT_PX)
-  const candidates = span > 280 ? [38, 76] : span > 140 ? [36, 74, 110] : [36, 72, 108]
+  const maxOffset = Math.max(
+    TABLET_HISTORY_FIRST_LANE_PX,
+    height - axisY - TABLET_CONTROL_CLEARANCE_PX - TABLET_HISTORY_LABEL_EXTENT_PX,
+  )
+  const laneCount = span > 240 ? 2 : 3
+  const candidates = Array.from({ length: laneCount }, (_, i) => TABLET_HISTORY_FIRST_LANE_PX + i * TABLET_HISTORY_LANE_STEP_PX)
   const lanes = candidates.filter((offset) => offset <= maxOffset)
-  return lanes.length > 0 ? lanes : [Math.min(36, maxOffset)]
+  return lanes.length > 0 ? lanes : [TABLET_HISTORY_FIRST_LANE_PX]
+}
+
+type HistoryLabelBox = { left: number; right: number; top: number; bottom: number }
+
+function historyLabelWidth(event: HistoryEvent, viewportWidth: number): number {
+  const max = viewportWidth <= 1180 ? 168 : 190
+  return Math.min(max, Math.max(96, event.title.length * 7.2 + 16))
+}
+
+function historyBoxesOverlap(a: HistoryLabelBox, b: HistoryLabelBox, pad = 12): boolean {
+  return !(a.right + pad < b.left || a.left - pad > b.right || a.bottom + pad < b.top || a.top - pad > b.bottom)
 }
 
 function historyLanes(span: number, viewportWidth = 1200, height = 800): number[] {
@@ -599,11 +617,32 @@ function placeHistoryEvents(
   const result: RenderedHistoryEvent[] = []
   const axisY = timelineAxisY(height, width)
 
+  const tablet = isTabletStage(width)
+  const boxes: HistoryLabelBox[] = []
+
   const tryPlace = (ev: HistoryEvent, _force: boolean): boolean => {
     const key = historyEventHeroKey(ev)
     if (placedIds.has(key)) return true
 
     const x = yearX(ev.year, start, span, width)
+    if (tablet) {
+      const labelW = historyLabelWidth(ev, width)
+      for (const offset of lanes) {
+        const box: HistoryLabelBox = {
+          left: x - labelW / 2,
+          right: x + labelW / 2,
+          top: offset,
+          bottom: offset + TABLET_HISTORY_LABEL_EXTENT_PX,
+        }
+        if (boxes.some((other) => historyBoxesOverlap(box, other))) continue
+        placedIds.add(key)
+        boxes.push(box)
+        result.push({ event: ev, x, y: axisY + offset, stemHeight: offset })
+        return true
+      }
+      return false
+    }
+
     for (const gap of gapSteps) {
       const last = lanes.map(() => -1e9)
       for (const item of result) {

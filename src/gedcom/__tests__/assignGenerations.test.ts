@@ -18,12 +18,14 @@ describe('snapshot generations', () => {
         { id: 'I2', name: 'Parent', sex: 'M', birthDate: '1950', fams: ['F1'] },
         { id: 'I3', name: 'Parent two', sex: 'F', birthDate: '1952', fams: ['F1'] },
         { id: 'I4', name: 'Child', sex: 'F', birthDate: '2001', famc: ['F2'] },
-        { id: 'I5', name: 'Spouse', sex: 'F', birthDate: '1976', fams: ['F2'] },
+        { id: 'I5', name: 'Spouse', sex: 'F', birthDate: '1976', famc: ['F3'], fams: ['F2'] },
+        { id: 'I6', name: 'Spouse parent', sex: 'M', birthDate: '1949', fams: ['F3'] },
         { id: 'I9', name: 'Unconnected', sex: 'M', birthDate: '1800' },
       ],
       [
         { id: 'F1', husbandId: 'I2', wifeId: 'I3', children: ['I1'] },
         { id: 'F2', husbandId: 'I1', wifeId: 'I5', children: ['I4'] },
+        { id: 'F3', husbandId: 'I6', children: ['I5'] },
       ],
     )
     const snapshot = familySnapshotFromGraph(parseGedcom(gedcom), 'I1')
@@ -33,6 +35,7 @@ describe('snapshot generations', () => {
     expect(byId.I3?.generation).toBe(1)
     expect(byId.I4?.generation).toBe(-1)
     expect(byId.I5?.generation).toBe(0)
+    expect(byId.I6?.generation).toBe(1)
     expect(byId.I9?.generation).toBeNull()
     expect(generationCountFromPeople(snapshot.people)).toBe(2)
   })

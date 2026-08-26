@@ -243,29 +243,42 @@ def build_database(gedcom_path: Path, root_id: str = DEFAULT_ROOT_ID) -> dict:
     if root_id not in by_id:
         raise SystemExit(f"Root person {root_id} not found in GEDCOM")
 
-    # Ancestors: positive generation (1 = parents, 2 = grandparents, …).
+    # Household roots: archive root plus the spouse who shares children.
     generation: dict[str, int] = {root_id: 0}
-    queue: deque[str] = deque([root_id])
-    while queue:
-        person_id = queue.popleft()
-        for parent_id in parents[person_id]:
-            if parent_id not in generation:
-                generation[parent_id] = generation[person_id] + 1
-                queue.append(parent_id)
-
-    # Descendants: negative generation (−1 = children, −2 = grandchildren, …).
-    queue = deque([root_id])
-    while queue:
-        person_id = queue.popleft()
-        for child_id in children[person_id]:
-            if child_id not in generation:
-                generation[child_id] = generation[person_id] - 1
-                queue.append(child_id)
-
-    # Root spouses share the present generation so they stay “near family”.
+    co_root = None
+    root_children = set(children[root_id])
     for spouse_id in spouses[root_id]:
-        if spouse_id not in generation:
-            generation[spouse_id] = 0
+        if spouse_id not in by_id:
+            continue
+        if root_children.intersection(children[spouse_id]):
+            co_root = spouse_id
+            break
+    if co_root is None and spouses[root_id]:
+        co_root = next((sid for sid in spouses[root_id] if sid in by_id), None)
+    if co_root:
+        generation[co_root] = 0
+
+    household = [root_id] + ([co_root] if co_root else [])
+
+    # Ancestors of both household roots: positive generation.
+    for start_id in household:
+        queue: deque[str] = deque([start_id])
+        while queue:
+            person_id = queue.popleft()
+            for parent_id in parents[person_id]:
+                if parent_id not in generation:
+                    generation[parent_id] = generation[person_id] + 1
+                    queue.append(parent_id)
+
+    # Descendants of both household roots: negative generation.
+    for start_id in household:
+        queue = deque([start_id])
+        while queue:
+            person_id = queue.popleft()
+            for child_id in children[person_id]:
+                if child_id not in generation:
+                    generation[child_id] = generation[person_id] - 1
+                    queue.append(child_id)
 
     focus_ids = set(generation)
 

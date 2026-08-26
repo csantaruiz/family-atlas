@@ -4,7 +4,6 @@ import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { MapExplorationProvider, useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
 import {
-  branchOptions,
   centuryOptions,
 } from '../../utils/personDirectory'
 import { resolveExploreMapCoordinate } from '../../data/placeCoordinates'
@@ -16,7 +15,7 @@ import {
   filterPlaces,
 } from '../../utils/placeIndex'
 import { buildFamilyRegions } from '../../utils/mapRegions'
-import { buildLineagePalette } from '../../utils/lineageColors'
+import { buildLineagePalette, lineageFilterOptions } from '../../utils/lineageColors'
 import { buildRegionalRoutes, buildSubregionRoutes } from '../../utils/mapRoutes'
 import { buildSubregions } from '../../utils/mapSubregions'
 import { FamilyMap } from '../map/FamilyMap'
@@ -63,16 +62,25 @@ function MapViewContent({ active }: MapViewProps) {
     [people, familyEvents],
   )
 
+  const lineagePalette = useMemo(
+    () => buildLineagePalette(people, familyDatabase.root),
+    [people, familyDatabase.root],
+  )
+
   const filteredPlaces = useMemo(
     () =>
-      filterPlaces(allPlaces, {
-        ...DEFAULT_MAP_FILTERS,
-        branch,
-        eventType,
-        century,
-        directAncestorsOnly,
-      }),
-    [allPlaces, branch, eventType, century, directAncestorsOnly],
+      filterPlaces(
+        allPlaces,
+        {
+          ...DEFAULT_MAP_FILTERS,
+          branch,
+          eventType,
+          century,
+          directAncestorsOnly,
+        },
+        lineagePalette,
+      ),
+    [allPlaces, branch, eventType, century, directAncestorsOnly, lineagePalette],
   )
 
   const regions = useMemo(() => buildFamilyRegions(filteredPlaces), [filteredPlaces])
@@ -95,12 +103,8 @@ function MapViewContent({ active }: MapViewProps) {
   )
 
   const summary = useMemo(() => computeMapSummary(filteredPlaces, allMigrations), [filteredPlaces, allMigrations])
-  const branches = useMemo(() => branchOptions(familyDatabase.stats.surnames), [])
+  const branches = useMemo(() => lineageFilterOptions(lineagePalette), [lineagePalette])
   const centuries = useMemo(() => centuryOptions(people), [people])
-  const lineagePalette = useMemo(
-    () => buildLineagePalette(people, familyDatabase.root),
-    [people],
-  )
 
   const filterKey = `${branch}-${eventType}-${century}-${directAncestorsOnly}`
   const narrativeFilters = useMemo(
@@ -149,8 +153,8 @@ function MapViewContent({ active }: MapViewProps) {
         <select value={branch} onChange={(e) => setBranch(e.target.value)}>
           <option value="">All</option>
           {branches.map((b) => (
-            <option key={b} value={b}>
-              {b}
+            <option key={b.id} value={b.id}>
+              {b.label}
             </option>
           ))}
         </select>

@@ -1,9 +1,11 @@
 import type { FamilyEvent, Person } from '../types'
 import type { TimelineFilters } from '../types/timelineFilters'
 import {
-  personLineageSides,
+  personLineageIds,
+  type LineageId,
   type LineagePalette,
 } from './lineageColors'
+import { LINEAGE_FILTER_KEYS } from '../types/timelineFilters'
 
 function isMilitaryServiceEvent(event: FamilyEvent): boolean {
   if (event.kind !== 'service') return false
@@ -60,18 +62,16 @@ export function personPassesBranchFilter(
   palette: LineagePalette,
   byId: Map<string, Person>,
 ): boolean {
-  if (!filters.paternal && !filters.maternal) return false
-  if (filters.paternal && filters.maternal) return true
+  const enabled = LINEAGE_FILTER_KEYS.filter((key) => filters[key])
+  if (!enabled.length) return false
+  if (enabled.length === LINEAGE_FILTER_KEYS.length) return true
 
   const person = byId.get(personId)
-  // Root household (self, spouse, descendants) always stays visible on a single-branch filter.
+  // Household (roots + shared descendants) stays visible on a partial lineage filter.
   if (person?.generation != null && person.generation <= 0) return true
 
-  const sides = personLineageSides(personId, palette, byId)
-  if (sides.size === 0) return false
-  if (filters.paternal && sides.has('paternal')) return true
-  if (filters.maternal && sides.has('maternal')) return true
-  return false
+  const ids = personLineageIds(personId, palette, byId)
+  return enabled.some((key) => ids.has(key as LineageId))
 }
 
 function familyEventPassesKindFilter(event: FamilyEvent, filters: TimelineFilters): boolean {

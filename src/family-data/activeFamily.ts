@@ -1,6 +1,7 @@
 import { familyDatabase } from '../data/familyDatabase'
 import { familyMarriages, type FamilyMarriage } from '../data/familyMarriages'
 import { applyPersonOverrides } from '../overrides/applyPersonNameOverrides'
+import { assignPersonGenerations } from '../gedcom/assignGenerations'
 import type { FamilyDatabase } from '../types'
 
 export type ActiveFamilyData = {
@@ -27,8 +28,11 @@ export function getSourceFamilyDatabase(): FamilyDatabase {
 
 export function getFamilyDatabase(): FamilyDatabase {
   const raw = active.database
-  const people = applyPersonOverrides(raw.people)
-  if (people === raw.people) return raw
+  const withOverrides = applyPersonOverrides(raw.people)
+  const people = assignPersonGenerations(withOverrides, raw.root)
+  const unchanged =
+    withOverrides === raw.people && people.every((person, index) => person === raw.people[index])
+  if (unchanged) return raw
   return { ...raw, people }
 }
 

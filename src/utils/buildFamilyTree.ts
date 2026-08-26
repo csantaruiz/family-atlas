@@ -1,5 +1,7 @@
 import { familyDatabase } from '../data/familyDatabase'
 import type { Person } from '../types'
+import { assignPersonGenerations } from '../gedcom/assignGenerations'
+import { primaryRootIds } from './householdRoots'
 
 export const TREE_CARD_WIDTH = 132
 export const TREE_CARD_HEIGHT = 88
@@ -55,8 +57,10 @@ function collectConnectedPeople(
     for (const childId of person.children ?? []) addDescendants(childId, depth + 1, visited)
   }
 
-  addAncestors(rootId, 0)
-  addDescendants(rootId, 0, new Set())
+  for (const id of primaryRootIds(rootId, peopleById)) {
+    addAncestors(id, 0)
+    addDescendants(id, 0, new Set())
+  }
 
   // Spouses of everyone already included (root spouse, co-parents, etc.).
   for (const id of [...included]) {
@@ -360,6 +364,8 @@ export function buildFamilyTreeLayout(
   timelinePersonIds: Iterable<string>,
   rootId: string = familyDatabase.root,
 ): TreeLayout {
+  const numbered = assignPersonGenerations(Object.values(peopleById), rootId)
+  peopleById = Object.fromEntries(numbered.map((person) => [person.id, person]))
   const timelineSet = new Set(timelinePersonIds)
   const ids = collectConnectedPeople(rootId, peopleById, timelineSet)
   const genMemo = new Map<string, number>()
@@ -375,6 +381,10 @@ export function buildFamilyTreeLayout(
   const upMemo = new Map<string, SubtreeBounds>()
   const upVisiting = new Set<string>()
   measureUpSubtree(rootId, ids, peopleById, upMemo, upVisiting)
+  for (const id of primaryRootIds(rootId, peopleById)) {
+    if (id === rootId) continue
+    measureUpSubtree(id, ids, peopleById, upMemo, new Set())
+  }
 
   const downMemo = new Map<string, SubtreeBounds>()
   const downVisiting = new Set<string>()
@@ -420,6 +430,22 @@ export function buildFamilyTreeLayout(
         path: `M ${rootCenter.x} ${railY} H ${spouseCenter.x}`,
       })
       spouseOffset += 1
+    }
+
+    for (const spouse of spouses) {
+      const pos = positions.get(spouse.id)
+      if (!pos) continue
+      layoutUp(
+        spouse.id,
+        pos.x + TREE_CARD_WIDTH / 2,
+        rootY,
+        ids,
+        peopleById,
+        positions,
+        connectors,
+        upMemo,
+        new Set(),
+      )
     }
   }
 

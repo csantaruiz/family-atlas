@@ -8075,8 +8075,8 @@ export const familyDatabase: FamilyDatabase = {
       "children": [
         "I18123023648"
       ],
-      "generation": null,
-      "focus": false
+      "generation": 1,
+      "focus": true
     },
     {
       "id": "I112732859637",
@@ -8097,8 +8097,8 @@ export const familyDatabase: FamilyDatabase = {
       "children": [
         "I18123023648"
       ],
-      "generation": null,
-      "focus": false
+      "generation": 1,
+      "focus": true
     },
     {
       "id": "I112802641930",

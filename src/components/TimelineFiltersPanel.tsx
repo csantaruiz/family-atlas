@@ -11,7 +11,12 @@ import {
 import { buildLineagePalette } from '../utils/lineageColors'
 
 const ALL_FILTER_KEYS = Object.keys(DEFAULT_TIMELINE_FILTERS) as TimelineFilterKey[]
-const BRANCH_FILTER_KEYS = new Set<TimelineFilterKey>(['paternal', 'maternal'])
+const BRANCH_FILTER_KEYS = new Set<TimelineFilterKey>([
+  'rootPaternal',
+  'rootMaternal',
+  'coRootPaternal',
+  'coRootMaternal',
+])
 
 const panelEase = [0.22, 0.8, 0.2, 1] as const
 
@@ -123,16 +128,13 @@ export function TimelineFiltersPanel({
   )
 
   const branchMeta: Partial<Record<TimelineFilterKey, { surname: string; color: string }>> = useMemo(
-    () => ({
-      paternal: {
-        surname: lineagePalette.paternal.label,
-        color: lineagePalette.paternal.color,
-      },
-      maternal: {
-        surname: lineagePalette.maternal.label,
-        color: lineagePalette.maternal.color,
-      },
-    }),
+    () =>
+      Object.fromEntries(
+        lineagePalette.lines.map((line) => [
+          line.id,
+          { surname: line.label, color: line.color },
+        ]),
+      ) as Partial<Record<TimelineFilterKey, { surname: string; color: string }>>,
     [lineagePalette],
   )
 

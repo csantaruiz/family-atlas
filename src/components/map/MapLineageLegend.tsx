@@ -16,7 +16,7 @@ export function MapLineageLegend({ palette, visible = true }: MapLineageLegendPr
       <div className="map-lineage-legend-title">Migration lines</div>
       <ul className="map-lineage-legend-list">
         {items.map((item) => (
-          <li key={item.side} className="map-lineage-legend-item">
+          <li key={item.id} className="map-lineage-legend-item">
             <span
               className="map-lineage-legend-swatch"
               style={{ backgroundColor: item.color }}

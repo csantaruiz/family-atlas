@@ -1,7 +1,7 @@
 import type { PersonSortKey } from '../../utils/personDirectory'
 
 type PeopleFiltersProps = {
-  branches: string[]
+  branches: { id: string; label: string }[]
   places: string[]
   centuries: { value: string; label: string }[]
   sortKey: PersonSortKey
@@ -84,8 +84,8 @@ export function PeopleFilters({
           <select value={branch} onChange={(e) => onBranchChange(e.target.value)}>
             <option value="">All branches</option>
             {branches.map((b) => (
-              <option key={b} value={b}>
-                {b}
+              <option key={b.id} value={b.id}>
+                {b.label}
               </option>
             ))}
           </select>

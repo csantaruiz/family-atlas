@@ -1,6 +1,7 @@
 import type { FamilyEvent, Person } from '../types'
 import { placeRegion } from './placeUtils'
 import { coordinateDistance, resolvePlaceCoordinate } from '../data/placeCoordinates'
+import { personLineageIds, type LineageId, type LineagePalette } from './lineageColors'
 
 export type PersonSortKey = 'birthYear' | 'surname' | 'lifespan' | 'generation'
 
@@ -83,11 +84,20 @@ function shortPlace(place: string): string {
   return place.split(',').slice(0, 2).join(',').trim()
 }
 
-export function filterPeople(people: Person[], filters: PeopleFilters): Person[] {
+export function filterPeople(
+  people: Person[],
+  filters: PeopleFilters,
+  palette?: LineagePalette,
+): Person[] {
   const q = filters.query.trim().toLowerCase()
+  const byId = new Map(people.map((person) => [person.id, person]))
   return people.filter((p) => {
     if (filters.directAncestorsOnly && p.generation == null) return false
-    if (filters.branch && surnameOf(p.name) !== filters.branch) return false
+    if (filters.branch) {
+      if (palette) {
+        if (!personLineageIds(p.id, palette, byId).has(filters.branch as LineageId)) return false
+      } else if (surnameOf(p.name) !== filters.branch) return false
+    }
     if (filters.place) {
       const regions = primaryLocations(p).map((pl) => placeRegion(pl) || pl)
       const match =

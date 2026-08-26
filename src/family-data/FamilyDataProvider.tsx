@@ -10,6 +10,7 @@ import {
 import type { FamilyMarriage } from '../data/familyMarriages'
 import type { FamilyDatabase } from '../types'
 import { applyPersonOverrides } from '../overrides/applyPersonNameOverrides'
+import { assignPersonGenerations } from '../gedcom/assignGenerations'
 import { subscribeOverrideCache } from '../overrides/overrideCache'
 import {
   getActiveFamilyData,
@@ -66,7 +67,10 @@ export function FamilyDataProvider({ children }: { children: ReactNode }) {
       ...data,
       database: {
         ...data.database,
-        people: applyPersonOverrides(data.database.people),
+        people: assignPersonGenerations(
+          applyPersonOverrides(data.database.people),
+          data.database.root,
+        ),
       },
       ready,
       reload,

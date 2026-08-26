@@ -4,7 +4,6 @@ import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { useTimeline } from '../../context/TimelineContext'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import {
-  branchOptions,
   centuryOptions,
   computeNotableLives,
   DEFAULT_PEOPLE_FILTERS,
@@ -14,6 +13,7 @@ import {
   sortPeople,
   type PersonSortKey,
 } from '../../utils/personDirectory'
+import { buildLineagePalette, lineageFilterOptions } from '../../utils/lineageColors'
 import { PeopleFilters } from '../people/PeopleFilters'
 import { PersonCard } from '../people/PersonCard'
 
@@ -42,24 +42,32 @@ export function PeopleView({ active }: PeopleViewProps) {
   }, [active])
 
   const people = familyDatabase.people
-  const branches = useMemo(() => branchOptions(familyDatabase.stats.surnames), [])
+  const lineagePalette = useMemo(
+    () => buildLineagePalette(people, familyDatabase.root),
+    [people, familyDatabase.root],
+  )
+  const branches = useMemo(() => lineageFilterOptions(lineagePalette), [lineagePalette])
   const places = useMemo(() => placeFilterOptions(familyDatabase.stats.places), [])
   const centuries = useMemo(() => centuryOptions(people), [people])
 
   const filtered = useMemo(
     () =>
       sortPeople(
-        filterPeople(people, {
-          ...DEFAULT_PEOPLE_FILTERS,
-          query,
-          branch,
-          place,
-          century,
-          directAncestorsOnly,
-        }),
+        filterPeople(
+          people,
+          {
+            ...DEFAULT_PEOPLE_FILTERS,
+            query,
+            branch,
+            place,
+            century,
+            directAncestorsOnly,
+          },
+          lineagePalette,
+        ),
         sortKey,
       ),
-    [people, query, branch, place, century, directAncestorsOnly, sortKey],
+    [people, query, branch, place, century, directAncestorsOnly, sortKey, lineagePalette],
   )
 
   const notableLives = useMemo(() => computeNotableLives(people, familyEvents), [people, familyEvents])

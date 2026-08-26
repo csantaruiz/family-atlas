@@ -6,6 +6,7 @@ import {
 } from '../data/placeCoordinates'
 import { placeRegion } from './placeUtils'
 import { surnameOf } from './personDirectory'
+import { personLineageIds, type LineageId, type LineagePalette } from './lineageColors'
 
 export type PlaceCoordinateResolver = (place: string) => MapCoordinate
 
@@ -190,9 +191,21 @@ export function buildMigrationSegments(
   return segments
 }
 
-export function filterPlaces(places: PlaceRecord[], filters: MapFilters): PlaceRecord[] {
+export function filterPlaces(
+  places: PlaceRecord[],
+  filters: MapFilters,
+  palette?: LineagePalette,
+): PlaceRecord[] {
+  const byId = new Map(places.flatMap((place) => place.people).map((person) => [person.id, person]))
   return places.filter((pl) => {
-    if (filters.branch && !pl.branches.includes(filters.branch)) return false
+    if (filters.branch) {
+      if (palette) {
+        const matches = pl.people.some((person) =>
+          personLineageIds(person.id, palette, byId).has(filters.branch as LineageId),
+        )
+        if (!matches) return false
+      } else if (!pl.branches.includes(filters.branch)) return false
+    }
     if (filters.directAncestorsOnly && !pl.people.some((p) => p.generation != null)) return false
     if (filters.century) {
       const c = Number(filters.century)

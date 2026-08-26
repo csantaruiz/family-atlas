@@ -271,6 +271,21 @@ BEGIN
     END IF;
   END LOOP;
 
+  UPDATE media_assets m
+  SET atlas_person_id = p.id
+  FROM atlas_people p
+  WHERE m.atlas_id = p_atlas_id
+    AND p.atlas_id = p_atlas_id
+    AND (
+      m.person_id = p.current_source_person_id
+      OR m.person_id IN (
+        SELECT a.source_person_id
+        FROM atlas_person_aliases a
+        WHERE a.atlas_id = p_atlas_id AND a.atlas_person_id = p.id
+      )
+      OR m.atlas_person_id = p.id
+    );
+
   IF prev_id IS NOT NULL THEN
     UPDATE gedcom_imports
     SET status = 'superseded'

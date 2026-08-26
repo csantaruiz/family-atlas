@@ -4,6 +4,7 @@ import { requireEditAccess } from '../_lib/auth.js'
 import { deletePrivateMedia, mediaPathname, putPrivateMedia } from '../_lib/blob.js'
 import { getSql, requireAtlasId } from '../_lib/db.js'
 import { allowCors, handleOptions, sendError } from '../_lib/http.js'
+import { resolvePersonMediaIdentity } from '../_lib/personMediaIdentity.js'
 
 type MediaKind = 'portrait' | 'photo' | 'document'
 
@@ -49,6 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
       }
 
+      const identity = await resolvePersonMediaIdentity(atlasId, personId)
+      const atlasPersonId = identity.atlasPersonId ?? ''
       const rows = await sql`
         SELECT id, person_id, caption, credit
         FROM media_assets
@@ -56,8 +59,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           AND kind = 'portrait'
           AND is_primary = true
           AND (
-            person_id = ${personId}
-            OR atlas_person_id::text = ${personId}
+            person_id = ${identity.requestedId}
+            OR person_id = ${identity.storedPersonId}
+            OR atlas_person_id::text = ${identity.requestedId}
+            OR atlas_person_id::text = ${atlasPersonId}
           )
         LIMIT 1
       `
@@ -104,10 +109,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
       }
 
+      const identity = await resolvePersonMediaIdentity(atlasId, personId)
+      const atlasPersonId = identity.atlasPersonId ?? ''
+      const storedPersonId = identity.storedPersonId
       const assetId = randomUUID()
       const pathname = mediaPathname({
         atlasId,
-        personId,
+        personId: storedPersonId,
         assetId,
         filename: kind === 'portrait' ? 'portrait.jpg' : originalFilename,
       })
@@ -120,9 +128,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           SELECT id, blob_url
           FROM media_assets
           WHERE atlas_id = ${atlasId}
-            AND person_id = ${personId}
             AND kind = 'portrait'
             AND is_primary = true
+            AND (
+              person_id = ${identity.requestedId}
+              OR person_id = ${storedPersonId}
+              OR atlas_person_id::text = ${identity.requestedId}
+              OR atlas_person_id::text = ${atlasPersonId}
+            )
         `
         for (const row of existing) {
           try {
@@ -139,13 +152,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await sql`
         INSERT INTO media_assets (
-          id, atlas_id, person_id, kind, is_primary,
+          id, atlas_id, person_id, atlas_person_id, kind, is_primary,
           blob_pathname, blob_url, content_type, byte_size,
           width, height, original_filename, caption, credit
         ) VALUES (
           ${assetId},
           ${atlasId},
-          ${personId},
+          ${storedPersonId},
+          ${identity.atlasPersonId},
           ${kind},
           ${isPrimary},
           ${uploaded.pathname},
@@ -163,7 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(201).json({
         portrait: {
           assetId,
-          personId,
+          personId: storedPersonId,
           src: `/api/media/${assetId}`,
           alt: `Portrait of ${personName}`,
           caption,

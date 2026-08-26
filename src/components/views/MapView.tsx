@@ -243,7 +243,7 @@ function MapViewContent({ active }: MapViewProps) {
             {phone ? (
               <button
                 type="button"
-                className="phone-toolbar-btn"
+                className="map-section-heading"
                 aria-expanded={overviewOpen}
                 onClick={() => setOverviewOpen((open) => !open)}
               >

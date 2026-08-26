@@ -47,7 +47,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sendError(
           res,
           500,
-          'Server missing ATLAS_EDIT_SECRET. Put it in .env.local and restart npx vercel dev.',
+          process.env.VERCEL
+            ? 'Server missing ATLAS_EDIT_SECRET. Add it in the Vercel project Environment Variables for Preview and Production, then redeploy. Keep it server-side only.'
+            : 'Server missing ATLAS_EDIT_SECRET. Put it in .env.local and restart npx vercel dev.',
         )
         return
       }

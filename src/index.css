@@ -4432,6 +4432,7 @@
   color: rgba(243, 239, 231, 0.94);
 }
 
+#map .map-page-intro .map-summary,
 #map .map-page-intro .map-summary {
   margin-top: 0;
   gap: 10px 22px;
@@ -4439,6 +4440,7 @@
   color: rgba(170, 167, 159, 0.72);
 }
 
+#map .map-page-intro .map-summary strong,
 #map .map-page-intro .map-summary strong {
   color: rgba(214, 181, 108, 0.82);
   font-weight: 500;
@@ -10271,8 +10273,40 @@ body {
   }
 
   #map.map-phone .map-page-intro h2 {
-    font-size: var(--phone-type-h1);
-    margin-bottom: 6px;
+    font-size: var(--atlas-h1);
+    font-weight: 500;
+    line-height: 1.06;
+    letter-spacing: 0.005em;
+    color: rgba(247, 242, 232, 0.96);
+    margin: 0 0 4px;
+  }
+
+  #map.map-phone .map-page-intro .map-summary,
+  #map.map-phone .map-page-intro .map-summary {
+    margin: 0 0 10px;
+    gap: 6px 14px;
+    font-size: var(--phone-type-meta);
+    color: rgba(196, 186, 164, 0.88);
+  }
+
+  #map.map-phone .map-page-intro .map-summary strong,
+  #map.map-phone .map-page-intro .map-summary strong {
+    color: rgba(214, 181, 108, 0.95);
+  }
+
+  #map.map-phone .map-page-intro .map-section-heading {
+    display: inline-block;
+    align-self: flex-start;
+    flex: none;
+    width: auto;
+    min-height: 0;
+    margin: 8px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: 500 var(--phone-type-h2) / 1.2 Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.01em;
+    color: rgba(214, 181, 108, 0.88);
   }
 
   #map.map-phone .map-atlas-frame {

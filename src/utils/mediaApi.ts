@@ -31,7 +31,7 @@ export async function unlockEditing(secret: string): Promise<void> {
   if (!res.ok) {
     if (res.status === 404) {
       throw new Error(
-        'Upload API not found. Use this computer’s local Atlas tab after restarting npm run dev (not the live Vercel site).',
+        'Photo API not found on this deployment.',
       )
     }
     throw new Error(

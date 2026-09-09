@@ -21,6 +21,7 @@ import { buildSubregions } from '../../utils/mapSubregions'
 import { FamilyMap } from '../map/FamilyMap'
 import { MapDetailPanel } from '../map/MapDetailPanel'
 import { MapLineageLegend } from '../map/MapLineageLegend'
+import { JourneyInsight } from '../map/JourneyInsight'
 import { MapNarrativeCaption } from '../map/MapNarrativeCaption'
 import { MapUnresolvedDisclosure } from '../map/MapUnresolvedDisclosure'
 import { PhoneSheet } from '../phone/PhoneSheet'
@@ -289,12 +290,13 @@ function MapViewContent({ active }: MapViewProps) {
               />
             </PhoneSheet>
           ) : (
-            <MapNarrativeCaption
+            <JourneyInsight
               selection={selection}
               filters={narrativeFilters}
               summary={summary}
               regions={regions}
               places={filteredPlaces}
+              variant="rail"
             />
           )}
 

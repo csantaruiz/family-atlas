@@ -293,13 +293,14 @@ export function FamilyMap({
               : []),
           ]
         : (() => {
-            const introW = Math.min(268, frameSize.width * 0.22)
-            const introH = Math.min(280, frameSize.height * 0.36)
+            const introW = Math.min(328, frameSize.width * 0.26)
+            const introH = Math.min(310, frameSize.height * 0.4)
             const filterW = Math.min(268, frameSize.width * 0.22)
             const filterH = Math.min(200, frameSize.height * 0.3)
-            const narrativeW = Math.min(316, frameSize.width * 0.26)
-            const narrativeH = Math.min(132, frameSize.height * 0.2)
+            const insightW = Math.min(680, frameSize.width * 0.52)
+            const insightH = Math.min(150, frameSize.height * 0.22)
             const edge = 16
+            const insightLeft = Math.max(edge, (frameSize.width - insightW) * 0.42)
             return [
               { left: edge, top: edge, w: introW + 12, h: introH },
               {
@@ -309,10 +310,10 @@ export function FamilyMap({
                 h: filterH,
               },
               {
-                left: edge,
-                top: frameSize.height - narrativeH - edge,
-                w: narrativeW,
-                h: narrativeH,
+                left: insightLeft,
+                top: frameSize.height - insightH - edge,
+                w: insightW,
+                h: insightH,
               },
             ]
           })()

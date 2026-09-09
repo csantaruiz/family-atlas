@@ -278,17 +278,44 @@ export function FamilyMap({
     ? panLimitsForCamera(camera, familyContentBounds, frameSize)
     : null
   const exclusionRects =
-    phone && frameSize.width > 0
-      ? [
-          { left: 8, top: 8, w: 96, h: 40 },
-          ...(gestureMoved || cameraHasLeftOverview(camera, DEFAULT_CAMERA)
-            ? [{ left: 108, top: 8, w: 108, h: 40 }]
-            : []),
-          ...(!selection ? [{ left: 12, top: frameSize.height - 52, w: frameSize.width - 24, h: 40 }] : []),
-          ...(selection
-            ? [{ left: 0, top: frameSize.height - 148, w: frameSize.width, h: 148 }]
-            : []),
-        ]
+    frameSize.width > 0
+      ? phone
+        ? [
+            { left: 8, top: 8, w: 96, h: 40 },
+            ...(gestureMoved || cameraHasLeftOverview(camera, DEFAULT_CAMERA)
+              ? [{ left: 108, top: 8, w: 108, h: 40 }]
+              : []),
+            ...(!selection
+              ? [{ left: 12, top: frameSize.height - 52, w: frameSize.width - 24, h: 40 }]
+              : []),
+            ...(selection
+              ? [{ left: 0, top: frameSize.height - 148, w: frameSize.width, h: 148 }]
+              : []),
+          ]
+        : (() => {
+            const introW = Math.min(268, frameSize.width * 0.22)
+            const introH = Math.min(280, frameSize.height * 0.36)
+            const filterW = Math.min(268, frameSize.width * 0.22)
+            const filterH = Math.min(200, frameSize.height * 0.3)
+            const narrativeW = Math.min(316, frameSize.width * 0.26)
+            const narrativeH = Math.min(132, frameSize.height * 0.2)
+            const edge = 16
+            return [
+              { left: edge, top: edge, w: introW + 12, h: introH },
+              {
+                left: frameSize.width - filterW - edge - 12,
+                top: edge,
+                w: filterW + 12,
+                h: filterH,
+              },
+              {
+                left: edge,
+                top: frameSize.height - narrativeH - edge,
+                w: narrativeW,
+                h: narrativeH,
+              },
+            ]
+          })()
       : []
 
   if (import.meta.env.DEV && typeof window !== 'undefined') {

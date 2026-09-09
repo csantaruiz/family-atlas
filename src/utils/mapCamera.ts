@@ -1,6 +1,11 @@
 import type { MapBounds } from './mapRegionGeometry'
 import { expandBounds } from './mapRegionGeometry'
-import type { MapCamera, MapZoomLevel } from './mapSemanticZoom'
+import { WORLD_PLATE_BOUNDS } from './mapProjection'
+import {
+  viewBoxCameraForContainer,
+  type MapCamera,
+  type MapZoomLevel,
+} from './mapSemanticZoom'
 
 /** Overview may zoom gently into family extent (not locked to world scale). */
 export const MAP_OVERVIEW_SCALE = 1
@@ -169,6 +174,46 @@ function fitRatiosForLevel(level: MapZoomLevel): { widthRatio: number; heightRat
   }
 }
 
+function clamp(value: number, min: number, max: number): number {
+  if (min > max) return (min + max) / 2
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * Keep the SVG viewBox inside the rendered world plate (+ overscan).
+ * Accounts for current zoom and container aspect — not a fixed center clamp.
+ */
+export function clampCameraToWorldPlate(
+  camera: MapCamera,
+  frameWidthPx: number,
+  frameHeightPx: number,
+  plate: MapBounds = WORLD_PLATE_BOUNDS,
+): MapCamera {
+  if (frameWidthPx <= 0 || frameHeightPx <= 0) return camera
+
+  const viewBox = viewBoxCameraForContainer(camera, frameWidthPx, frameHeightPx)
+  const halfW = viewBox.width / 2
+  const halfH = viewBox.height / 2
+
+  let minCx = plate.minX + halfW
+  let maxCx = plate.maxX - halfW
+  let minCy = plate.minY + halfH
+  let maxCy = plate.maxY - halfH
+
+  if (minCx > maxCx) {
+    minCx = maxCx = (plate.minX + plate.maxX) / 2
+  }
+  if (minCy > maxCy) {
+    minCy = maxCy = (plate.minY + plate.maxY) / 2
+  }
+
+  return {
+    ...camera,
+    cx: clamp(camera.cx, minCx, maxCx),
+    cy: clamp(camera.cy, minCy, maxCy),
+  }
+}
+
 /**
  * Fit geographic bounds into the asymmetric safe viewport.
  * Map stays full-bleed; camera scale/center target the unobstructed hole.
@@ -193,7 +238,9 @@ export function fitCameraToUsableViewport(
   const cx = geoCx - (usable.centerXPercent - 50) / scale
   const cy = geoCy - (usable.centerYPercent - 50) / scale
 
-  return { cx, cy, scale }
+  const fitted = { cx, cy, scale }
+  if (layout.frameWidthPx <= 0 || layout.frameHeightPx <= 0) return fitted
+  return clampCameraToWorldPlate(fitted, layout.frameWidthPx, layout.frameHeightPx)
 }
 
 /** Family overview: fit meaningful family geography into the safe viewport. */

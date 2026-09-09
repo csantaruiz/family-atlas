@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampCameraToWorldPlate,
   fitCameraToBounds,
   fitOverviewCamera,
   usableViewport,
@@ -7,6 +8,8 @@ import {
   MAP_RIGHT_CHROME_PX,
   MAP_BOTTOM_CHROME_PX,
 } from './mapCamera'
+import { WORLD_MAP_OVERSCAN, WORLD_PLATE_BOUNDS } from './mapProjection'
+import { viewBoxCameraForContainer } from './mapSemanticZoom'
 import { boundsFromRouteEndpoints, ensureMinBoundsExtent } from './mapRegionGeometry'
 
 const DESKTOP = { frameWidthPx: 1728, frameHeightPx: 900, panelOpen: true }
@@ -96,5 +99,35 @@ describe('chrome constants', () => {
     expect(MAP_LEFT_CHROME_PX).toBeGreaterThanOrEqual(300)
     expect(MAP_RIGHT_CHROME_PX).toBeGreaterThanOrEqual(320)
     expect(MAP_BOTTOM_CHROME_PX).toBeGreaterThanOrEqual(120)
+  })
+})
+
+describe('world plate clamp + overscan', () => {
+  it('prevents the viewBox from leaving the overscanned world plate', () => {
+    const camera = clampCameraToWorldPlate(
+      { cx: -40, cy: 50, scale: 1 },
+      DESKTOP.frameWidthPx,
+      DESKTOP.frameHeightPx,
+    )
+    const viewBox = viewBoxCameraForContainer(
+      camera,
+      DESKTOP.frameWidthPx,
+      DESKTOP.frameHeightPx,
+    )
+    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS.minX - 0.01)
+    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS.maxX + 0.01)
+  })
+
+  it('keeps overview fits inside the world plate', () => {
+    const family = { minX: 12, maxX: 58, minY: 28, maxY: 48 }
+    const camera = fitOverviewCamera(family, { ...DESKTOP, panelOpen: false })
+    const viewBox = viewBoxCameraForContainer(
+      camera,
+      DESKTOP.frameWidthPx,
+      DESKTOP.frameHeightPx,
+    )
+    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS.minX - 0.01)
+    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS.maxX + 0.01)
+    expect(WORLD_MAP_OVERSCAN).toBeGreaterThanOrEqual(16)
   })
 })

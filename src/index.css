@@ -5758,6 +5758,48 @@
   pointer-events: auto;
 }
 
+/* Desktop/tablet: clear secondary navigation chip */
+#map.atlas-page:not(.map-phone) .map-back-overview {
+  z-index: 6;
+  left: var(--map-intro-left, 24px);
+  bottom: calc(var(--map-insight-bottom, 34px) + 118px);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(214, 181, 108, 0.38);
+  background: rgba(16, 15, 14, 0.86);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+  color: rgba(243, 236, 220, 0.94);
+  font: 500 13px / 1 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+#map.atlas-page:not(.map-phone) .map-back-overview:hover {
+  border-color: rgba(214, 181, 108, 0.55);
+  background: rgba(22, 20, 18, 0.92);
+  color: rgba(255, 248, 236, 0.98);
+}
+
+#map.atlas-page:not(.map-phone) .map-back-overview:focus-visible {
+  outline: 2px solid rgba(214, 181, 108, 0.55);
+  outline-offset: 2px;
+}
+
+#map.atlas-page:not(.map-phone) .map-back-overview-arrow {
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(214, 181, 108, 0.92);
+}
+
+#map.atlas-page:not(.map-phone) .map-back-overview-label {
+  font-size: 13px;
+}
+
 .map-reset-zoom {
   top: 14px;
   left: 14px;

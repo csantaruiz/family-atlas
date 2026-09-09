@@ -1,4 +1,6 @@
 import type { MapBounds } from './mapRegionGeometry'
+import { clampCameraToWorldPlate } from './mapCamera'
+import { WORLD_PLATE_BOUNDS } from './mapProjection'
 import {
   cameraFromScaleAndScreenAnchor,
   screenPercentToWorld,
@@ -114,15 +116,22 @@ export function clampCameraToContent(
   viewport?: MapViewportSize | null,
 ): MapCamera {
   const scale = Math.min(GESTURE_MAX_SCALE, Math.max(GESTURE_MIN_SCALE, camera.scale))
-  const next: MapCamera = { ...camera, scale }
-  if (!bounds) return next
-
-  const limits = panLimitsForCamera(next, bounds, viewport)
-  return {
-    scale,
-    cx: clamp(next.cx, limits.minCx, limits.maxCx),
-    cy: clamp(next.cy, limits.minCy, limits.maxCy),
+  let next: MapCamera = { ...camera, scale }
+  if (bounds) {
+    const limits = panLimitsForCamera(next, bounds, viewport)
+    next = {
+      scale,
+      cx: clamp(next.cx, limits.minCx, limits.maxCx),
+      cy: clamp(next.cy, limits.minCy, limits.maxCy),
+    }
   }
+
+  const width = viewport?.width ?? 0
+  const height = viewport?.height ?? 0
+  if (width > 0 && height > 0) {
+    next = clampCameraToWorldPlate(next, width, height, WORLD_PLATE_BOUNDS)
+  }
+  return next
 }
 
 export function cameraHasLeftOverview(camera: MapCamera, overview: MapCamera): boolean {

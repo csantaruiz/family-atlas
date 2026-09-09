@@ -61,6 +61,21 @@ export const MAP_REFERENCE_ANCHORS = [
 
 export const MAP_VIEW_BOX = { width: 100, height: 100 } as const
 
+/**
+ * Horizontal/vertical water overscan beyond the nominal atlas plate.
+ * Safe-viewport camera shifts can move the SVG viewBox slightly outside 0–100;
+ * overscan keeps ocean fill under those edges (this plate is not wrap-tiled).
+ */
+export const WORLD_MAP_OVERSCAN = 24
+
+/** Rendered world plate in atlas coords — camera viewBox must stay inside this. */
+export const WORLD_PLATE_BOUNDS = {
+  minX: -WORLD_MAP_OVERSCAN,
+  maxX: MAP_VIEW_BOX.width + WORLD_MAP_OVERSCAN,
+  minY: -WORLD_MAP_OVERSCAN,
+  maxY: MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN,
+} as const
+
 /** Archival expedition-map palette — warm land on quiet oxidized sea. */
 export const WORLD_MAP_WATER_FILL = '#0a1216'
 export const WORLD_MAP_WATER_DEEP = 'rgba(36, 58, 64, 0.38)'

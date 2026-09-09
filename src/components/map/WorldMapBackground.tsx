@@ -10,6 +10,7 @@ import {
   WORLD_MAP_GRATICULE_STROKE,
   WORLD_MAP_GRATICULE_WIDTH,
   WORLD_MAP_LAND_FILL,
+  WORLD_MAP_OVERSCAN,
   WORLD_MAP_WATER_DEEP,
   WORLD_MAP_WATER_FILL,
   WORLD_MAP_WATER_SHALLOW,
@@ -48,6 +49,10 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
   }, [])
 
   const graticulePath = useMemo(() => createAtlasGraticulePath(), [])
+  const waterX = -WORLD_MAP_OVERSCAN
+  const waterY = -WORLD_MAP_OVERSCAN
+  const waterW = MAP_VIEW_BOX.width + WORLD_MAP_OVERSCAN * 2
+  const waterH = MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN * 2
 
   return (
     <g
@@ -95,9 +100,9 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
         </filter>
       </defs>
 
-      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill={WORLD_MAP_WATER_FILL} />
-      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill={`url(#${oceanDepthId})`} />
-      <rect width={MAP_VIEW_BOX.width} height={MAP_VIEW_BOX.height} fill={`url(#${oceanHorizonId})`} />
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={WORLD_MAP_WATER_FILL} />
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanDepthId})`} />
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanHorizonId})`} />
 
       {graticulePath && (
         <path
@@ -139,8 +144,10 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
 
       <rect
         className="world-map-ocean-vignette"
-        width={MAP_VIEW_BOX.width}
-        height={MAP_VIEW_BOX.height}
+        x={waterX}
+        y={waterY}
+        width={waterW}
+        height={waterH}
         fill={`url(#${oceanDepthId})`}
         opacity="0.48"
         pointerEvents="none"

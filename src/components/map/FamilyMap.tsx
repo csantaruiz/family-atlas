@@ -360,11 +360,14 @@ export function FamilyMap({
       {level !== 'family' && (
         <button
           type="button"
-          className="map-back-overview pill"
+          className="map-back-overview"
           onClick={resetExploration}
           aria-label="Back to overview"
         >
-          ← Back to overview
+          <span className="map-back-overview-arrow" aria-hidden="true">
+            ←
+          </span>
+          <span className="map-back-overview-label">Overview</span>
         </button>
       )}
 

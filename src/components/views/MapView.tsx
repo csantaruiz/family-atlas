@@ -42,7 +42,8 @@ const EVENT_TYPES = [
 function MapViewContent({ active }: MapViewProps) {
   const { database: familyDatabase } = useFamilyData()
   const { familyEvents } = useTimeline()
-  const { level, selection, resetExploration, refitFilteredView } = useMapExploration()
+  const { level, selection, resetExploration, refitFilteredView, focusInsightGeography } =
+    useMapExploration()
   const people = familyDatabase.people
 
   const [branch, setBranch] = useState('')
@@ -297,6 +298,9 @@ function MapViewContent({ active }: MapViewProps) {
               regions={regions}
               places={filteredPlaces}
               variant="rail"
+              onExploreInsight={(insight) =>
+                focusInsightGeography(insight, regions, filteredPlaces, [...routes, ...subroutes])
+              }
             />
           )}
 

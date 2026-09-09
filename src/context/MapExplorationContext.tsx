@@ -14,14 +14,23 @@ import type { MapSubregion } from '../utils/mapSubregions'
 import type { RegionalRoute, SubregionRoute } from '../utils/mapRoutes'
 import {
   DEFAULT_OVERVIEW_CAMERA,
+  fitCameraForInsight,
   fitCameraForRegion,
   fitCameraToBounds,
   fitOverviewCamera,
   MAP_CAMERA_TRANSITION_MS,
+  MAP_BOTTOM_CHROME_PX,
   MAP_PEEK_INSET_PX,
   type MapViewportLayout,
 } from '../utils/mapCamera'
-import { boundsFromEllipse, type MapBounds } from '../utils/mapRegionGeometry'
+import {
+  boundsFromEllipse,
+  boundsFromResolvedPlaces,
+  boundsFromRouteEndpoints,
+  type MapBounds,
+} from '../utils/mapRegionGeometry'
+import { boundsForFamilyRegion, boundsForJourneyInsight } from '../utils/journeyCameraBounds'
+import type { JourneyInsightModel } from '../utils/journeyInsight'
 import {
   advanceLevel,
   retreatLevel,
@@ -73,6 +82,13 @@ type MapExplorationContextValue = {
   resetExploration: () => void
   clearSelection: () => void
   refitFilteredView: () => void
+  /** Fit camera to geography supporting a Journey Insight (Historian path). */
+  focusInsightGeography: (
+    insight: JourneyInsightModel,
+    regions: FamilyRegion[],
+    places: PlaceRecord[],
+    routes?: { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[],
+  ) => void
   updateCameraLive: (camera: MapCamera) => void
   manualCamera: boolean
   beginManualCamera: () => void
@@ -84,9 +100,23 @@ function layoutWithPanel(layout: MapViewportLayout): MapViewportLayout {
   if (layout.frameWidthPx < 760) {
     return { ...layout, panelOpen: true, bottomInsetPx: MAP_PEEK_INSET_PX }
   }
-  return { ...layout, panelOpen: true }
+  return {
+    ...layout,
+    panelOpen: true,
+    bottomInsetPx: Math.max(layout.bottomInsetPx ?? 0, MAP_BOTTOM_CHROME_PX),
+  }
 }
 
+function layoutOverview(layout: MapViewportLayout, panelOpen: boolean): MapViewportLayout {
+  if (layout.frameWidthPx < 760) {
+    return { ...layout, panelOpen }
+  }
+  return {
+    ...layout,
+    panelOpen,
+    bottomInsetPx: Math.max(layout.bottomInsetPx ?? 0, MAP_BOTTOM_CHROME_PX),
+  }
+}
 
 function overviewCamera(
   layout: MapViewportLayout,
@@ -94,7 +124,7 @@ function overviewCamera(
   panelOpen: boolean,
 ): MapCamera {
   if (!bounds) return DEFAULT_OVERVIEW_CAMERA
-  return fitOverviewCamera(bounds, { ...layout, panelOpen })
+  return fitOverviewCamera(bounds, layoutOverview(layout, panelOpen))
 }
 
 function cameraForSelection(
@@ -108,10 +138,15 @@ function cameraForSelection(
   }
 
   if (selection?.type === 'region') {
-    return fitCameraForRegion(selection.region.bounds, layout, level)
+    return fitCameraForRegion(boundsForFamilyRegion(selection.region), layout, level)
   }
   if (selection?.type === 'subregion') {
-    return fitCameraToBounds(boundsFromEllipse(selection.subregion.ellipse), layout, level)
+    const placeBounds = boundsFromResolvedPlaces(selection.subregion.places, 5)
+    return fitCameraToBounds(
+      placeBounds ?? boundsFromEllipse(selection.subregion.ellipse),
+      layout,
+      level,
+    )
   }
   if (selection?.type === 'place') {
     const { x, y } = selection.place.coordinate
@@ -120,6 +155,13 @@ function cameraForSelection(
       { minX: x - pad, maxX: x + pad, minY: y - pad, maxY: y + pad },
       layout,
       level,
+    )
+  }
+  if (selection?.type === 'route' || selection?.type === 'subroute') {
+    return fitCameraToBounds(
+      boundsFromRouteEndpoints(selection.route.from, selection.route.to),
+      layout,
+      level === 'family' ? 'local' : level,
     )
   }
   if (level === 'family' && familyBounds) {
@@ -213,6 +255,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
     viewportLayout?.frameWidthPx,
     viewportLayout?.frameHeightPx,
     viewportLayout?.panelOpen,
+    viewportLayout?.bottomInsetPx,
   ])
 
   useEffect(() => {
@@ -230,6 +273,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
     viewportLayout?.frameWidthPx,
     viewportLayout?.frameHeightPx,
     viewportLayout?.panelOpen,
+    viewportLayout?.bottomInsetPx,
   ])
 
   const exploreRegion = useCallback(
@@ -240,7 +284,11 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       setLevel('regional')
       setSelection({ type: 'region', region })
       const next = viewportLayout
-        ? fitCameraForRegion(region.bounds, layoutWithPanel(viewportLayout), 'regional')
+        ? fitCameraForRegion(
+            boundsForFamilyRegion(region),
+            layoutWithPanel(viewportLayout),
+            'regional',
+          )
         : DEFAULT_OVERVIEW_CAMERA
       animateCamera(next)
     },
@@ -254,8 +302,13 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       setFocusSubregionId(sub.id)
       setLevel('local')
       setSelection({ type: 'subregion', subregion: sub })
+      const placeBounds = boundsFromResolvedPlaces(sub.places, 5)
       const next = viewportLayout
-        ? fitCameraToBounds(boundsFromEllipse(sub.ellipse), layoutWithPanel(viewportLayout), 'local')
+        ? fitCameraToBounds(
+            placeBounds ?? boundsFromEllipse(sub.ellipse),
+            layoutWithPanel(viewportLayout),
+            'local',
+          )
         : DEFAULT_OVERVIEW_CAMERA
       animateCamera(next)
     },
@@ -282,6 +335,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
 
   const selectRoute = useCallback(
     (route: RegionalRoute | SubregionRoute, kind: 'route' | 'subroute') => {
+      setManualCamera(false)
       if (kind === 'route') {
         setSelection({ type: 'route', route: route as RegionalRoute })
       } else {
@@ -290,8 +344,40 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       if (route.yearMin != null && route.yearMax != null) {
         setMapHighlightYears({ start: route.yearMin, end: route.yearMax })
       }
+      if (viewportLayout) {
+        animateCamera(
+          fitCameraToBounds(
+            boundsFromRouteEndpoints(route.from, route.to),
+            layoutWithPanel(viewportLayout),
+            'local',
+          ),
+        )
+      }
     },
-    [setMapHighlightYears],
+    [animateCamera, setMapHighlightYears, viewportLayout],
+  )
+
+  const focusInsightGeography = useCallback(
+    (
+      insight: JourneyInsightModel,
+      regions: FamilyRegion[],
+      places: PlaceRecord[],
+      routes: { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[] = [],
+    ) => {
+      if (!viewportLayout) return
+      setManualCamera(false)
+      const bounds = boundsForJourneyInsight(insight, regions, places, routes)
+      const levelForInsight: MapZoomLevel =
+        insight.evidence.routeIds.length > 0
+          ? 'local'
+          : insight.evidence.regionIds.length === 1
+            ? 'regional'
+            : insight.mapHighlight?.regionIds.length === 1
+              ? 'regional'
+              : 'local'
+      animateCamera(fitCameraForInsight(bounds, layoutWithPanel(viewportLayout), levelForInsight))
+    },
+    [animateCamera, viewportLayout],
   )
 
   const hoverRoute = useCallback(
@@ -409,6 +495,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       resetExploration,
       clearSelection,
       refitFilteredView,
+      focusInsightGeography,
       updateCameraLive,
       manualCamera,
       beginManualCamera,
@@ -435,6 +522,7 @@ export function MapExplorationProvider({ children }: { children: ReactNode }) {
       resetExploration,
       clearSelection,
       refitFilteredView,
+      focusInsightGeography,
       updateCameraLive,
       manualCamera,
       beginManualCamera,

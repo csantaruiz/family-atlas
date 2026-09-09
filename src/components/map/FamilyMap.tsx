@@ -9,7 +9,7 @@ import {
   panLimitsForCamera,
   zoomCameraAt,
 } from '../../utils/mapCameraGestures'
-import { MAP_CAMERA_TRANSITION_MS, MAP_PEEK_INSET_PX } from '../../utils/mapCamera'
+import { MAP_BOTTOM_CHROME_PX, MAP_CAMERA_TRANSITION_MS, MAP_PEEK_INSET_PX } from '../../utils/mapCamera'
 import type { Person } from '../../types'
 import type { LineagePalette } from '../../utils/lineageColors'
 import type { FamilyRegion, FamilyRegionId } from '../../utils/mapRegions'
@@ -23,7 +23,7 @@ import {
   viewBoxCameraForContainer,
   visibleLayers,
 } from '../../utils/mapSemanticZoom'
-import { boundsFromRegionGeography } from '../../utils/mapRegionGeometry'
+import { boundsFromRegionGeography, boundsFromResolvedPlaces } from '../../utils/mapRegionGeometry'
 import { MAP_CAMERA_DEBUG } from '../../utils/mapDebug'
 import { MAP_VIEW_BOX } from '../../utils/mapProjection'
 import { formatRouteTravelers, formatRouteYearLabel } from '../../utils/mapMigrationMotion'
@@ -114,10 +114,13 @@ export function FamilyMap({
     [regions],
   )
 
-  const familyContentBounds = useMemo(
-    () => boundsFromRegionGeography(regions),
-    [regions],
-  )
+  const familyContentBounds = useMemo(() => {
+    const fromPlaces = boundsFromResolvedPlaces(
+      regions.flatMap((region) => region.places),
+      8,
+    )
+    return fromPlaces ?? boundsFromRegionGeography(regions)
+  }, [regions])
 
   useEffect(() => {
     setFamilyContentBounds(familyContentBounds)
@@ -155,7 +158,11 @@ export function FamilyMap({
       frameWidthPx: frameSize.width,
       frameHeightPx: frameSize.height,
       panelOpen: selection !== null,
-      bottomInsetPx: phone && selection ? MAP_PEEK_INSET_PX : 0,
+      bottomInsetPx: phone
+        ? selection
+          ? MAP_PEEK_INSET_PX
+          : 0
+        : MAP_BOTTOM_CHROME_PX,
     })
   }, [frameSize, selection, phone, setViewportLayout])
 

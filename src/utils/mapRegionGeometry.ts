@@ -44,6 +44,49 @@ export function expandBounds(bounds: MapBounds, padding: number): MapBounds {
   }
 }
 
+/** Ensure a minimum world extent so 1–2 points never zoom absurdly far in. */
+export function ensureMinBoundsExtent(bounds: MapBounds, minExtent = 6): MapBounds {
+  const width = bounds.maxX - bounds.minX
+  const height = bounds.maxY - bounds.minY
+  const cx = (bounds.minX + bounds.maxX) / 2
+  const cy = (bounds.minY + bounds.maxY) / 2
+  const halfW = Math.max(width, minExtent) / 2
+  const halfH = Math.max(height, minExtent) / 2
+  return {
+    minX: cx - halfW,
+    maxX: cx + halfW,
+    minY: cy - halfH,
+    maxY: cy + halfH,
+  }
+}
+
+/**
+ * Bounds from resolved family place markers — preferred over generic continent boxes.
+ */
+export function boundsFromResolvedPlaces(
+  places: { coordinate: { x: number; y: number; resolved?: boolean } }[],
+  minExtent = 6,
+): MapBounds | null {
+  const points = places
+    .filter((place) => place.coordinate.resolved !== false)
+    .filter((place) => Number.isFinite(place.coordinate.x) && Number.isFinite(place.coordinate.y))
+    .map((place) => ({ x: place.coordinate.x, y: place.coordinate.y }))
+  if (!points.length) return null
+  return ensureMinBoundsExtent(expandBounds(boundsFromPoints(points), 1.25), minExtent)
+}
+
+/** Bounds from migration / corridor endpoints. */
+export function boundsFromRouteEndpoints(
+  from: MapPoint,
+  to: MapPoint,
+  minExtent = 10,
+): MapBounds {
+  return ensureMinBoundsExtent(
+    expandBounds(boundsFromPoints([from, to]), 3.5),
+    minExtent,
+  )
+}
+
 /** Fallback extent when no regions are visible (US + Britain cluster). */
 export const DEFAULT_FAMILY_CONTENT_BOUNDS: MapBounds = {
   minX: 10,

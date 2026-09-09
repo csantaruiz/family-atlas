@@ -2,31 +2,50 @@ import type { MapBounds } from './mapRegionGeometry'
 import { expandBounds } from './mapRegionGeometry'
 import type { MapCamera, MapZoomLevel } from './mapSemanticZoom'
 
+/** Overview may zoom gently into family extent (not locked to world scale). */
 export const MAP_OVERVIEW_SCALE = 1
-export const REGION_MIN_SCALE = 1.25
-export const REGION_MAX_SCALE = 3.4
-export const LOCAL_MIN_SCALE = 1.6
+export const OVERVIEW_MIN_SCALE = 1
+export const OVERVIEW_MAX_SCALE = 1.75
+
+export const REGION_MIN_SCALE = 1.55
+export const REGION_MAX_SCALE = 3.8
+export const LOCAL_MIN_SCALE = 1.85
 export const LOCAL_MAX_SCALE = 4.8
-export const PLACE_MIN_SCALE = 2
+export const PLACE_MIN_SCALE = 2.2
 export const PLACE_MAX_SCALE = 5.5
 
-export const REGION_FIT_PADDING = 5
-export const REGION_FIT_TARGET_WIDTH_RATIO = 0.52
-export const REGION_FIT_TARGET_HEIGHT_RATIO = 0.58
+export const REGION_FIT_PADDING = 4
+
+/** Selected region should dominate ~45–65% of the usable viewport. */
+export const REGION_FIT_TARGET_WIDTH_RATIO = 0.58
+export const REGION_FIT_TARGET_HEIGHT_RATIO = 0.62
+
+/** Overview fills more of the safe viewport with family geography. */
+export const OVERVIEW_FIT_TARGET_WIDTH_RATIO = 0.78
+export const OVERVIEW_FIT_TARGET_HEIGHT_RATIO = 0.72
+
+/** Corridor / place fits leave more surrounding context. */
+export const CORRIDOR_FIT_TARGET_WIDTH_RATIO = 0.55
+export const CORRIDOR_FIT_TARGET_HEIGHT_RATIO = 0.55
 
 export const MAP_CAMERA_TRANSITION_MS = 420
 
 export const MAP_PANEL_WIDTH_PX = 320
 export const MAP_PANEL_GAP_PX = 24
-export const MAP_FRAME_PADDING_PX = 28
+export const MAP_FRAME_PADDING_PX = 20
 
-/** Right filter / detail column (matches --map-sidebar-width + --map-sidebar-right). */
-export const MAP_RIGHT_CHROME_PX = 348
-/** Partial reserve for the left intro card overlapping the map. */
-export const MAP_LEFT_CHROME_PX = 240
-/** Top filter row + title band. */
-export const MAP_TOP_CHROME_PX = 148
-export const MAP_BOTTOM_CHROME_PX = 40
+/**
+ * Desktop safe-viewport chrome — asymmetric insets so fit/center targets the
+ * unobstructed map hole, while the SVG stays full-bleed behind overlays.
+ * Tuned for current Journey composition (intro / filters+summary / insight).
+ */
+export const MAP_RIGHT_CHROME_PX = 360
+export const MAP_LEFT_CHROME_PX = 340
+/** Corner panels — avoid reserving a full title band across the map. */
+export const MAP_TOP_CHROME_PX = 36
+/** Collapsed Journey Insight rail + breathing room. */
+export const MAP_BOTTOM_CHROME_PX = 148
+export const MAP_CHROME_BREATHING_PX = 12
 
 export const DEFAULT_OVERVIEW_CAMERA: MapCamera = { cx: 50, cy: 50, scale: MAP_OVERVIEW_SCALE }
 
@@ -38,8 +57,18 @@ export type MapViewportLayout = {
   panelOpen: boolean
   panelWidthPx?: number
   panelGapPx?: number
-  /** Extra bottom inset (px) so a mobile peek sheet does not cover the focused feature. */
+  /**
+   * Extra bottom inset (px). Phone: peek sheet. Desktop: Journey Insight rail.
+   * Applied on top of base chrome reserves.
+   */
   bottomInsetPx?: number
+  /** Optional measured overrides for safe-viewport chrome. */
+  safeInsetsPx?: {
+    left?: number
+    right?: number
+    top?: number
+    bottom?: number
+  }
 }
 
 export type UsableViewport = {
@@ -56,6 +85,7 @@ export function usableViewport(layout: MapViewportLayout): UsableViewport {
     panelOpen,
     panelWidthPx = MAP_PANEL_WIDTH_PX,
     panelGapPx = MAP_PANEL_GAP_PX,
+    safeInsetsPx,
   } = layout
 
   if (frameWidthPx <= 0 || frameHeightPx <= 0) {
@@ -63,14 +93,21 @@ export function usableViewport(layout: MapViewportLayout): UsableViewport {
   }
 
   const compact = frameWidthPx < 760
-  const pad = MAP_FRAME_PADDING_PX
+  const pad = compact ? 8 : MAP_FRAME_PADDING_PX
+  const breath = compact ? 0 : MAP_CHROME_BREATHING_PX
   const panelReserve = panelOpen && !compact ? panelWidthPx + panelGapPx : 0
-  const rightReserve = compact ? 12 : Math.max(MAP_RIGHT_CHROME_PX, panelReserve)
-  const leftReserve = compact ? 12 : MAP_LEFT_CHROME_PX
-  const topReserve = compact ? 16 : MAP_TOP_CHROME_PX
-  const bottomReserve = compact
+
+  const leftReserve = compact
+    ? 12
+    : (safeInsetsPx?.left ?? MAP_LEFT_CHROME_PX) + breath
+  const rightReserve = compact
+    ? 12
+    : Math.max(safeInsetsPx?.right ?? MAP_RIGHT_CHROME_PX, panelReserve) + breath
+  const topReserve = compact ? 16 : (safeInsetsPx?.top ?? MAP_TOP_CHROME_PX) + breath
+  const baseBottom = compact
     ? Math.max(16, layout.bottomInsetPx ?? 16)
-    : MAP_BOTTOM_CHROME_PX
+    : Math.max(safeInsetsPx?.bottom ?? MAP_BOTTOM_CHROME_PX, layout.bottomInsetPx ?? 0)
+  const bottomReserve = compact ? baseBottom : baseBottom + breath
 
   const usableWidthPx = Math.max(120, frameWidthPx - pad - rightReserve - leftReserve)
   const usableHeightPx = Math.max(120, frameHeightPx - pad - topReserve - bottomReserve)
@@ -87,10 +124,18 @@ export function usableViewport(layout: MapViewportLayout): UsableViewport {
   }
 }
 
+type FitOptions = {
+  minScale: number
+  maxScale: number
+  widthRatio: number
+  heightRatio: number
+  worldPad: number
+}
+
 function scaleLimitsForLevel(level: MapZoomLevel): { min: number; max: number } {
   switch (level) {
     case 'family':
-      return { min: MAP_OVERVIEW_SCALE, max: MAP_OVERVIEW_SCALE }
+      return { min: OVERVIEW_MIN_SCALE, max: OVERVIEW_MAX_SCALE }
     case 'regional':
       return { min: REGION_MIN_SCALE, max: REGION_MAX_SCALE }
     case 'local':
@@ -102,20 +147,68 @@ function scaleLimitsForLevel(level: MapZoomLevel): { min: number; max: number } 
   }
 }
 
-export function fitOverviewCamera(bounds: MapBounds, layout: MapViewportLayout): MapCamera {
-  if (layout.frameWidthPx > 0 && layout.frameWidthPx < 760) {
-    return fitCameraToBounds(bounds, { ...layout, panelOpen: false }, 'regional')
+function fitRatiosForLevel(level: MapZoomLevel): { widthRatio: number; heightRatio: number } {
+  switch (level) {
+    case 'family':
+      return {
+        widthRatio: OVERVIEW_FIT_TARGET_WIDTH_RATIO,
+        heightRatio: OVERVIEW_FIT_TARGET_HEIGHT_RATIO,
+      }
+    case 'regional':
+      return {
+        widthRatio: REGION_FIT_TARGET_WIDTH_RATIO,
+        heightRatio: REGION_FIT_TARGET_HEIGHT_RATIO,
+      }
+    case 'local':
+    case 'place':
+    case 'record':
+      return {
+        widthRatio: CORRIDOR_FIT_TARGET_WIDTH_RATIO,
+        heightRatio: CORRIDOR_FIT_TARGET_HEIGHT_RATIO,
+      }
   }
-  const padded = expandBounds(bounds, REGION_FIT_PADDING + 2)
+}
+
+/**
+ * Fit geographic bounds into the asymmetric safe viewport.
+ * Map stays full-bleed; camera scale/center target the unobstructed hole.
+ */
+export function fitCameraToUsableViewport(
+  bounds: MapBounds,
+  layout: MapViewportLayout,
+  options: FitOptions,
+): MapCamera {
+  const padded = expandBounds(bounds, options.worldPad)
+  const boundsW = Math.max(3.5, padded.maxX - padded.minX)
+  const boundsH = Math.max(3.5, padded.maxY - padded.minY)
   const geoCx = (padded.minX + padded.maxX) / 2
   const geoCy = (padded.minY + padded.maxY) / 2
+
   const usable = usableViewport(layout)
-  const scale = MAP_OVERVIEW_SCALE
+  const scaleX = (usable.widthPercent * options.widthRatio) / boundsW
+  const scaleY = (usable.heightPercent * options.heightRatio) / boundsH
+  let scale = Math.min(scaleX, scaleY)
+  scale = Math.max(options.minScale, Math.min(options.maxScale, scale))
 
   const cx = geoCx - (usable.centerXPercent - 50) / scale
   const cy = geoCy - (usable.centerYPercent - 50) / scale
 
   return { cx, cy, scale }
+}
+
+/** Family overview: fit meaningful family geography into the safe viewport. */
+export function fitOverviewCamera(bounds: MapBounds, layout: MapViewportLayout): MapCamera {
+  if (layout.frameWidthPx > 0 && layout.frameWidthPx < 760) {
+    return fitCameraToBounds(bounds, { ...layout, panelOpen: false }, 'regional')
+  }
+
+  return fitCameraToUsableViewport(bounds, layout, {
+    minScale: OVERVIEW_MIN_SCALE,
+    maxScale: OVERVIEW_MAX_SCALE,
+    widthRatio: OVERVIEW_FIT_TARGET_WIDTH_RATIO,
+    heightRatio: OVERVIEW_FIT_TARGET_HEIGHT_RATIO,
+    worldPad: REGION_FIT_PADDING + 2,
+  })
 }
 
 export function fitCameraToBounds(
@@ -125,34 +218,31 @@ export function fitCameraToBounds(
 ): MapCamera {
   if (level === 'family') return fitOverviewCamera(bounds, layout)
 
-  const padded = expandBounds(bounds, REGION_FIT_PADDING)
-  const boundsW = Math.max(4, padded.maxX - padded.minX)
-  const boundsH = Math.max(4, padded.maxY - padded.minY)
-  const geoCx = (padded.minX + padded.maxX) / 2
-  const geoCy = (padded.minY + padded.maxY) / 2
-
-  const usable = usableViewport(layout)
-
-  const scaleX =
-    (usable.widthPercent * REGION_FIT_TARGET_WIDTH_RATIO) / boundsW
-  const scaleY =
-    (usable.heightPercent * REGION_FIT_TARGET_HEIGHT_RATIO) / boundsH
-  let scale = Math.min(scaleX, scaleY)
-
   const { min, max } = scaleLimitsForLevel(level)
-  scale = Math.max(min, Math.min(max, scale))
-  scale = Math.max(1, scale)
+  const { widthRatio, heightRatio } = fitRatiosForLevel(level)
 
-  const cx = geoCx - (usable.centerXPercent - 50) / scale
-  const cy = geoCy - (usable.centerYPercent - 50) / scale
-
-  return { cx, cy, scale }
+  return fitCameraToUsableViewport(bounds, layout, {
+    minScale: min,
+    maxScale: max,
+    widthRatio,
+    heightRatio,
+    worldPad: REGION_FIT_PADDING,
+  })
 }
 
 export function fitCameraForRegion(
   bounds: MapBounds,
   layout: MapViewportLayout,
   level: MapZoomLevel,
+): MapCamera {
+  return fitCameraToBounds(bounds, layout, level)
+}
+
+/** Insight / corridor helper — same math, explicit level. */
+export function fitCameraForInsight(
+  bounds: MapBounds,
+  layout: MapViewportLayout,
+  level: MapZoomLevel = 'local',
 ): MapCamera {
   return fitCameraToBounds(bounds, layout, level)
 }

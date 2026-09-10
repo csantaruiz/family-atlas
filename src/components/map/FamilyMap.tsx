@@ -380,7 +380,7 @@ export function FamilyMap({
             role="img"
             aria-label="Interactive family migration map"
           >
-          <WorldMapBackground />
+          <WorldMapBackground tileHorizontal />
 
           <g className="map-heat-layer" aria-hidden="true">
             <AnimatePresence mode="sync">

@@ -15,7 +15,7 @@ export function AtlasMapBackdropInner() {
         preserveAspectRatio="xMidYMid slice"
       >
         <g className="app-map-backdrop-world">
-          <WorldMapBackground idPrefix="backdrop-" fadeIn={false} />
+          <WorldMapBackground idPrefix="backdrop-" fadeIn={false} tileHorizontal />
         </g>
 
         <g className="app-map-backdrop-routes">

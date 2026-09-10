@@ -26,7 +26,16 @@ describe('family tree close household', () => {
     expect(joaquin.y).toBeGreaterThan(craig.y)
     expect(layout.householdIds).toContain(familyDatabase.root)
     expect(layout.householdIds).toContain('I18123023648')
+    expect(layout.coupleBounds).toBeTruthy()
     expect(layout.householdBounds).toBeTruthy()
+    // Couple frame is tighter than the full household (parents + children).
+    const coupleArea =
+      (layout.coupleBounds!.maxX - layout.coupleBounds!.minX) *
+      (layout.coupleBounds!.maxY - layout.coupleBounds!.minY)
+    const householdArea =
+      (layout.householdBounds!.maxX - layout.householdBounds!.minX) *
+      (layout.householdBounds!.maxY - layout.householdBounds!.minY)
+    expect(coupleArea).toBeLessThan(householdArea)
 
     const couple = layout.connectors.find(
       (c) => c.kind === 'couple' && c.id.includes('I18123023648'),

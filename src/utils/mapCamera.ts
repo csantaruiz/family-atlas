@@ -1,6 +1,6 @@
 import type { MapBounds } from './mapRegionGeometry'
 import { expandBounds } from './mapRegionGeometry'
-import { WORLD_PLATE_BOUNDS } from './mapProjection'
+import { WORLD_PLATE_BOUNDS_TILED } from './mapProjection'
 import {
   viewBoxCameraForContainer,
   type MapCamera,
@@ -9,7 +9,7 @@ import {
 
 /** Overview may zoom gently into family extent (not locked to world scale). */
 export const MAP_OVERVIEW_SCALE = 1
-export const OVERVIEW_MIN_SCALE = 1
+export const OVERVIEW_MIN_SCALE = 0.85
 export const OVERVIEW_MAX_SCALE = 1.75
 
 export const REGION_MIN_SCALE = 1.55
@@ -187,7 +187,7 @@ export function clampCameraToWorldPlate(
   camera: MapCamera,
   frameWidthPx: number,
   frameHeightPx: number,
-  plate: MapBounds = WORLD_PLATE_BOUNDS,
+  plate: MapBounds = WORLD_PLATE_BOUNDS_TILED,
 ): MapCamera {
   if (frameWidthPx <= 0 || frameHeightPx <= 0) return camera
 

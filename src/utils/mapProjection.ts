@@ -64,7 +64,9 @@ export const MAP_VIEW_BOX = { width: 100, height: 100 } as const
 /**
  * Horizontal/vertical water overscan beyond the nominal atlas plate.
  * Safe-viewport camera shifts can move the SVG viewBox slightly outside 0–100;
- * overscan keeps ocean fill under those edges (this plate is not wrap-tiled).
+ * overscan keeps ocean fill under those edges.
+ * Documentary wide shots may also enable WorldMapBackground `tileHorizontal`
+ * to repeat the plate left/right (this plate is not a true geographic wrap).
  */
 export const WORLD_MAP_OVERSCAN = 24
 
@@ -76,8 +78,19 @@ export const WORLD_PLATE_BOUNDS = {
   maxY: MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN,
 } as const
 
+/**
+ * When WorldMapBackground repeats plates left/right, the camera may travel
+ * into the neighboring tiles instead of falling off into empty stage black.
+ */
+export const WORLD_PLATE_BOUNDS_TILED = {
+  minX: -MAP_VIEW_BOX.width - WORLD_MAP_OVERSCAN,
+  maxX: MAP_VIEW_BOX.width * 2 + WORLD_MAP_OVERSCAN,
+  minY: -WORLD_MAP_OVERSCAN,
+  maxY: MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN,
+} as const
+
 /** Archival expedition-map palette — warm land on quiet oxidized sea. */
-export const WORLD_MAP_WATER_FILL = '#0a1216'
+export const WORLD_MAP_WATER_FILL = '#0c161c'
 export const WORLD_MAP_WATER_DEEP = 'rgba(36, 58, 64, 0.38)'
 export const WORLD_MAP_WATER_TINT = 'rgba(52, 78, 84, 0.24)'
 export const WORLD_MAP_WATER_SHALLOW = 'rgba(68, 98, 102, 0.14)'

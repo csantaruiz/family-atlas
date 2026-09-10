@@ -35,7 +35,7 @@ describe('mapCameraGestures', () => {
     const tooFar = zoomCameraAt(DEFAULT_CAMERA, 40, 50, 50, PHONE)
     expect(tooFar.scale).toBeLessThanOrEqual(5.5)
     const tooClose = zoomCameraAt(DEFAULT_CAMERA, 0.01, 50, 50, PHONE)
-    expect(tooClose.scale).toBeGreaterThanOrEqual(1)
+    expect(tooClose.scale).toBeGreaterThanOrEqual(0.72)
   })
 
   it('pans opposite the finger so content follows the drag', () => {

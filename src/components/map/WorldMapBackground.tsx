@@ -26,9 +26,119 @@ type LandFeature = {
 type WorldMapBackgroundProps = {
   idPrefix?: string
   fadeIn?: boolean
+  /**
+   * Repeat the atlas plate left/right so wide documentary cameras
+   * never fall off into empty black beyond the finite Natural Earth plate.
+   */
+  tileHorizontal?: boolean
 }
 
-export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBackgroundProps) {
+type LandPath = { id: string; d: string }
+
+type PlateChrome = {
+  oceanDepthId: string
+  oceanHorizonId: string
+  landBaseId: string
+  landPaperId: string
+  coastSoftnessId: string
+  waterX: number
+  waterY: number
+  waterW: number
+  waterH: number
+  graticulePath: string
+  landPaths: LandPath[]
+}
+
+function AtlasPlate({
+  chrome,
+  offsetX = 0,
+  keyPrefix = 'main',
+  softEdge = true,
+}: {
+  chrome: PlateChrome
+  offsetX?: number
+  keyPrefix?: string
+  softEdge?: boolean
+}) {
+  const {
+    oceanDepthId,
+    oceanHorizonId,
+    landBaseId,
+    landPaperId,
+    coastSoftnessId,
+    waterX,
+    waterY,
+    waterW,
+    waterH,
+    graticulePath,
+    landPaths,
+  } = chrome
+
+  return (
+    <g transform={offsetX === 0 ? undefined : `translate(${offsetX}, 0)`}>
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={WORLD_MAP_WATER_FILL} />
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanDepthId})`} />
+      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanHorizonId})`} />
+
+      {graticulePath ? (
+        <path
+          className="world-map-graticule"
+          d={graticulePath}
+          fill="none"
+          stroke={WORLD_MAP_GRATICULE_STROKE}
+          strokeWidth={WORLD_MAP_GRATICULE_WIDTH}
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+        />
+      ) : null}
+
+      <g className="world-map-landmasses" filter={`url(#${landPaperId})`}>
+        {landPaths.map((path) => (
+          <path
+            key={`${keyPrefix}-${path.id}`}
+            d={path.d}
+            fill={`url(#${landBaseId})`}
+            stroke={WORLD_MAP_COASTLINE_STROKE}
+            strokeWidth={WORLD_MAP_COASTLINE_WIDTH}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </g>
+
+      <g className="world-map-coastline-wash" filter={`url(#${coastSoftnessId})`} pointerEvents="none">
+        {landPaths.map((path) => (
+          <path
+            key={`${keyPrefix}-coast-${path.id}`}
+            d={path.d}
+            fill="none"
+            stroke="rgba(210, 192, 152, 0.06)"
+            strokeWidth={WORLD_MAP_COASTLINE_WIDTH * 1.6}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </g>
+
+      {softEdge ? (
+        <rect
+          className="world-map-ocean-vignette"
+          x={waterX}
+          y={waterY}
+          width={waterW}
+          height={waterH}
+          fill={`url(#${oceanDepthId})`}
+          opacity="0.28"
+          pointerEvents="none"
+        />
+      ) : null}
+    </g>
+  )
+}
+
+export function WorldMapBackground({
+  idPrefix = '',
+  fadeIn = true,
+  tileHorizontal = false,
+}: WorldMapBackgroundProps) {
   const prefersReducedMotion = useReducedMotion()
   const oceanDepthId = `${idPrefix}atlasOceanDepth`
   const oceanHorizonId = `${idPrefix}atlasOceanHorizon`
@@ -45,7 +155,7 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
         const d = pathGen(feature as never)
         return d ? { id: `land-${index}`, d } : null
       })
-      .filter((entry): entry is { id: string; d: string } => entry !== null)
+      .filter((entry): entry is LandPath => entry !== null)
   }, [])
 
   const graticulePath = useMemo(() => createAtlasGraticulePath(), [])
@@ -53,6 +163,29 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
   const waterY = -WORLD_MAP_OVERSCAN
   const waterW = MAP_VIEW_BOX.width + WORLD_MAP_OVERSCAN * 2
   const waterH = MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN * 2
+
+  const chrome: PlateChrome = {
+    oceanDepthId,
+    oceanHorizonId,
+    landBaseId,
+    landPaperId,
+    coastSoftnessId,
+    waterX,
+    waterY,
+    waterW,
+    waterH,
+    graticulePath,
+    landPaths,
+  }
+
+  // Continuous ocean bed so gaps between tiles / beyond overscan stay atlas water, not stage black.
+  const bedPad = tileHorizontal ? MAP_VIEW_BOX.width * 2 + WORLD_MAP_OVERSCAN * 2 : WORLD_MAP_OVERSCAN * 3
+  const bedX = -bedPad
+  const bedW = MAP_VIEW_BOX.width + bedPad * 2
+
+  const tileOffsets = tileHorizontal
+    ? [-MAP_VIEW_BOX.width, 0, MAP_VIEW_BOX.width]
+    : [0]
 
   return (
     <g
@@ -98,60 +231,49 @@ export function WorldMapBackground({ idPrefix = '', fadeIn = true }: WorldMapBac
         <filter id={coastSoftnessId} x="-2%" y="-2%" width="104%" height="104%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="0.08" />
         </filter>
+
+        {tileHorizontal
+          ? tileOffsets.map((offsetX) => (
+              <clipPath
+                key={`clip-${offsetX}`}
+                id={`${idPrefix}atlasPlateClip${offsetX}`}
+                clipPathUnits="userSpaceOnUse"
+              >
+                <rect
+                  x={offsetX - WORLD_MAP_OVERSCAN}
+                  y={-WORLD_MAP_OVERSCAN}
+                  width={MAP_VIEW_BOX.width + WORLD_MAP_OVERSCAN * 2}
+                  height={MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN * 2}
+                />
+              </clipPath>
+            ))
+          : null}
       </defs>
 
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={WORLD_MAP_WATER_FILL} />
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanDepthId})`} />
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanHorizonId})`} />
-
-      {graticulePath && (
-        <path
-          className="world-map-graticule"
-          d={graticulePath}
-          fill="none"
-          stroke={WORLD_MAP_GRATICULE_STROKE}
-          strokeWidth={WORLD_MAP_GRATICULE_WIDTH}
-          vectorEffect="non-scaling-stroke"
-          pointerEvents="none"
-        />
-      )}
-
-      <g className="world-map-landmasses" filter={`url(#${landPaperId})`}>
-        {landPaths.map((path) => (
-          <path
-            key={path.id}
-            d={path.d}
-            fill={`url(#${landBaseId})`}
-            stroke={WORLD_MAP_COASTLINE_STROKE}
-            strokeWidth={WORLD_MAP_COASTLINE_WIDTH}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </g>
-
-      <g className="world-map-coastline-wash" filter={`url(#${coastSoftnessId})`} pointerEvents="none">
-        {landPaths.map((path) => (
-          <path
-            key={`coast-${path.id}`}
-            d={path.d}
-            fill="none"
-            stroke="rgba(210, 192, 152, 0.06)"
-            strokeWidth={WORLD_MAP_COASTLINE_WIDTH * 1.6}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </g>
-
       <rect
-        className="world-map-ocean-vignette"
-        x={waterX}
-        y={waterY}
-        width={waterW}
-        height={waterH}
-        fill={`url(#${oceanDepthId})`}
-        opacity="0.48"
-        pointerEvents="none"
+        className="world-map-ocean-bed"
+        x={bedX}
+        y={waterY - WORLD_MAP_OVERSCAN}
+        width={bedW}
+        height={waterH + WORLD_MAP_OVERSCAN * 2}
+        fill={WORLD_MAP_WATER_FILL}
       />
+
+      {tileOffsets.map((offsetX) => (
+        <g
+          key={`plate-${offsetX}`}
+          clipPath={
+            tileHorizontal ? `url(#${idPrefix}atlasPlateClip${offsetX})` : undefined
+          }
+        >
+          <AtlasPlate
+            chrome={chrome}
+            offsetX={offsetX}
+            keyPrefix={offsetX === 0 ? 'main' : `tile${offsetX}`}
+            softEdge={!tileHorizontal}
+          />
+        </g>
+      ))}
     </g>
   )
 }

@@ -223,6 +223,8 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  /* Match atlas ocean so plate edges never flash pure stage black. */
+  background: #0a1216;
 }
 
 .de-map-camera {

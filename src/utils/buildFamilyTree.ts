@@ -25,6 +25,8 @@ export type TreeConnector = {
   kind: 'parent-child' | 'couple'
 }
 
+export type TreeBounds = { minX: number; minY: number; maxX: number; maxY: number }
+
 export type TreeLayout = {
   nodes: PositionedTreeNode[]
   connectors: TreeConnector[]
@@ -33,8 +35,10 @@ export type TreeLayout = {
   rootId: string
   /** Archive root + household co-root (Craig + Leah). */
   householdIds: string[]
-  /** Bounding box of the default hero household (roots, their parents, shared children). */
-  householdBounds: { minX: number; minY: number; maxX: number; maxY: number } | null
+  /** Bounding box of the married couple only — default camera hero. */
+  coupleBounds: TreeBounds | null
+  /** Bounding box of couple + parents + shared children — Fit family. */
+  householdBounds: TreeBounds | null
 }
 
 const MAX_ANCESTOR_DEPTH = 12
@@ -554,20 +558,26 @@ export function buildFamilyTreeLayout(
     }
   }
 
-  let householdBounds: TreeLayout['householdBounds'] = null
-  for (const node of nodes) {
-    if (!householdFocusIds.has(node.person.id)) continue
-    const maxNodeX = node.x + TREE_CARD_WIDTH
-    const maxNodeY = node.y + TREE_CARD_HEIGHT
-    if (!householdBounds) {
-      householdBounds = { minX: node.x, minY: node.y, maxX: maxNodeX, maxY: maxNodeY }
-    } else {
-      householdBounds.minX = Math.min(householdBounds.minX, node.x)
-      householdBounds.minY = Math.min(householdBounds.minY, node.y)
-      householdBounds.maxX = Math.max(householdBounds.maxX, maxNodeX)
-      householdBounds.maxY = Math.max(householdBounds.maxY, maxNodeY)
+  const boundsFor = (ids: Set<string>): TreeBounds | null => {
+    let bounds: TreeBounds | null = null
+    for (const node of nodes) {
+      if (!ids.has(node.person.id)) continue
+      const maxNodeX = node.x + TREE_CARD_WIDTH
+      const maxNodeY = node.y + TREE_CARD_HEIGHT
+      if (!bounds) {
+        bounds = { minX: node.x, minY: node.y, maxX: maxNodeX, maxY: maxNodeY }
+      } else {
+        bounds.minX = Math.min(bounds.minX, node.x)
+        bounds.minY = Math.min(bounds.minY, node.y)
+        bounds.maxX = Math.max(bounds.maxX, maxNodeX)
+        bounds.maxY = Math.max(bounds.maxY, maxNodeY)
+      }
     }
+    return bounds
   }
+
+  const coupleBounds = boundsFor(new Set(householdIds))
+  const householdBounds = boundsFor(householdFocusIds)
 
   return {
     nodes,
@@ -576,6 +586,7 @@ export function buildFamilyTreeLayout(
     height: maxY + TREE_PADDING,
     rootId,
     householdIds,
+    coupleBounds,
     householdBounds,
   }
 }

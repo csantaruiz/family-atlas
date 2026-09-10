@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { WorldMapBackground } from '../../../components/map/WorldMapBackground'
+import { clampCameraToWorldPlate } from '../../../utils/mapCamera'
 import { MAP_VIEW_BOX } from '../../../utils/mapProjection'
 import { viewBoxCameraForContainer } from '../../../utils/mapSemanticZoom'
 import { useDocumentaryEngine } from '../../context/DocumentaryEngineContext'
@@ -37,7 +38,9 @@ export function PersistentMapStage({ frame }: PersistentMapStageProps) {
 
   const targetViewBox = useMemo(() => {
     if (!frame || stageSize.width < 2 || stageSize.height < 2) return null
-    return viewBoxCameraForContainer(frame.camera, stageSize.width, stageSize.height)
+    // Keep framing on the atlas plate; tiling covers residual wide-shot edges.
+    const clamped = clampCameraToWorldPlate(frame.camera, stageSize.width, stageSize.height)
+    return viewBoxCameraForContainer(clamped, stageSize.width, stageSize.height)
   }, [frame, stageSize.height, stageSize.width])
 
   const viewBox = useSmoothViewBox(targetViewBox, seekGeneration)
@@ -60,7 +63,7 @@ export function PersistentMapStage({ frame }: PersistentMapStageProps) {
           preserveAspectRatio="xMidYMid slice"
           aria-hidden="true"
         >
-          <WorldMapBackground idPrefix="de-" fadeIn={false} />
+          <WorldMapBackground idPrefix="de-" fadeIn={false} tileHorizontal />
         </svg>
 
         {viewBox && mapRoutes.length > 0 ? (

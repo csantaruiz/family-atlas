@@ -8,7 +8,7 @@ import {
   MAP_RIGHT_CHROME_PX,
   MAP_BOTTOM_CHROME_PX,
 } from './mapCamera'
-import { WORLD_MAP_OVERSCAN, WORLD_PLATE_BOUNDS } from './mapProjection'
+import { WORLD_MAP_OVERSCAN, WORLD_PLATE_BOUNDS_TILED } from './mapProjection'
 import { viewBoxCameraForContainer } from './mapSemanticZoom'
 import { boundsFromRouteEndpoints, ensureMinBoundsExtent } from './mapRegionGeometry'
 
@@ -114,8 +114,8 @@ describe('world plate clamp + overscan', () => {
       DESKTOP.frameWidthPx,
       DESKTOP.frameHeightPx,
     )
-    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS.minX - 0.01)
-    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS.maxX + 0.01)
+    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS_TILED.minX - 0.01)
+    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS_TILED.maxX + 0.01)
   })
 
   it('keeps overview fits inside the world plate', () => {
@@ -126,8 +126,8 @@ describe('world plate clamp + overscan', () => {
       DESKTOP.frameWidthPx,
       DESKTOP.frameHeightPx,
     )
-    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS.minX - 0.01)
-    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS.maxX + 0.01)
+    expect(viewBox.minX).toBeGreaterThanOrEqual(WORLD_PLATE_BOUNDS_TILED.minX - 0.01)
+    expect(viewBox.minX + viewBox.width).toBeLessThanOrEqual(WORLD_PLATE_BOUNDS_TILED.maxX + 0.01)
     expect(WORLD_MAP_OVERSCAN).toBeGreaterThanOrEqual(16)
   })
 })

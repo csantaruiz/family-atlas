@@ -14,11 +14,11 @@ export function TreePanHint({ visible }: TreePanHintProps) {
         <span>Drag to pan</span>
       </span>
       <span className="tree-pan-hint-sep" aria-hidden="true">
-        |
+        ·
       </span>
       <span className="tree-pan-hint-item">
         <ZoomIn size={14} strokeWidth={1.6} aria-hidden="true" />
-        <span>Scroll to zoom · Fit family resets the household view</span>
+        <span>Pinch or scroll to zoom</span>
       </span>
     </div>
   )

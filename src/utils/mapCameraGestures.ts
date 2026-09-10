@@ -1,13 +1,13 @@
 import type { MapBounds } from './mapRegionGeometry'
 import { clampCameraToWorldPlate } from './mapCamera'
-import { WORLD_PLATE_BOUNDS } from './mapProjection'
+import { WORLD_PLATE_BOUNDS_TILED } from './mapProjection'
 import {
   cameraFromScaleAndScreenAnchor,
   screenPercentToWorld,
   type MapCamera,
 } from './mapSemanticZoom'
 
-export const GESTURE_MIN_SCALE = 1
+export const GESTURE_MIN_SCALE = 0.72
 export const GESTURE_MAX_SCALE = 5.5
 export const PAN_EDGE_PAD_PX = 40
 
@@ -129,7 +129,7 @@ export function clampCameraToContent(
   const width = viewport?.width ?? 0
   const height = viewport?.height ?? 0
   if (width > 0 && height > 0) {
-    next = clampCameraToWorldPlate(next, width, height, WORLD_PLATE_BOUNDS)
+    next = clampCameraToWorldPlate(next, width, height, WORLD_PLATE_BOUNDS_TILED)
   }
   return next
 }

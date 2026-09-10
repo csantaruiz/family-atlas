@@ -2988,6 +2988,38 @@
   backdrop-filter: blur(8px);
 }
 
+.drawer .detail-portrait {
+  width: 100%;
+  margin: 0;
+}
+
+.drawer .detail-portrait-frame {
+  width: 100%;
+  max-width: none;
+}
+
+.drawer .detail-portrait-img,
+.drawer .detail-portrait-pending-fill {
+  width: 100%;
+  max-width: none;
+}
+
+.drawer .detail-portrait-upload,
+.drawer .detail-portrait-upload-actions,
+.drawer .detail-portrait--upload-error .detail-portrait-upload-error-frame {
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.drawer .detail-portrait-upload {
+  padding: 0 30px;
+}
+
+.drawer .detail-follow-journey {
+  max-width: none;
+}
+
 .detail-portrait {
   margin: 0;
   padding: 0;
@@ -3030,7 +3062,7 @@
 .detail-portrait-frame {
   position: relative;
   width: 100%;
-  max-width: 280px;
+  max-width: 100%;
   background: #050506;
 }
 
@@ -3051,7 +3083,7 @@
 .detail-portrait-img {
   display: block;
   width: 100%;
-  max-width: 280px;
+  max-width: none;
   aspect-ratio: 4 / 5;
   object-fit: cover;
   object-position: center 18%;
@@ -3484,19 +3516,32 @@
 
 .tree-canvas-shell {
   position: relative;
-}
-
-.tree-canvas {
-  max-height: calc(100vh - 260px);
-  min-height: min(62vh, 640px);
-  overflow: auto;
-  padding: 8px 12px 24px;
+  overflow: hidden;
   border-top: 1px solid rgba(178, 154, 98, 0.12);
+  border-radius: 0 0 14px 14px;
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(214, 181, 108, 0.04), transparent 62%),
     rgba(0, 0, 0, 0.12);
+}
+
+.tree-canvas {
+  max-height: calc(100vh - 300px);
+  min-height: min(58vh, 620px);
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: grab;
   touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.tree-canvas.is-zooming .tree-node-slot {
+  transition: none !important;
+}
+
+.tree-canvas.is-zooming .tree-node-card {
+  transition: none !important;
 }
 
 .tree-canvas.is-panning {
@@ -3508,15 +3553,31 @@
   pointer-events: none;
 }
 
-.tree-pedigree-scale {
-  position: relative;
-  margin: 0 auto;
-  min-width: min(100%, 720px);
-}
-
-.tree-pedigree {
+.tree-camera {
   position: relative;
   transform-origin: 0 0;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.tree-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      ellipse 62% 58% at 50% 44%,
+      transparent 0%,
+      transparent 34%,
+      rgba(0, 0, 0, 0.2) 56%,
+      rgba(0, 0, 0, 0.48) 74%,
+      rgba(0, 0, 0, 0.7) 90%,
+      rgba(0, 0, 0, 0.82) 100%
+    ),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.38) 0%, transparent 12%, transparent 82%, rgba(0, 0, 0, 0.28) 100%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.36) 0%, transparent 12%, transparent 88%, rgba(0, 0, 0, 0.36) 100%);
 }
 
 .tree-connectors {
@@ -3609,20 +3670,40 @@
   font-size: 9px;
 }
 
-.tree-zoom-controls {
+.tree-chrome {
   position: absolute;
-  right: 16px;
-  bottom: 18px;
-  z-index: 5;
+  left: 50%;
+  bottom: 14px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(calc(100% - 24px), 520px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.tree-chrome .tree-pan-hint,
+.tree-chrome .tree-zoom-controls {
+  pointer-events: auto;
+}
+
+.tree-zoom-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
   padding: 6px;
   border-radius: 999px;
-  border: 1px solid rgba(214, 181, 108, 0.22);
-  background: rgba(12, 11, 10, 0.86);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(214, 181, 108, 0.28);
+  background: rgba(12, 11, 10, 0.92);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.36),
+    0 0 0 1px rgba(214, 181, 108, 0.06) inset;
 }
 
 .tree-zoom-btn {
@@ -3650,6 +3731,12 @@
   font: 500 12px / 1 Georgia, 'Times New Roman', serif;
   letter-spacing: 0.02em;
   color: rgba(214, 181, 108, 0.92);
+}
+
+.tree-zoom-btn--family {
+  border-left: 1px solid rgba(214, 181, 108, 0.18);
+  border-radius: 0 999px 999px 0;
+  color: rgba(210, 200, 178, 0.82);
 }
 
 .tree-branch-summaries {
@@ -3718,23 +3805,20 @@
 }
 
 .tree-pan-hint {
-  position: absolute;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border: 1px solid rgba(214, 181, 108, 0.22);
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 1px solid rgba(214, 181, 108, 0.18);
   border-radius: 999px;
-  background: rgba(12, 11, 10, 0.82);
+  background: rgba(12, 11, 10, 0.78);
   backdrop-filter: blur(8px);
   font: 11px/1.35 Inter, system-ui, sans-serif;
   color: rgba(214, 181, 108, 0.82);
   pointer-events: none;
-  z-index: 4;
-  animation: tree-pan-hint-in 0.45s ease;
+  animation: tree-pan-hint-in 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .tree-pan-hint-item {
@@ -3756,12 +3840,12 @@
 @keyframes tree-pan-hint-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px);
+    transform: translateY(10px);
   }
 
   to {
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
   }
 }
 
@@ -4470,6 +4554,7 @@
 
 #map.atlas-page {
   isolation: isolate;
+  background: #0c161c;
   --map-surface-bg: linear-gradient(
     168deg,
     rgba(16, 18, 20, 0.46) 0%,
@@ -4529,6 +4614,10 @@
     radial-gradient(ellipse 72% 58% at 86% 14%, rgba(116, 137, 155, 0.05) 0%, transparent 48%),
     radial-gradient(ellipse 110% 70% at 50% 100%, rgba(6, 8, 10, 0.28) 0%, transparent 42%),
     transparent;
+}
+
+#map.atlas-page:not(.map-phone) .map-wrap {
+  padding: 0;
 }
 
 #map .map-page-atmosphere,
@@ -4840,18 +4929,10 @@
   border-radius: 16px;
   background:
     radial-gradient(
-      ellipse 118% 112% at 50% 46%,
-      transparent 8%,
-      rgba(2, 4, 6, 0.12) 28%,
-      rgba(0, 0, 0, 0.32) 50%,
-      rgba(0, 0, 0, 0.52) 68%,
-      rgba(0, 0, 0, 0.72) 84%,
-      rgba(0, 0, 0, 0.82) 94%
-    ),
-    radial-gradient(
-      ellipse 165% 155% at 50% 50%,
-      transparent 12%,
-      rgba(0, 0, 0, 0.28) 100%
+      ellipse 140% 120% at 50% 46%,
+      transparent 42%,
+      rgba(2, 4, 6, 0.06) 68%,
+      rgba(0, 0, 0, 0.16) 100%
     );
 }
 
@@ -4864,11 +4945,31 @@
   border-radius: 16px;
   background:
     radial-gradient(
-      ellipse 105% 100% at 50% 48%,
-      transparent 18%,
-      rgba(0, 0, 0, 0.28) 52%,
-      rgba(0, 0, 0, 0.58) 72%,
-      rgba(0, 0, 0, 0.78) 100%
+      ellipse 118% 110% at 50% 48%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.12) 82%,
+      rgba(0, 0, 0, 0.22) 100%
+    );
+}
+
+/* Desktop Journeys: keep ocean readable to the frame edge (no black drop-off). */
+#map.atlas-page:not(.map-phone) .map-page-vignette {
+  border-radius: 0;
+  background:
+    radial-gradient(
+      ellipse 150% 125% at 50% 48%,
+      transparent 58%,
+      rgba(2, 4, 6, 0.05) 100%
+    );
+}
+
+#map.atlas-page:not(.map-phone) .map-atlas-frame::after {
+  border-radius: 0;
+  background:
+    radial-gradient(
+      ellipse 130% 115% at 50% 48%,
+      transparent 62%,
+      rgba(0, 0, 0, 0.1) 100%
     );
 }
 
@@ -4879,7 +4980,14 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.045),
     0 28px 72px rgba(0, 0, 0, 0.36);
-  background: #0a1216;
+  background: #0c161c;
+}
+
+#map.atlas-page:not(.map-phone) .map-atlas-frame {
+  border-radius: 0;
+  border-color: transparent;
+  box-shadow: none;
+  background: #0c161c;
 }
 
 #map .map-atlas-zoom {
@@ -7228,9 +7336,27 @@
   backdrop-filter: blur(10px);
 }
 
+.documentary-controls__btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  padding: 10px 12px;
+  letter-spacing: 0;
+  color: rgba(214, 181, 108, 0.78);
+}
+
+.documentary-controls__btn--icon.is-muted {
+  color: rgba(170, 167, 159, 0.55);
+}
+
 .documentary-controls__btn:hover {
   border-color: rgba(214, 181, 108, 0.35);
   color: var(--ink);
+}
+
+.documentary-controls__btn--icon:hover {
+  color: rgba(234, 217, 180, 0.95);
 }
 
 .documentary-controls--stage {
@@ -8942,8 +9068,35 @@ body {
   }
 
   .tree-canvas {
-    max-height: calc(100dvh - 180px);
-    touch-action: pan-x pan-y;
+    max-height: calc(100dvh - 220px);
+    min-height: 62vh;
+    padding-bottom: 0;
+    touch-action: none;
+  }
+
+  .tree-chrome {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: min(calc(100% - 16px), 440px);
+  }
+
+  .tree-zoom-controls {
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .tree-zoom-btn {
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .tree-zoom-btn--fit {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .tree-pan-hint {
+    font-size: 10px;
+    padding: 6px 10px;
   }
 
   .people-sticky-chrome {
@@ -9583,7 +9736,8 @@ body {
 
   .tree-canvas {
     min-height: 68vh;
-    max-height: calc(100dvh - 132px);
+    max-height: calc(100dvh - 148px);
+    padding-bottom: 0;
   }
 }
 

@@ -53,7 +53,7 @@ export function DocumentaryMapCanvas({ map, sceneId, progress, elapsedMs }: Docu
           preserveAspectRatio="xMidYMid slice"
           aria-hidden="true"
         >
-          <WorldMapBackground idPrefix="de-" fadeIn={false} />
+          <WorldMapBackground idPrefix="de-" fadeIn={false} tileHorizontal />
 
           {routes.length > 0 && (
             <g className="de-map-routes" style={{ opacity: routeOpacity }}>

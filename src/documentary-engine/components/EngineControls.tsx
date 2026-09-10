@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Volume2, VolumeX } from 'lucide-react'
 import { chapterMarkersFromManifest } from '../core/chapterMarkers'
 import {
   formatEngineTime,
@@ -24,6 +25,8 @@ export function EngineControls() {
     seek,
     resolved,
     manifest,
+    scoreMuted,
+    toggleScoreMute,
   } = useDocumentaryEngine()
 
   const chapterMarkers = useMemo(() => chapterMarkersFromManifest(manifest), [manifest])
@@ -146,6 +149,20 @@ export function EngineControls() {
           {formatEngineTime(currentTimeMs)}
         </span>
         <div className="documentary-controls__actions">
+          <button
+            type="button"
+            className={`documentary-controls__btn documentary-controls__btn--icon${scoreMuted ? ' is-muted' : ''}`}
+            onClick={toggleScoreMute}
+            aria-label={scoreMuted ? 'Unmute soundtrack' : 'Mute soundtrack'}
+            aria-pressed={scoreMuted}
+            title={scoreMuted ? 'Unmute soundtrack' : 'Mute soundtrack'}
+          >
+            {scoreMuted ? (
+              <VolumeX size={15} strokeWidth={1.7} aria-hidden="true" />
+            ) : (
+              <Volume2 size={15} strokeWidth={1.7} aria-hidden="true" />
+            )}
+          </button>
           <button type="button" className="documentary-controls__btn" onClick={togglePause}>
             {isPlaying ? 'Pause' : 'Play'}
           </button>

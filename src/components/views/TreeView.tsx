@@ -1,15 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Minus, Plus, Scan } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Crosshair, Home, Minus, Plus } from 'lucide-react'
 import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import { useTimeline } from '../../context/TimelineContext'
+import type { Person } from '../../types'
 import {
-  buildFamilyTreeLayout,
   TREE_CARD_HEIGHT,
   TREE_CARD_WIDTH,
   type TreeBounds,
 } from '../../utils/buildFamilyTree'
-import { buildLineagePalette, type LineageId } from '../../utils/lineageColors'
+import {
+  buildFocusTreeLayout,
+  PARENTS_CONTROL_HEIGHT,
+  PARENTS_CONTROL_WIDTH,
+} from '../../utils/buildFocusTreeLayout'
+import { BASE_DOWN_DEPTH, BASE_UP_DEPTH } from '../../utils/treeNeighborhood'
+import { ParentsExpandControl } from '../tree/ParentsExpandControl'
 import { TreeNodeCard, type TreeNodeDensity } from '../tree/TreeNodeCard'
 import { TreePanHint } from '../tree/TreePanHint'
 import { useMaxWidth } from '../../hooks/useMaxWidth'
@@ -18,26 +24,36 @@ type TreeViewProps = {
   active: boolean
 }
 
-type BranchFilter = 'all' | LineageId
-
 type TreeCamera = {
   x: number
   y: number
   zoom: number
 }
 
-const ZOOM_MIN = 0.42
+const PREFERRED_FOCUS_ZOOM_DESKTOP = 1.32
+const PREFERRED_FOCUS_ZOOM_PHONE = 1.18
+const ZOOM_MIN = 0.55
 const ZOOM_MAX = 2.35
 const ZOOM_BUTTON_STEP = 1.16
 const WHEEL_ZOOM_GAIN = 0.0012
 const PINCH_CTRL_GAIN = 0.00155
 const TOUCH_PINCH_GAIN = 1
-const ZOOM_ANIM_MS = 380
-const ZOOM_FIT_MS = 520
+const CAMERA_MS = 420
+const GRAPH_MS = 420
+const EMPTY_REVEALED: ReadonlySet<string> = new Set()
+
+type TreeAction = 'init' | 'expand' | 'focus' | 'home'
+
+function logTreeTransition(payload: Record<string, unknown>) {
+  if (import.meta.env.PROD) return
+  console.debug('[tree-transition]', payload)
+}
 
 function canPanTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
-  return !target.closest('.tree-node-card, .tree-chrome, .tree-branch-nav, button, a')
+  return !target.closest(
+    '.tree-node-card, .tree-parents-control, .tree-chrome, button, a',
+  )
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -49,33 +65,31 @@ function easeOutCubic(t: number) {
 }
 
 function densityForZoom(zoom: number): TreeNodeDensity {
-  if (zoom < 0.62) return 'far'
-  if (zoom < 0.95) return 'medium'
+  if (zoom < 0.72) return 'far'
+  if (zoom < 1.05) return 'medium'
   return 'near'
-}
-
-function expandBounds(bounds: TreeBounds, margin: number): TreeBounds {
-  return {
-    minX: bounds.minX - margin,
-    minY: bounds.minY - margin,
-    maxX: bounds.maxX + margin,
-    maxY: bounds.maxY + margin,
-  }
 }
 
 function cameraCss(camera: TreeCamera) {
   return `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`
 }
 
+function boundsCenter(bounds: TreeBounds) {
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  }
+}
+
 export function TreeView({ active }: TreeViewProps) {
   const { database: familyDatabase } = useFamilyData()
-  const { peopleById, filteredFamilyEvents, openPerson } = useTimeline()
-  const { focusedTreePersonId } = useAppNavigation()
+  const { peopleById, openPerson } = useTimeline()
+  const { focusedTreePersonId, setTreeFocus, treeFocusHome } = useAppNavigation()
   const phone = useMaxWidth(760)
+
   const canvasRef = useRef<HTMLDivElement>(null)
   const cameraElRef = useRef<HTMLDivElement>(null)
-  const cameraRef = useRef<TreeCamera>({ x: 0, y: 0, zoom: 1 })
-  const nodeSlotRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const cameraRef = useRef<TreeCamera>({ x: 0, y: 0, zoom: PREFERRED_FOCUS_ZOOM_DESKTOP })
   const panRef = useRef<{
     pointerId: number
     startX: number
@@ -92,65 +106,69 @@ export function TreeView({ active }: TreeViewProps) {
   } | null>(null)
   const animRef = useRef<number | null>(null)
   const lodTimerRef = useRef<number | null>(null)
-  const [showPanHint, setShowPanHint] = useState(true)
-  const [localFocusId, setLocalFocusId] = useState<string | null>(null)
-  const [lodZoom, setLodZoom] = useState(1)
-  const [branchFilter, setBranchFilter] = useState<BranchFilter>('all')
-  const [didInitialFit, setDidInitialFit] = useState(false)
+  const pendingCameraRef = useRef<
+    | { kind: 'preferred'; behavior: 'instant' | 'smooth' }
+    | { kind: 'reveal-parents'; parentIds: string[]; zoom: number }
+    | null
+  >(null)
+  const prevFocusRef = useRef<string | null | undefined>(undefined)
+  const transitionFromFocusRef = useRef<string | null | undefined>(undefined)
+  const prevNodePosRef = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const nodeSlotRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const lastActionRef = useRef<TreeAction>('init')
+  const flipTimerRef = useRef<number | null>(null)
 
-  const timelinePersonIds = useMemo(
-    () => new Set(filteredFamilyEvents.map((event) => event.person.id)),
-    [filteredFamilyEvents],
-  )
+  const [showPanHint, setShowPanHint] = useState(true)
+  const [lodZoom, setLodZoom] = useState(PREFERRED_FOCUS_ZOOM_DESKTOP)
+  const [didInitialCamera, setDidInitialCamera] = useState(false)
+  const [enteringIds, setEnteringIds] = useState<Set<string>>(() => new Set())
+  const [exitingNodes, setExitingNodes] = useState<
+    { id: string; person: Person; x: number; y: number }[]
+  >([])
+  const [expandState, setExpandState] = useState<{
+    focusKey: string | null
+    ids: Set<string>
+  }>(() => ({ focusKey: focusedTreePersonId, ids: new Set() }))
+
+  const preferredZoom = phone ? PREFERRED_FOCUS_ZOOM_PHONE : PREFERRED_FOCUS_ZOOM_DESKTOP
+  const revealedIds =
+    expandState.focusKey === focusedTreePersonId ? expandState.ids : EMPTY_REVEALED
 
   const layout = useMemo(() => {
     if (!active) {
       return {
         nodes: [],
         connectors: [],
+        parentsOverlays: [],
         width: 800,
         height: 600,
-        rootId: familyDatabase.root,
+        focusIds: [familyDatabase.root],
+        isHouseholdFocus: true,
         householdIds: [familyDatabase.root],
         coupleBounds: null,
-        householdBounds: null,
+        neighborhoodBounds: { minX: 0, minY: 0, maxX: 800, maxY: 600 },
+        pathTowardHome: [familyDatabase.root],
       }
     }
-    return buildFamilyTreeLayout(peopleById, timelinePersonIds)
-  }, [active, peopleById, timelinePersonIds, familyDatabase.root])
-
-  const lineagePalette = useMemo(
-    () => buildLineagePalette(familyDatabase.people, familyDatabase.root),
-    [familyDatabase.people, familyDatabase.root],
-  )
-
-  const branchOptions = useMemo(
-    () => [
-      { id: 'all' as const, label: 'All', color: 'rgba(214, 181, 108, 0.9)' },
-      ...lineagePalette.lines.map((line) => ({
-        id: line.id,
-        label: line.label,
-        color: line.color,
-      })),
-    ],
-    [lineagePalette.lines],
-  )
+    return buildFocusTreeLayout(
+      peopleById,
+      familyDatabase.root,
+      focusedTreePersonId,
+      BASE_UP_DEPTH,
+      BASE_DOWN_DEPTH,
+      revealedIds,
+    )
+  }, [active, peopleById, familyDatabase.root, focusedTreePersonId, revealedIds])
 
   const density = densityForZoom(lodZoom)
   const householdSet = useMemo(() => new Set(layout.householdIds), [layout.householdIds])
+  const focusSet = useMemo(() => new Set(layout.focusIds), [layout.focusIds])
+  const chromeReserve = phone ? 120 : 100
 
-  const focusedBranchIds = useMemo(() => {
-    if (branchFilter === 'all') return null
-    const line = lineagePalette.lines.find((entry) => entry.id === branchFilter)
-    return line?.personIds ?? null
-  }, [branchFilter, lineagePalette.lines])
+  const dismissPanHint = useCallback(() => setShowPanHint(false), [])
 
-  const dismissPanHint = useCallback(() => {
-    setShowPanHint(false)
-  }, [])
-
-  const setZooming = useCallback((on: boolean) => {
-    canvasRef.current?.classList.toggle('is-zooming', on)
+  const setGestureZooming = useCallback((on: boolean) => {
+    canvasRef.current?.classList.toggle('is-gesture-zooming', on)
   }, [])
 
   const cancelAnim = useCallback(() => {
@@ -158,8 +176,8 @@ export function TreeView({ active }: TreeViewProps) {
       cancelAnimationFrame(animRef.current)
       animRef.current = null
     }
-    setZooming(false)
-  }, [setZooming])
+    setGestureZooming(false)
+  }, [setGestureZooming])
 
   const paintCamera = useCallback((camera: TreeCamera) => {
     cameraRef.current = camera
@@ -167,22 +185,25 @@ export function TreeView({ active }: TreeViewProps) {
     if (el) el.style.transform = cameraCss(camera)
   }, [])
 
-  const scheduleLod = useCallback((zoom: number) => {
-    if (lodTimerRef.current != null) window.clearTimeout(lodTimerRef.current)
-    lodTimerRef.current = window.setTimeout(() => {
-      lodTimerRef.current = null
-      setLodZoom(zoom)
-      setZooming(false)
-    }, 160)
-  }, [setZooming])
+  const scheduleLod = useCallback(
+    (zoom: number) => {
+      if (lodTimerRef.current != null) window.clearTimeout(lodTimerRef.current)
+      lodTimerRef.current = window.setTimeout(() => {
+        lodTimerRef.current = null
+        setLodZoom(zoom)
+        setGestureZooming(false)
+      }, 160)
+    },
+    [setGestureZooming],
+  )
 
   const commitCamera = useCallback(
     (camera: TreeCamera) => {
       paintCamera(camera)
       setLodZoom(camera.zoom)
-      setZooming(false)
+      setGestureZooming(false)
     },
-    [paintCamera, setZooming],
+    [paintCamera, setGestureZooming],
   )
 
   const zoomAtViewport = useCallback(
@@ -195,7 +216,6 @@ export function TreeView({ active }: TreeViewProps) {
       const prev = cameraRef.current
       const nextZoom = clamp(nextZoomRaw, ZOOM_MIN, ZOOM_MAX)
       if (Math.abs(nextZoom - prev.zoom) < 0.0003) return
-
       const contentX = (vx - prev.x) / prev.zoom
       const contentY = (vy - prev.y) / prev.zoom
       paintCamera({
@@ -208,11 +228,8 @@ export function TreeView({ active }: TreeViewProps) {
   )
 
   const animateCameraTo = useCallback(
-    (target: TreeCamera, duration = ZOOM_ANIM_MS) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
+    (target: TreeCamera, duration = CAMERA_MS) => {
       cancelAnim()
-
       const from = { ...cameraRef.current }
       const to = {
         x: target.x,
@@ -227,10 +244,8 @@ export function TreeView({ active }: TreeViewProps) {
         commitCamera(to)
         return
       }
-
       const started = performance.now()
-      setZooming(true)
-
+      // Do NOT toggle gesture-zooming here — that kills FLIP node transitions.
       const tick = (now: number) => {
         const t = clamp((now - started) / duration, 0, 1)
         const p = easeOutCubic(t)
@@ -239,102 +254,68 @@ export function TreeView({ active }: TreeViewProps) {
           y: from.y + (to.y - from.y) * p,
           zoom: from.zoom + (to.zoom - from.zoom) * p,
         })
-        if (t < 1) {
-          animRef.current = requestAnimationFrame(tick)
-        } else {
+        if (t < 1) animRef.current = requestAnimationFrame(tick)
+        else {
           animRef.current = null
           commitCamera(to)
         }
       }
-
       animRef.current = requestAnimationFrame(tick)
       dismissPanHint()
     },
-    [cancelAnim, commitCamera, dismissPanHint, paintCamera, setZooming],
+    [cancelAnim, commitCamera, dismissPanHint, paintCamera],
   )
 
-  const cameraForBounds = useCallback(
-    (
-      bounds: TreeBounds,
-      framing: 'couple' | 'household' | 'branch',
-    ): TreeCamera | null => {
+  const cameraAtPreferredFocus = useCallback(
+    (bounds: TreeBounds, zoom = preferredZoom): TreeCamera | null => {
       const canvas = canvasRef.current
       if (!canvas) return null
-
-      const framed =
-        framing === 'couple'
-          ? expandBounds(bounds, phone ? 72 : 110)
-          : framing === 'branch'
-            ? expandBounds(bounds, phone ? 24 : 40)
-            : bounds
-      const pad =
-        framing === 'couple' ? (phone ? 44 : 64) : framing === 'branch' ? (phone ? 40 : 72) : phone ? 36 : 58
-      const width = Math.max(TREE_CARD_WIDTH, framed.maxX - framed.minX + pad * 2)
-      const height = Math.max(TREE_CARD_HEIGHT, framed.maxY - framed.minY + pad * 2)
-      const fill =
-        framing === 'couple' ? (phone ? 0.9 : 0.94) : framing === 'branch' ? 0.94 : phone ? 0.98 : 1.02
-      const maxZoom =
-        framing === 'couple' ? (phone ? 1.38 : 1.52) : framing === 'branch' ? (phone ? 1.2 : 1.4) : phone ? 1.4 : 1.62
-      const chromeReserve = phone ? 96 : 84
       const viewW = canvas.clientWidth
       const viewH = Math.max(160, canvas.clientHeight - chromeReserve)
-      const zoom = clamp(
-        Math.min(viewW / width, viewH / height) * fill,
-        ZOOM_MIN,
-        maxZoom,
-      )
-      const cx = (framed.minX + framed.maxX) / 2
-      const cy = (framed.minY + framed.maxY) / 2
+      const center = boundsCenter(bounds)
+      const z = clamp(zoom, ZOOM_MIN, ZOOM_MAX)
+      // Safe inset so parents above focus aren't clipped under the top edge.
+      const insetY = phone ? 18 : 24
       return {
-        zoom,
-        x: viewW / 2 - cx * zoom,
-        y: (viewH / 2 + 8) - cy * zoom,
+        zoom: z,
+        x: viewW / 2 - center.x * z,
+        y: viewH / 2 + insetY - center.y * z,
       }
     },
-    [phone],
+    [chromeReserve, phone, preferredZoom],
   )
 
-  const fitBounds = useCallback(
-    (
-      bounds: TreeBounds | null,
-      behavior: 'instant' | 'smooth' = 'smooth',
-      framing: 'couple' | 'household' | 'branch' = 'household',
-    ) => {
-      if (!bounds) return
-      const next = cameraForBounds(bounds, framing)
+  const goCenter = useCallback(
+    (behavior: 'instant' | 'smooth' = 'smooth') => {
+      const bounds = layout.coupleBounds ?? layout.neighborhoodBounds
+      const next = cameraAtPreferredFocus(bounds, preferredZoom)
       if (!next) return
       if (behavior === 'instant') {
         cancelAnim()
         commitCamera(next)
         return
       }
-      animateCameraTo(next, ZOOM_FIT_MS)
+      animateCameraTo(next)
     },
-    [animateCameraTo, cameraForBounds, cancelAnim, commitCamera],
+    [
+      animateCameraTo,
+      cameraAtPreferredFocus,
+      cancelAnim,
+      commitCamera,
+      layout.coupleBounds,
+      layout.neighborhoodBounds,
+      preferredZoom,
+    ],
   )
 
-  const fitCouple = useCallback(
-    (behavior: 'instant' | 'smooth' = 'smooth') => {
-      fitBounds(layout.coupleBounds ?? layout.householdBounds, behavior, 'couple')
-      setBranchFilter('all')
-    },
-    [fitBounds, layout.coupleBounds, layout.householdBounds],
-  )
+  /** Pan to newly revealed parents; preserve zoom; slight downward bias for the child. */
+  const cameraForParentReveal = useCallback(
+    (parentIds: string[], zoom: number): TreeCamera | null => {
+      const canvas = canvasRef.current
+      if (!canvas || !parentIds.length) return null
+      const nodes = layout.nodes.filter((n) => parentIds.includes(n.person.id))
+      if (!nodes.length) return null
 
-  const fitHousehold = useCallback(
-    (behavior: 'instant' | 'smooth' = 'smooth') => {
-      fitBounds(layout.householdBounds ?? layout.coupleBounds, behavior, 'household')
-      setBranchFilter('all')
-    },
-    [fitBounds, layout.coupleBounds, layout.householdBounds],
-  )
-
-  const fitBranch = useCallback(
-    (lineageId: LineageId) => {
-      const line = lineagePalette.lines.find((entry) => entry.id === lineageId)
-      if (!line) return
-      const nodes = layout.nodes.filter((node) => line.personIds.has(node.person.id))
-      if (!nodes.length) return
       let minX = Infinity
       let minY = Infinity
       let maxX = -Infinity
@@ -345,99 +326,213 @@ export function TreeView({ active }: TreeViewProps) {
         maxX = Math.max(maxX, node.x + TREE_CARD_WIDTH)
         maxY = Math.max(maxY, node.y + TREE_CARD_HEIGHT)
       }
-      if (layout.coupleBounds) {
-        minX = Math.min(minX, layout.coupleBounds.minX)
-        minY = Math.min(minY, layout.coupleBounds.minY)
-        maxX = Math.max(maxX, layout.coupleBounds.maxX)
-        maxY = Math.max(maxY, layout.coupleBounds.maxY)
-      }
-      fitBounds({ minX, minY, maxX, maxY }, 'smooth', 'branch')
-    },
-    [fitBounds, layout.coupleBounds, layout.nodes, lineagePalette.lines],
-  )
 
-  const focusContentPoint = useCallback(
-    (contentX: number, contentY: number, zoom = cameraRef.current.zoom) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const nextZoom = clamp(zoom, ZOOM_MIN, ZOOM_MAX)
-      animateCameraTo(
-        {
-          zoom: nextZoom,
-          x: canvas.clientWidth / 2 - contentX * nextZoom,
-          y: canvas.clientHeight / 2 - contentY * nextZoom,
-        },
-        ZOOM_FIT_MS,
-      )
+      const viewW = canvas.clientWidth
+      const viewH = Math.max(160, canvas.clientHeight - chromeReserve)
+      const z = clamp(zoom, ZOOM_MIN, ZOOM_MAX)
+      const cx = (minX + maxX) / 2
+      // Bias slightly below parent-group center so the child/focus stays in view.
+      const cy = (minY + maxY) / 2 + TREE_CARD_HEIGHT * 0.35
+      const insetY = phone ? 14 : 20
+      return {
+        zoom: z,
+        x: viewW / 2 - cx * z,
+        y: viewH / 2 + insetY - cy * z,
+      }
     },
-    [animateCameraTo],
+    [chromeReserve, layout.nodes, phone],
   )
 
   const handleSelectPerson = useCallback(
     (personId: string) => {
       openPerson(personId)
-      setLocalFocusId(personId)
-      const node = layout.nodes.find((entry) => entry.person.id === personId)
-      if (!node) return
-      focusContentPoint(
-        node.x + TREE_CARD_WIDTH / 2,
-        node.y + TREE_CARD_HEIGHT / 2,
-        Math.max(cameraRef.current.zoom, phone ? 1.1 : 1.28),
-      )
+      if (focusSet.has(personId) && !layout.isHouseholdFocus && layout.focusIds.length === 1) {
+        goCenter('smooth')
+        return
+      }
+      lastActionRef.current = 'focus'
+      setTreeFocus(personId)
     },
-    [focusContentPoint, layout.nodes, openPerson, phone],
+    [focusSet, goCenter, layout.focusIds.length, layout.isHouseholdFocus, openPerson, setTreeFocus],
   )
 
-  useEffect(() => {
+  const handleExpandParents = useCallback(
+    (parentIds: string[]) => {
+      lastActionRef.current = 'expand'
+      pendingCameraRef.current = {
+        kind: 'reveal-parents',
+        parentIds: [...parentIds],
+        zoom: cameraRef.current.zoom,
+      }
+      setExpandState((prev) => {
+        const base =
+          prev.focusKey === focusedTreePersonId ? prev.ids : new Set<string>()
+        const next = new Set(base)
+        for (const id of parentIds) next.add(id)
+        return { focusKey: focusedTreePersonId, ids: next }
+      })
+    },
+    [focusedTreePersonId],
+  )
+
+  const handleHome = useCallback(() => {
+    lastActionRef.current = 'home'
+    treeFocusHome()
+  }, [treeFocusHome])
+
+  // Focus change → preferred camera (expand state auto-clears via focusKey mismatch).
+  useLayoutEffect(() => {
     if (!active) {
-      setDidInitialFit(false)
+      setDidInitialCamera(false)
+      prevFocusRef.current = undefined
+      transitionFromFocusRef.current = undefined
+      prevNodePosRef.current = new Map()
       cancelAnim()
       return
     }
-    if (didInitialFit || !(layout.coupleBounds || layout.householdBounds)) return
-    const frame = requestAnimationFrame(() => {
-      if (focusedTreePersonId) {
-        const node = layout.nodes.find((entry) => entry.person.id === focusedTreePersonId)
-        if (node) {
-          const canvas = canvasRef.current
-          const zoom = phone ? 1.15 : 1.32
-          if (canvas) {
-            commitCamera({
-              zoom,
-              x: canvas.clientWidth / 2 - (node.x + TREE_CARD_WIDTH / 2) * zoom,
-              y: canvas.clientHeight / 2 - (node.y + TREE_CARD_HEIGHT / 2) * zoom,
-            })
-          }
-        }
-      } else {
-        fitCouple('instant')
+    const focusChanged = prevFocusRef.current !== focusedTreePersonId
+    const isFirst = !didInitialCamera
+    if (isFirst || focusChanged) {
+      transitionFromFocusRef.current = prevFocusRef.current
+      if (lastActionRef.current !== 'home' && lastActionRef.current !== 'focus' && focusChanged) {
+        lastActionRef.current = 'focus'
       }
-      setDidInitialFit(true)
+      pendingCameraRef.current = {
+        kind: 'preferred',
+        behavior: isFirst ? 'instant' : 'smooth',
+      }
+      prevFocusRef.current = focusedTreePersonId
+    }
+  }, [active, cancelAnim, didInitialCamera, focusedTreePersonId])
+
+  // FLIP: persist person-ID slots and tween old → new content positions.
+  useLayoutEffect(() => {
+    if (!active) return
+
+    const prev = prevNodePosRef.current
+    const next = new Map(layout.nodes.map((n) => [n.person.id, { x: n.x, y: n.y }]))
+    const prevIds = [...prev.keys()]
+    const nextIds = [...next.keys()]
+    const prevSet = new Set(prevIds)
+    const nextSet = new Set(nextIds)
+    const persistent = nextIds.filter((id) => prevSet.has(id))
+    const added = nextIds.filter((id) => !prevSet.has(id))
+    const removed = prevIds.filter((id) => !nextSet.has(id))
+    const hadPrior = prev.size > 0
+
+    let flipped = 0
+    if (hadPrior) {
+      for (const id of persistent) {
+        const el = nodeSlotRefs.current.get(id)
+        const from = prev.get(id)
+        const to = next.get(id)
+        if (!el || !from || !to) continue
+        const dx = from.x - to.x
+        const dy = from.y - to.y
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue
+        el.style.transition = 'none'
+        el.style.transform = `translate(${dx}px, ${dy}px)`
+        void el.getBoundingClientRect()
+        el.style.transition = `transform ${GRAPH_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+        el.style.transform = 'translate(0px, 0px)'
+        flipped += 1
+      }
+
+      if (added.length) {
+        setEnteringIds(new Set(added))
+        window.setTimeout(() => setEnteringIds(new Set()), GRAPH_MS + 40)
+      }
+
+      if (removed.length) {
+        const exit = removed
+          .map((id) => {
+            const person = peopleById[id]
+            const pos = prev.get(id)
+            if (!person || !pos) return null
+            return { id, person, x: pos.x, y: pos.y }
+          })
+          .filter((n): n is { id: string; person: Person; x: number; y: number } => Boolean(n))
+        if (exit.length) {
+          setExitingNodes(exit)
+          window.setTimeout(() => setExitingNodes([]), GRAPH_MS)
+        }
+      }
+    } else if (added.length) {
+      // First paint — no FLIP start positions.
+      setEnteringIds(new Set())
+    }
+
+    const skippedReason = !hadPrior
+      ? 'no-previous-positions'
+      : flipped === 0 && added.length === 0 && removed.length === 0
+        ? 'layout-unchanged'
+        : flipped === 0 && persistent.length > 0
+          ? 'persistent-nodes-unmoved'
+          : null
+
+    logTreeTransition({
+      action: lastActionRef.current,
+      previousFocusId: transitionFromFocusRef.current ?? prevFocusRef.current,
+      nextFocusId: focusedTreePersonId,
+      persistent: persistent.length,
+      added: added.length,
+      removed: removed.length,
+      flipped,
+      animationExecuted: hadPrior && (flipped > 0 || added.length > 0 || removed.length > 0),
+      skipReason: skippedReason,
+      visibleCount: next.size,
     })
-    return () => cancelAnimationFrame(frame)
+
+    if (flipTimerRef.current != null) window.clearTimeout(flipTimerRef.current)
+    flipTimerRef.current = window.setTimeout(() => {
+      flipTimerRef.current = null
+      // Clear inline FLIP styles so later CSS / transitions stay reliable.
+      for (const el of nodeSlotRefs.current.values()) {
+        el.style.transition = ''
+        el.style.transform = ''
+      }
+    }, GRAPH_MS + 50)
+
+    prevNodePosRef.current = next
+  }, [active, focusedTreePersonId, layout.nodes, peopleById])
+
+  // Apply camera after layout is valid.
+  useLayoutEffect(() => {
+    if (!active || !layout.coupleBounds) return
+    if (!pendingCameraRef.current) return
+
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const action = pendingCameraRef.current
+        pendingCameraRef.current = null
+        if (!action) return
+
+        if (action.kind === 'preferred') {
+          goCenter(action.behavior)
+          setDidInitialCamera(true)
+          return
+        }
+
+        if (action.kind === 'reveal-parents') {
+          const next = cameraForParentReveal(action.parentIds, action.zoom)
+          if (next) animateCameraTo(next, CAMERA_MS)
+        }
+      })
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
   }, [
     active,
-    cancelAnim,
-    commitCamera,
-    didInitialFit,
-    fitCouple,
-    focusedTreePersonId,
+    animateCameraTo,
+    cameraForParentReveal,
+    goCenter,
     layout.coupleBounds,
-    layout.householdBounds,
     layout.nodes,
-    phone,
+    revealedIds,
   ])
-
-  useEffect(() => {
-    if (!active || !focusedTreePersonId || !didInitialFit) return
-    const node = layout.nodes.find((entry) => entry.person.id === focusedTreePersonId)
-    if (!node) return
-    focusContentPoint(
-      node.x + TREE_CARD_WIDTH / 2,
-      node.y + TREE_CARD_HEIGHT / 2,
-      Math.max(cameraRef.current.zoom, phone ? 1.1 : 1.28),
-    )
-  }, [active, didInitialFit, focusContentPoint, focusedTreePersonId, layout.nodes, phone])
 
   useEffect(() => {
     if (!active) return
@@ -451,49 +546,27 @@ export function TreeView({ active }: TreeViewProps) {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!active || !canvas) return
-
-    // With transform camera, all nodes stay mounted; keep household visible by default.
-    for (const [id, slot] of nodeSlotRefs.current) {
-      slot.classList.toggle('is-visible', householdSet.has(id) || id === focusedTreePersonId)
-    }
-    const reveal = window.setTimeout(() => {
-      for (const slot of nodeSlotRefs.current.values()) {
-        slot.classList.add('is-visible')
-      }
-    }, 40)
-    return () => window.clearTimeout(reveal)
-  }, [active, focusedTreePersonId, householdSet, layout.nodes])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!active || !canvas) return
-
     const onWheel = (event: WheelEvent) => {
       event.preventDefault()
       cancelAnim()
-      setZooming(true)
-      const pinchLike = event.ctrlKey || event.metaKey
-      const gain = pinchLike ? PINCH_CTRL_GAIN : WHEEL_ZOOM_GAIN
-      const factor = Math.exp(-event.deltaY * gain)
-      zoomAtViewport(cameraRef.current.zoom * factor, event.clientX, event.clientY)
+      setGestureZooming(true)
+      const gain = event.ctrlKey || event.metaKey ? PINCH_CTRL_GAIN : WHEEL_ZOOM_GAIN
+      zoomAtViewport(cameraRef.current.zoom * Math.exp(-event.deltaY * gain), event.clientX, event.clientY)
       scheduleLod(cameraRef.current.zoom)
       dismissPanHint()
     }
-
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [active, cancelAnim, dismissPanHint, scheduleLod, setZooming, zoomAtViewport])
+  }, [active, cancelAnim, dismissPanHint, scheduleLod, setGestureZooming, zoomAtViewport])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!active || !canvas) return
-
     const distanceOf = (pointers: Map<number, { x: number; y: number }>) => {
       const pts = [...pointers.values()]
       if (pts.length < 2) return 0
       return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y)
     }
-
     const onPointerDown = (event: PointerEvent) => {
       if (event.pointerType !== 'touch') return
       if (!pinchRef.current) {
@@ -510,7 +583,7 @@ export function TreeView({ active }: TreeViewProps) {
         cancelAnim()
         panRef.current = null
         canvas.classList.remove('is-panning')
-        setZooming(true)
+        setGestureZooming(true)
         pinchRef.current.startDistance = distanceOf(pinchRef.current.pointers)
         pinchRef.current.startCamera = { ...cameraRef.current }
         const pts = [...pinchRef.current.pointers.values()]
@@ -519,7 +592,6 @@ export function TreeView({ active }: TreeViewProps) {
         dismissPanHint()
       }
     }
-
     const onPointerMove = (event: PointerEvent) => {
       const pinch = pinchRef.current
       if (!pinch?.pointers.has(event.pointerId)) return
@@ -527,10 +599,12 @@ export function TreeView({ active }: TreeViewProps) {
       if (pinch.pointers.size < 2 || pinch.startDistance < 8) return
       event.preventDefault()
       const ratio = distanceOf(pinch.pointers) / pinch.startDistance
-      const softened = 1 + (ratio - 1) * TOUCH_PINCH_GAIN
-      zoomAtViewport(pinch.startCamera.zoom * softened, pinch.anchorX, pinch.anchorY)
+      zoomAtViewport(
+        pinch.startCamera.zoom * (1 + (ratio - 1) * TOUCH_PINCH_GAIN),
+        pinch.anchorX,
+        pinch.anchorY,
+      )
     }
-
     const endPointer = (event: PointerEvent) => {
       const pinch = pinchRef.current
       if (!pinch) return
@@ -540,7 +614,6 @@ export function TreeView({ active }: TreeViewProps) {
         commitCamera(cameraRef.current)
       }
     }
-
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointermove', onPointerMove, { passive: false })
     canvas.addEventListener('pointerup', endPointer)
@@ -551,7 +624,7 @@ export function TreeView({ active }: TreeViewProps) {
       canvas.removeEventListener('pointerup', endPointer)
       canvas.removeEventListener('pointercancel', endPointer)
     }
-  }, [active, cancelAnim, commitCamera, dismissPanHint, setZooming, zoomAtViewport])
+  }, [active, cancelAnim, commitCamera, dismissPanHint, setGestureZooming, zoomAtViewport])
 
   const setNodeSlotRef = useCallback((personId: string, node: HTMLDivElement | null) => {
     if (node) nodeSlotRefs.current.set(personId, node)
@@ -562,7 +635,6 @@ export function TreeView({ active }: TreeViewProps) {
     const canvas = canvasRef.current
     if (!canvas || event.button !== 0 || !canPanTarget(event.target)) return
     if (pinchRef.current && pinchRef.current.pointers.size >= 2) return
-
     panRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -570,9 +642,7 @@ export function TreeView({ active }: TreeViewProps) {
       originX: cameraRef.current.x,
       originY: cameraRef.current.y,
     }
-    if (event.pointerType !== 'touch') {
-      canvas.setPointerCapture(event.pointerId)
-    }
+    if (event.pointerType !== 'touch') canvas.setPointerCapture(event.pointerId)
     canvas.classList.add('is-panning')
   }
 
@@ -580,7 +650,6 @@ export function TreeView({ active }: TreeViewProps) {
     const pan = panRef.current
     if (!pan || pan.pointerId !== event.pointerId) return
     if (pinchRef.current && pinchRef.current.pointers.size >= 2) return
-
     paintCamera({
       ...cameraRef.current,
       x: pan.originX + (event.clientX - pan.startX),
@@ -592,32 +661,17 @@ export function TreeView({ active }: TreeViewProps) {
     const canvas = canvasRef.current
     const pan = panRef.current
     if (!canvas || !pan || pan.pointerId !== event.pointerId) return
-
     panRef.current = null
     canvas.classList.remove('is-panning')
-    if (canvas.hasPointerCapture(event.pointerId)) {
-      canvas.releasePointerCapture(event.pointerId)
-    }
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
     dismissPanHint()
   }
 
-  const branchSummaries = useMemo(() => {
-    if (density !== 'far') return []
-    return lineagePalette.lines.map((line) => {
-      const people = familyDatabase.people.filter((person) => line.personIds.has(person.id))
-      const years = people
-        .map((person) => person.birthYear)
-        .filter((year): year is number => year != null)
-      const minYear = years.length ? Math.min(...years) : null
-      const maxYear = years.length ? Math.max(...years) : null
-      return {
-        id: line.id,
-        label: `${line.label.toUpperCase()} LINE`,
-        meta: `${people.length} people${minYear != null ? ` · ${minYear}–${maxYear ?? 'present'}` : ''}`,
-        color: line.color,
-      }
-    })
-  }, [density, familyDatabase.people, lineagePalette.lines])
+  const cardDensity = (isFocus: boolean): TreeNodeDensity => {
+    if (isFocus) return 'near'
+    if (density === 'far') return 'medium'
+    return density
+  }
 
   return (
     <section id="tree" className={`view${active ? ' active' : ''}`} aria-hidden={!active}>
@@ -626,27 +680,8 @@ export function TreeView({ active }: TreeViewProps) {
           <div className="eyebrow">Family tree</div>
           <h2>A household at the center of four lines.</h2>
           <p className="tree-view-lede">
-            Craig and Leah form the living household. Ancestral branches rise above; Mateo and
-            Joaquin continue below. Zoom for detail, or follow a genealogical line.
+            Click a person to focus. Use + Parents to open the generation above.
           </p>
-
-          <div className="tree-branch-nav" role="toolbar" aria-label="Genealogical branches">
-            {branchOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className={`tree-branch-chip${branchFilter === option.id ? ' is-active' : ''}`}
-                style={{ '--tree-branch-color': option.color } as React.CSSProperties}
-                onClick={() => {
-                  setBranchFilter(option.id)
-                  if (option.id === 'all') fitCouple('smooth')
-                  else fitBranch(option.id)
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
         </header>
 
         <div className="tree-canvas-shell">
@@ -685,55 +720,66 @@ export function TreeView({ active }: TreeViewProps) {
               </svg>
 
               {layout.nodes.map((node) => {
-                const inFocusBranch =
-                  !focusedBranchIds || focusedBranchIds.has(node.person.id)
-                const deep =
-                  density === 'far' &&
-                  Math.abs(node.generation) > 2 &&
-                  !householdSet.has(node.person.id)
-                const focusId = focusedTreePersonId ?? layout.rootId
-                const initiallyVisible =
-                  node.person.id === focusId || householdSet.has(node.person.id)
+                const isFocus = focusSet.has(node.person.id)
+                const isHousehold = householdSet.has(node.person.id)
+                const isEntering = enteringIds.has(node.person.id)
                 return (
                   <div
                     key={node.person.id}
                     ref={(el) => setNodeSlotRef(node.person.id, el)}
-                    className={`tree-node-slot${initiallyVisible ? ' is-visible' : ''}${deep ? ' is-distant' : ''}`}
+                    className={`tree-node-slot is-visible${isFocus ? ' is-focus-slot' : ''}${isEntering ? ' is-parent-enter' : ''}`}
                     style={{ left: node.x, top: node.y }}
                   >
                     <TreeNodeCard
                       person={node.person}
-                      isHousehold={householdSet.has(node.person.id)}
-                      focused={
-                        node.person.id === focusedTreePersonId ||
-                        node.person.id === localFocusId
-                      }
-                      density={density}
-                      dimmed={!inFocusBranch}
+                      isHousehold={isHousehold}
+                      focused={isFocus}
+                      density={cardDensity(isFocus)}
+                      dimmed={false}
                       onSelect={handleSelectPerson}
                     />
                   </div>
                 )
               })}
+
+              {exitingNodes.map((node) => (
+                <div
+                  key={`exit-${node.id}`}
+                  className="tree-node-slot is-exiting"
+                  style={{ left: node.x, top: node.y }}
+                >
+                  <TreeNodeCard
+                    person={node.person}
+                    isHousehold={householdSet.has(node.id)}
+                    focused={false}
+                    density="medium"
+                    dimmed
+                    onSelect={() => {}}
+                  />
+                </div>
+              ))}
+
+              {layout.parentsOverlays.map((overlay) => (
+                <div
+                  key={`parents-${overlay.personId}`}
+                  className="tree-parents-overlay"
+                  style={{
+                    left: overlay.x,
+                    top: overlay.y,
+                    width: PARENTS_CONTROL_WIDTH,
+                    height: PARENTS_CONTROL_HEIGHT,
+                  }}
+                >
+                  <ParentsExpandControl
+                    deeperCount={overlay.deeperCount}
+                    onExpand={() => handleExpandParents(overlay.parentIds)}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="tree-vignette" aria-hidden="true" />
-
-          {density === 'far' && branchSummaries.length > 0 ? (
-            <div className="tree-branch-summaries" aria-hidden="true">
-              {branchSummaries.map((summary) => (
-                <div
-                  key={summary.id}
-                  className="tree-branch-summary"
-                  style={{ '--tree-branch-color': summary.color } as React.CSSProperties}
-                >
-                  <div className="tree-branch-summary-label">{summary.label}</div>
-                  <div className="tree-branch-summary-meta">{summary.meta}</div>
-                </div>
-              ))}
-            </div>
-          ) : null}
 
           <div className="tree-chrome" role="group" aria-label="Tree map controls">
             <TreePanHint visible={showPanHint && active && layout.nodes.length > 0} />
@@ -783,21 +829,22 @@ export function TreeView({ active }: TreeViewProps) {
               <button
                 type="button"
                 className="tree-zoom-btn tree-zoom-btn--fit"
-                aria-label="Reset to Craig and Leah"
-                title="Center on Craig and Leah"
-                onClick={() => fitCouple('smooth')}
+                aria-label="Center focus"
+                title="Center"
+                onClick={() => goCenter('smooth')}
               >
-                <Scan size={15} strokeWidth={1.8} />
-                <span>{phone ? 'Couple' : 'Craig & Leah'}</span>
+                <Crosshair size={15} strokeWidth={1.8} />
+                <span>Center</span>
               </button>
               <button
                 type="button"
                 className="tree-zoom-btn tree-zoom-btn--fit tree-zoom-btn--family"
-                aria-label="Fit household"
-                title="Fit couple, children, and parents"
-                onClick={() => fitHousehold('smooth')}
+                aria-label="Home to Craig and Leah"
+                title="Home"
+                onClick={handleHome}
               >
-                <span>Fit family</span>
+                <Home size={14} strokeWidth={1.8} />
+                <span>Home</span>
               </button>
             </div>
           </div>

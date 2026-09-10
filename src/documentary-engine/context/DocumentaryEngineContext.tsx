@@ -22,8 +22,10 @@ import {
   DOCUMENTARY_ENTER_PLAYBACK_TOTAL_MS,
   DOCUMENTARY_UI_FADE_MS,
 } from '../data/playbackConfig'
+import { DEFAULT_DOCUMENTARY_SOUNDTRACK } from '../data/soundtrackConfig'
 import { resolveSceneAtTime } from '../core/SceneDirector'
 import { useNarrationClock } from '../core/useNarrationClock'
+import { useDocumentarySoundtrack } from '../core/useDocumentarySoundtrack'
 import type { ResolvedScene, SceneManifestEntry } from '../types/manifest'
 import type { DocumentaryStats } from '../../types/documentary'
 
@@ -49,6 +51,10 @@ type DocumentaryEngineContextValue = {
   togglePause: () => void
   seek: (timeMs: number) => void
   seekGeneration: number
+  /** Soundtrack mute (music only — does not affect narration). */
+  scoreMuted: boolean
+  toggleScoreMute: () => void
+  scoreDurationMs: number
 }
 
 const DocumentaryEngineContext = createContext<DocumentaryEngineContextValue | null>(null)
@@ -64,11 +70,22 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
   const [atlasHandoff, setAtlasHandoff] = useState(false)
   const exploreOutTimerRef = useRef<number | null>(null)
   const exploreDoneTimerRef = useRef<number | null>(null)
+  const soundtrackRef = useRef<ReturnType<typeof useDocumentarySoundtrack> | null>(null)
+
+  const clockActive = phase === 'playing'
+  const { state, play, pause, toggle, seek: seekClock, reset } = useNarrationClock(clockActive)
+  const soundtrackEnabled = phase === 'playing' || phase === 'ending'
+  const soundtrack = useDocumentarySoundtrack({
+    config: DEFAULT_DOCUMENTARY_SOUNDTRACK,
+    enabled: soundtrackEnabled,
+  })
+  soundtrackRef.current = soundtrack
 
   // Back-forward cache can restore a prior "complete" tree; force the road screen again.
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return
+      soundtrackRef.current?.reset()
       setPhase('welcome')
       setTransition('idle')
       setAtlasHandoff(false)
@@ -77,8 +94,6 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     return () => window.removeEventListener('pageshow', onPageShow)
   }, [])
 
-  const clockActive = phase === 'playing'
-  const { state, play, pause, toggle, seek: seekClock, reset } = useNarrationClock(clockActive)
   const [seekGeneration, setSeekGeneration] = useState(0)
   const seekRef = useRef(seekClock)
   seekRef.current = seekClock
@@ -98,8 +113,25 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
   const resolved = resolveSceneAtTime(manifest, currentTimeMs, durationMs)
   const progress = durationMs > 0 ? Math.min(1, currentTimeMs / durationMs) : 0
 
+  // Keep score presence tied to documentary clock — never an independent vibe track.
+  useEffect(() => {
+    if (phase !== 'playing') return
+    const score = soundtrackRef.current
+    if (!score) return
+    if (state.inPreroll) {
+      score.setPresence('bed')
+      return
+    }
+    if (currentTimeMs >= DEFAULT_DOCUMENTARY_SOUNDTRACK.presenceFromMs) {
+      score.setPresence('presence')
+      return
+    }
+    score.setPresence('ducked')
+  }, [currentTimeMs, phase, state.inPreroll])
+
   const finish = useCallback(() => {
     pause()
+    void soundtrackRef.current?.beginOutro()
     setTransition('enter-ending')
     window.setTimeout(() => {
       setPhase('ending')
@@ -111,6 +143,7 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     writeDocumentarySeen()
     pause()
     reset()
+    void soundtrackRef.current?.stop()
     navigateToView('journey')
     completeIntro()
   }, [completeIntro, navigateToView, pause, reset])
@@ -119,7 +152,12 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     resetDisplayRevealRegistry()
     setTransition('enter-playback')
     reset()
+    // Reset score transport, then start in THIS click stack (autoplay unlock).
+    // Do not wait for phase→playing / enabled — that races a stale closure.
+    const score = soundtrackRef.current
+    score?.reset()
     setPhase('playing')
+    void score?.start()
     window.setTimeout(() => {
       setTransition('idle')
     }, DOCUMENTARY_ENTER_PLAYBACK_TOTAL_MS)
@@ -154,6 +192,7 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     // Phase 1: fade welcome/ending to black only (cheap — do NOT mount Atlas yet).
     setTransition('enter-atlas')
     setAtlasHandoff(false)
+    void soundtrackRef.current?.stop(DEFAULT_DOCUMENTARY_SOUNDTRACK.exitFadeMs)
 
     // Warm Atlas chunks during fade-to-black so events are ready when Journey mounts.
     void import('../../components/FamilyLayer')
@@ -184,6 +223,18 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     finish()
   }, [durationMs, finish, seek])
 
+  const togglePause = useCallback(() => {
+    if (state.isPlaying) {
+      pause()
+      soundtrackRef.current?.pause()
+      return
+    }
+    void (async () => {
+      await toggle()
+      void soundtrackRef.current?.resume()
+    })()
+  }, [pause, state.isPlaying, toggle])
+
   const value = useMemo<DocumentaryEngineContextValue>(
     () => ({
       phase,
@@ -200,9 +251,12 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
       begin,
       exploreAtlas,
       skip,
-      togglePause: toggle,
+      togglePause,
       seek,
       seekGeneration,
+      scoreMuted: soundtrack.muted,
+      toggleScoreMute: soundtrack.toggleMute,
+      scoreDurationMs: soundtrack.durationMs,
     }),
     [
       atlasHandoff,
@@ -221,7 +275,10 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
       state.isPlaying,
       state.isReady,
       stats,
-      toggle,
+      soundtrack.durationMs,
+      soundtrack.muted,
+      soundtrack.toggleMute,
+      togglePause,
     ],
   )
 

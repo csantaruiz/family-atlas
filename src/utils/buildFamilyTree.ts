@@ -6,11 +6,16 @@ import { primaryRootIds } from './householdRoots'
 export const TREE_CARD_WIDTH = 132
 export const TREE_CARD_HEIGHT = 88
 export const TREE_H_GAP = 26
-/** Vertical gap must clear couple rails drawn below cards. */
-export const TREE_V_GAP = 72
+/**
+ * Clearance between card bounds and any horizontal connector segment.
+ * Horizontal rails/buses are derived from card bottoms + this gap — never from row Y alone.
+ */
+export const CARD_CONNECTOR_GAP = 24
+/** Vertical gap must clear couple rails + child buses drawn below cards. */
+export const TREE_V_GAP = 88
 export const TREE_PADDING = 48
-/** Couple rail sits below cards so lines never pass through person cards. */
-export const TREE_COUPLE_RAIL_BELOW = 14
+/** @deprecated Prefer CARD_CONNECTOR_GAP — kept as alias for couple-rail callers. */
+export const TREE_COUPLE_RAIL_BELOW = CARD_CONNECTOR_GAP
 
 export type PositionedTreeNode = {
   person: Person
@@ -22,7 +27,7 @@ export type PositionedTreeNode = {
 export type TreeConnector = {
   id: string
   path: string
-  kind: 'parent-child' | 'couple'
+  kind: 'parent-child' | 'couple' | 'continuation'
 }
 
 export type TreeBounds = { minX: number; minY: number; maxX: number; maxY: number }
@@ -150,8 +155,150 @@ function elbowPath(x1: number, y1: number, x2: number, y2: number): string {
   return `M ${x1} ${y1} V ${midY} H ${x2} V ${y2}`
 }
 
+/** Push same-generation cards apart so fixed-width nodes never collide. */
+function resolveGenerationOverlaps(
+  nodes: PositionedTreeNode[],
+  positions: Map<string, { x: number; y: number }>,
+) {
+  const byGen = new Map<number, PositionedTreeNode[]>()
+  for (const node of nodes) {
+    if (node.generation >= 110) continue
+    const row = byGen.get(node.generation) ?? []
+    row.push(node)
+    byGen.set(node.generation, row)
+  }
+
+  const generations = [...byGen.keys()].sort((a, b) => b - a)
+  for (const generation of generations) {
+    const row = byGen.get(generation)!
+    row.sort((a, b) => a.x - b.x || a.person.id.localeCompare(b.person.id))
+    for (let i = 1; i < row.length; i++) {
+      const prev = row[i - 1]
+      const curr = row[i]
+      const minX = prev.x + TREE_CARD_WIDTH + TREE_H_GAP
+      if (curr.x < minX) {
+        curr.x = minX
+        positions.set(curr.person.id, { x: curr.x, y: curr.y })
+      }
+    }
+  }
+}
+
+function rebuildTreeConnectors(
+  nodes: PositionedTreeNode[],
+  positions: Map<string, { x: number; y: number }>,
+  ids: Set<string>,
+  peopleById: Record<string, Person>,
+  rootId: string,
+  coRootId: string | null,
+): TreeConnector[] {
+  const connectors: TreeConnector[] = []
+  const seen = new Set<string>()
+  const push = (connector: TreeConnector) => {
+    if (seen.has(connector.id)) return
+    seen.add(connector.id)
+    connectors.push(connector)
+  }
+
+  for (const node of nodes) {
+    const parents = parentsInSet(node.person, ids, peopleById)
+      .map((parent) => {
+        const pos = positions.get(parent.id)
+        return pos ? { parent, pos } : null
+      })
+      .filter((entry): entry is { parent: Person; pos: { x: number; y: number } } => entry != null)
+
+    if (!parents.length) continue
+    const childPos = positions.get(node.person.id)
+    if (!childPos) continue
+    const childCenter = nodeCenter(childPos)
+
+    if (parents.length === 1) {
+      const parentCenter = nodeCenter(parents[0].pos)
+      push({
+        id: `${parents[0].parent.id}-${node.person.id}`,
+        kind: 'parent-child',
+        path: elbowPath(
+          parentCenter.x,
+          parents[0].pos.y + TREE_CARD_HEIGHT,
+          childCenter.x,
+          childPos.y,
+        ),
+      })
+      continue
+    }
+
+    const left = parents[0]
+    const right = parents[parents.length - 1]
+    const leftCenter = nodeCenter(left.pos)
+    const rightCenter = nodeCenter(right.pos)
+    const railY = coupleRailY(left.pos.y)
+    push({
+      id: `couple-${left.parent.id}-${right.parent.id}`,
+      kind: 'couple',
+      path: `M ${leftCenter.x} ${railY} H ${rightCenter.x}`,
+    })
+    push({
+      id: `union-${node.person.id}`,
+      kind: 'parent-child',
+      path: elbowPath((leftCenter.x + rightCenter.x) / 2, railY, childCenter.x, childPos.y),
+    })
+  }
+
+  const rootPos = positions.get(rootId)
+  const rootPerson = peopleById[rootId]
+  if (rootPos && rootPerson) {
+    const rootCenter = nodeCenter(rootPos)
+    const spouses = (rootPerson.spouses ?? [])
+      .map((id) => peopleById[id])
+      .filter((p): p is Person => Boolean(p && ids.has(p.id) && positions.has(p.id)))
+    for (const spouse of spouses) {
+      const spousePos = positions.get(spouse.id)!
+      const spouseCenter = nodeCenter(spousePos)
+      const railY = coupleRailY(rootPos.y)
+      push({
+        id: `couple-${rootId}-${spouse.id}`,
+        kind: 'couple',
+        path: `M ${rootCenter.x} ${railY} H ${spouseCenter.x}`,
+      })
+    }
+
+    const children = childrenInSet(rootPerson, ids, peopleById)
+    const partnerPos = coRootId ? positions.get(coRootId) : null
+    const partnerCenter = partnerPos ? nodeCenter(partnerPos) : null
+    const descentFromX =
+      partnerCenter != null ? (rootCenter.x + partnerCenter.x) / 2 : rootCenter.x
+    const descentFromY =
+      partnerCenter != null ? coupleRailY(rootPos.y) : rootPos.y + TREE_CARD_HEIGHT
+
+    for (const child of children) {
+      const childPos = positions.get(child.id)
+      if (!childPos) continue
+      const childCenter = nodeCenter(childPos)
+      push({
+        id: `${rootId}-${child.id}`,
+        kind: 'parent-child',
+        path: elbowPath(descentFromX, descentFromY, childCenter.x, childPos.y),
+      })
+    }
+  }
+
+  return connectors
+}
+
 function coupleRailY(cardY: number): number {
   return cardY + TREE_CARD_HEIGHT + TREE_COUPLE_RAIL_BELOW
+}
+
+/** Horizontal span of a person's immediate parent cards when packed adjacent. */
+function immediateParentBandWidth(
+  person: Person,
+  ids: Set<string>,
+  peopleById: Record<string, Person>,
+): number {
+  const parents = parentsInSet(person, ids, peopleById)
+  if (!parents.length) return TREE_CARD_WIDTH
+  return parents.length * TREE_CARD_WIDTH + Math.max(0, parents.length - 1) * TREE_H_GAP
 }
 
 type SubtreeBounds = { width: number; center: number }
@@ -231,6 +378,8 @@ function measureDownSubtree(
   return result
 }
 
+type UpExpand = 'center' | 'left' | 'right'
+
 function layoutUp(
   id: string,
   centerX: number,
@@ -241,6 +390,7 @@ function layoutUp(
   connectors: TreeConnector[],
   upMemo: Map<string, SubtreeBounds>,
   visiting: Set<string>,
+  expand: UpExpand = 'center',
 ) {
   if (visiting.has(id)) return
   visiting.add(id)
@@ -264,19 +414,65 @@ function layoutUp(
   const childPos = positions.get(id)!
   const childCenter = nodeCenter(childPos)
   const parentY = y - TREE_V_GAP - TREE_CARD_HEIGHT
-  const bounds = parents.map((p) => upMemo.get(p.id) ?? { width: TREE_CARD_WIDTH, center: TREE_CARD_WIDTH / 2 })
-  const totalWidth =
-    bounds.reduce((sum, b) => sum + b.width, 0) + Math.max(0, parents.length - 1) * TREE_H_GAP
-  let cursor = centerX - totalWidth / 2
   const parentCenters: { id: string; x: number; y: number }[] = []
 
-  for (let i = 0; i < parents.length; i++) {
-    const b = bounds[i]
-    const parentCenterX = cursor + b.center
-    layoutUp(parents[i].id, parentCenterX, parentY, ids, peopleById, positions, connectors, upMemo, visiting)
-    const parentPos = positions.get(parents[i].id)!
-    parentCenters.push({ id: parents[i].id, x: parentPos.x + TREE_CARD_WIDTH / 2, y: parentPos.y })
-    cursor += b.width + TREE_H_GAP
+  const placeParent = (parent: Person, parentCenterX: number, parentExpand: UpExpand) => {
+    if (!positions.has(parent.id)) {
+      positions.set(parent.id, {
+        x: parentCenterX - TREE_CARD_WIDTH / 2,
+        y: parentY,
+      })
+    }
+    layoutUp(
+      parent.id,
+      parentCenterX,
+      parentY,
+      ids,
+      peopleById,
+      positions,
+      connectors,
+      upMemo,
+      visiting,
+      parentExpand,
+    )
+    const parentPos = positions.get(parent.id)!
+    parentCenters.push({
+      id: parent.id,
+      x: parentPos.x + TREE_CARD_WIDTH / 2,
+      y: parentPos.y,
+    })
+  }
+
+  if (parents.length === 1) {
+    placeParent(parents[0], childCenter.x, expand)
+  } else if (expand === 'center') {
+    // Keep the couple compact; push each parent's deeper ancestors outward.
+    const band =
+      parents.length * TREE_CARD_WIDTH + Math.max(0, parents.length - 1) * TREE_H_GAP
+    let cursor = childCenter.x - band / 2
+    for (let i = 0; i < parents.length; i++) {
+      const parentCenterX = cursor + TREE_CARD_WIDTH / 2
+      const side: UpExpand =
+        parents.length === 2 ? (i === 0 ? 'left' : 'right') : i < parents.length / 2 ? 'left' : 'right'
+      placeParent(parents[i], parentCenterX, side)
+      cursor += TREE_CARD_WIDTH + TREE_H_GAP
+    }
+  } else {
+    // Pack parent forests without overlap, flush to this person on the inward side.
+    const bounds = parents.map(
+      (p) => upMemo.get(p.id) ?? { width: TREE_CARD_WIDTH, center: TREE_CARD_WIDTH / 2 },
+    )
+    const totalWidth =
+      bounds.reduce((sum, b) => sum + b.width, 0) + Math.max(0, parents.length - 1) * TREE_H_GAP
+    let cursor =
+      expand === 'left'
+        ? childCenter.x + TREE_CARD_WIDTH / 2 - totalWidth
+        : childCenter.x - TREE_CARD_WIDTH / 2
+    for (let i = 0; i < parents.length; i++) {
+      const parentCenterX = cursor + bounds[i].center
+      placeParent(parents[i], parentCenterX, expand)
+      cursor += bounds[i].width + TREE_H_GAP
+    }
   }
 
   if (parentCenters.length === 1) {
@@ -308,6 +504,24 @@ function layoutUp(
   }
 
   visiting.delete(id)
+}
+
+/** How far a person's up-tree extends past their center on one side. */
+function upTreeOutwardExtent(
+  person: Person,
+  side: 'left' | 'right',
+  ids: Set<string>,
+  peopleById: Record<string, Person>,
+  upMemo: Map<string, SubtreeBounds>,
+): number {
+  const parents = parentsInSet(person, ids, peopleById)
+  if (!parents.length) return TREE_CARD_WIDTH / 2
+  const bandHalf = immediateParentBandWidth(person, ids, peopleById) / 2
+  if (parents.length === 1) {
+    return bandHalf + (upMemo.get(parents[0].id)?.width ?? TREE_CARD_WIDTH)
+  }
+  const outward = side === 'left' ? parents[0] : parents[parents.length - 1]
+  return bandHalf + (upMemo.get(outward.id)?.width ?? TREE_CARD_WIDTH)
 }
 
 function layoutDown(
@@ -465,12 +679,17 @@ export function buildFamilyTreeLayout(
       spouses[0]?.id ??
       null
 
-    let spouseOffset = 1
+    let spouseOffsetX = 0
     for (const spouse of spouses) {
       if (!positions.has(spouse.id)) {
-        const x = rootPos.x + spouseOffset * (TREE_CARD_WIDTH + TREE_H_GAP)
+        // Leave room for each spouse's outward-expanding ancestor forests
+        // so Ruiz/Hendry and Haro/Santa don't collide in the middle.
+        const rootRight = upTreeOutwardExtent(rootPerson, 'right', ids, peopleById, upMemo)
+        const spouseLeft = upTreeOutwardExtent(spouse, 'left', ids, peopleById, upMemo)
+        const minCenterGap = rootRight + spouseLeft + TREE_H_GAP
+        spouseOffsetX = Math.max(spouseOffsetX + TREE_CARD_WIDTH + TREE_H_GAP, minCenterGap)
+        const x = rootPos.x + spouseOffsetX
         positions.set(spouse.id, { x, y: rootPos.y })
-        spouseOffset += 1
       }
       const spousePos = positions.get(spouse.id)!
       const rootCenter = nodeCenter(rootPos)
@@ -538,6 +757,34 @@ export function buildFamilyTreeLayout(
       }
     })
 
+  resolveGenerationOverlaps(nodes, positions)
+
+  // Keep the board in positive space after outward-expanding up-trees.
+  let minX = Infinity
+  let minY = Infinity
+  for (const node of nodes) {
+    minX = Math.min(minX, node.x)
+    minY = Math.min(minY, node.y)
+  }
+  const shiftX = Number.isFinite(minX) ? TREE_PADDING - minX : 0
+  const shiftY = Number.isFinite(minY) ? TREE_PADDING - minY : 0
+  if (shiftX !== 0 || shiftY !== 0) {
+    for (const node of nodes) {
+      node.x += shiftX
+      node.y += shiftY
+      positions.set(node.person.id, { x: node.x, y: node.y })
+    }
+  }
+
+  const finalConnectors = rebuildTreeConnectors(
+    nodes,
+    positions,
+    ids,
+    peopleById,
+    rootId,
+    coRootId,
+  )
+
   let maxY = 0
   let maxX = canvasWidth
   for (const node of nodes) {
@@ -581,7 +828,7 @@ export function buildFamilyTreeLayout(
 
   return {
     nodes,
-    connectors,
+    connectors: finalConnectors,
     width: maxX + TREE_PADDING,
     height: maxY + TREE_PADDING,
     rootId,

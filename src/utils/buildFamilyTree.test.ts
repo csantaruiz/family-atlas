@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { familyDatabase } from '../data/familyDatabase'
-import { buildFamilyTreeLayout } from './buildFamilyTree'
+import { buildFamilyTreeLayout, TREE_CARD_WIDTH, TREE_H_GAP } from './buildFamilyTree'
 
 describe('family tree close household', () => {
   it('includes Leah beside Craig and children below the couple union', () => {
@@ -55,5 +55,62 @@ describe('family tree close household', () => {
     const leahCenter = leah.x + 132 / 2
     const mid = (craigCenter + leahCenter) / 2
     expect(Math.abs(startX - mid)).toBeLessThan(1)
+  })
+
+  it('keeps each spouse parent couple on its own side without nesting', () => {
+    const peopleById = Object.fromEntries(familyDatabase.people.map((p) => [p.id, p]))
+    const layout = buildFamilyTreeLayout(peopleById, new Set(), familyDatabase.root)
+    const byId = Object.fromEntries(layout.nodes.map((n) => [n.person.id, n]))
+
+    const craigParents = (peopleById[familyDatabase.root]?.parents ?? [])
+      .map((id) => byId[id])
+      .filter(Boolean)
+    const leahParents = (peopleById['I18123023648']?.parents ?? [])
+      .map((id) => byId[id])
+      .filter(Boolean)
+
+    expect(craigParents.length).toBe(2)
+    expect(leahParents.length).toBe(2)
+
+    const parentGap = TREE_CARD_WIDTH + TREE_H_GAP
+    const craigSpan = Math.abs(craigParents[0]!.x - craigParents[1]!.x)
+    const leahSpan = Math.abs(leahParents[0]!.x - leahParents[1]!.x)
+    // Immediate parents of the household stay as compact couples.
+    expect(craigSpan).toBeLessThanOrEqual(parentGap + 1)
+    expect(leahSpan).toBeLessThanOrEqual(parentGap + 1)
+
+    const craigParentMin = Math.min(craigParents[0]!.x, craigParents[1]!.x)
+    const craigParentMax =
+      Math.max(craigParents[0]!.x, craigParents[1]!.x) + TREE_CARD_WIDTH
+    const leahParentMin = Math.min(leahParents[0]!.x, leahParents[1]!.x)
+    const leahParentMax =
+      Math.max(leahParents[0]!.x, leahParents[1]!.x) + TREE_CARD_WIDTH
+
+    const overlaps =
+      leahParentMin < craigParentMax - 1 && leahParentMax > craigParentMin + 1
+    expect(overlaps).toBe(false)
+  })
+
+  it('does not overlap cards within the same generation', () => {
+    const peopleById = Object.fromEntries(familyDatabase.people.map((p) => [p.id, p]))
+    const layout = buildFamilyTreeLayout(peopleById, new Set(), familyDatabase.root)
+    const byGen = new Map<number, typeof layout.nodes>()
+    for (const node of layout.nodes) {
+      if (node.generation >= 110) continue
+      const row = byGen.get(node.generation) ?? []
+      row.push(node)
+      byGen.set(node.generation, row)
+    }
+    for (const [, row] of byGen) {
+      const sorted = [...row].sort((a, b) => a.x - b.x)
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i - 1]
+        const next = sorted[i]
+        expect(
+          next.x,
+          `${prev.person.name} overlaps ${next.person.name} at gen ${next.generation}`,
+        ).toBeGreaterThanOrEqual(prev.x + TREE_CARD_WIDTH + TREE_H_GAP - 0.5)
+      }
+    }
   })
 })

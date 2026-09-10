@@ -6,8 +6,11 @@ import { primaryRootIds } from './householdRoots'
 export const TREE_CARD_WIDTH = 132
 export const TREE_CARD_HEIGHT = 88
 export const TREE_H_GAP = 26
-export const TREE_V_GAP = 64
+/** Vertical gap must clear couple rails drawn below cards. */
+export const TREE_V_GAP = 72
 export const TREE_PADDING = 48
+/** Couple rail sits below cards so lines never pass through person cards. */
+export const TREE_COUPLE_RAIL_BELOW = 14
 
 export type PositionedTreeNode = {
   person: Person
@@ -28,6 +31,10 @@ export type TreeLayout = {
   width: number
   height: number
   rootId: string
+  /** Archive root + household co-root (Craig + Leah). */
+  householdIds: string[]
+  /** Bounding box of the default hero household (roots, their parents, shared children). */
+  householdBounds: { minX: number; minY: number; maxX: number; maxY: number } | null
 }
 
 const MAX_ANCESTOR_DEPTH = 12
@@ -137,6 +144,10 @@ function nodeCenter(pos: { x: number; y: number }) {
 function elbowPath(x1: number, y1: number, x2: number, y2: number): string {
   const midY = y1 + (y2 - y1) / 2
   return `M ${x1} ${y1} V ${midY} H ${x2} V ${y2}`
+}
+
+function coupleRailY(cardY: number): number {
+  return cardY + TREE_CARD_HEIGHT + TREE_COUPLE_RAIL_BELOW
 }
 
 type SubtreeBounds = { width: number; center: number }
@@ -268,12 +279,17 @@ function layoutUp(
     connectors.push({
       id: `${parentCenters[0].id}-${id}`,
       kind: 'parent-child',
-      path: elbowPath(parentCenters[0].x, parentCenters[0].y + TREE_CARD_HEIGHT, childCenter.x, childPos.y),
+      path: elbowPath(
+        parentCenters[0].x,
+        parentCenters[0].y + TREE_CARD_HEIGHT,
+        childCenter.x,
+        childPos.y,
+      ),
     })
   } else if (parentCenters.length >= 2) {
     const left = parentCenters[0]
     const right = parentCenters[parentCenters.length - 1]
-    const railY = left.y + TREE_CARD_HEIGHT * 0.38
+    const railY = coupleRailY(left.y)
     connectors.push({
       id: `couple-${left.id}-${right.id}`,
       kind: 'couple',
@@ -300,6 +316,7 @@ function layoutDown(
   connectors: TreeConnector[],
   downMemo: Map<string, SubtreeBounds>,
   visiting: Set<string>,
+  unionPartnerId?: string | null,
 ) {
   if (visiting.has(id)) return
   visiting.add(id)
@@ -328,16 +345,36 @@ function layoutDown(
     bounds.reduce((sum, b) => sum + b.width, 0) + Math.max(0, children.length - 1) * TREE_H_GAP
   let cursor = centerX - totalWidth / 2
 
+  const partnerPos = unionPartnerId ? positions.get(unionPartnerId) : null
+  const partnerCenter = partnerPos ? nodeCenter(partnerPos) : null
+  const descentFromX =
+    partnerCenter != null ? (parentCenter.x + partnerCenter.x) / 2 : parentCenter.x
+  const descentFromY =
+    partnerCenter != null
+      ? coupleRailY(parentPos.y)
+      : parentPos.y + TREE_CARD_HEIGHT
+
   for (let i = 0; i < children.length; i++) {
     const b = bounds[i]
     const childCenterX = cursor + b.center
-    layoutDown(children[i].id, childCenterX, childY, ids, peopleById, positions, connectors, downMemo, visiting)
+    layoutDown(
+      children[i].id,
+      childCenterX,
+      childY,
+      ids,
+      peopleById,
+      positions,
+      connectors,
+      downMemo,
+      visiting,
+      null,
+    )
     const childPos = positions.get(children[i].id)!
     const childCenter = nodeCenter(childPos)
     connectors.push({
       id: `${id}-${children[i].id}`,
       kind: 'parent-child',
-      path: elbowPath(parentCenter.x, parentPos.y + TREE_CARD_HEIGHT, childCenter.x, childPos.y),
+      path: elbowPath(descentFromX, descentFromY, childCenter.x, childPos.y),
     })
     cursor += b.width + TREE_H_GAP
   }
@@ -405,31 +442,44 @@ export function buildFamilyTreeLayout(
   const rootCenterX = canvasWidth / 2
 
   layoutUp(rootId, rootCenterX, rootY, ids, peopleById, positions, connectors, upMemo, new Set())
-  layoutDown(rootId, rootCenterX, rootY, ids, peopleById, positions, connectors, downMemo, new Set())
 
-  // Place root spouses beside the root (family tree couple rail).
+  // Place root spouses beside the root before descending, so children can leave the couple union.
   const rootPerson = peopleById[rootId]
   const rootPos = positions.get(rootId)
+  let coRootId: string | null = null
   if (rootPerson && rootPos) {
     const spouses = (rootPerson.spouses ?? [])
       .map((id) => peopleById[id])
       .filter((p): p is Person => Boolean(p && ids.has(p.id)))
       .sort((a, b) => (a.birthYear ?? 9999) - (b.birthYear ?? 9999))
 
+    const rootChildren = new Set(rootPerson.children ?? [])
+    coRootId =
+      spouses.find((spouse) =>
+        (spouse.children ?? []).some((childId) => rootChildren.has(childId)),
+      )?.id ??
+      spouses[0]?.id ??
+      null
+
     let spouseOffset = 1
     for (const spouse of spouses) {
-      if (positions.has(spouse.id)) continue
-      const x = rootPos.x + spouseOffset * (TREE_CARD_WIDTH + TREE_H_GAP)
-      positions.set(spouse.id, { x, y: rootPos.y })
+      if (!positions.has(spouse.id)) {
+        const x = rootPos.x + spouseOffset * (TREE_CARD_WIDTH + TREE_H_GAP)
+        positions.set(spouse.id, { x, y: rootPos.y })
+        spouseOffset += 1
+      }
+      const spousePos = positions.get(spouse.id)!
       const rootCenter = nodeCenter(rootPos)
-      const spouseCenter = nodeCenter({ x, y: rootPos.y })
-      const railY = rootPos.y + TREE_CARD_HEIGHT * 0.38
-      connectors.push({
-        id: `couple-${rootId}-${spouse.id}`,
-        kind: 'couple',
-        path: `M ${rootCenter.x} ${railY} H ${spouseCenter.x}`,
-      })
-      spouseOffset += 1
+      const spouseCenter = nodeCenter(spousePos)
+      const railY = coupleRailY(rootPos.y)
+      const coupleId = `couple-${rootId}-${spouse.id}`
+      if (!connectors.some((c) => c.id === coupleId)) {
+        connectors.push({
+          id: coupleId,
+          kind: 'couple',
+          path: `M ${rootCenter.x} ${railY} H ${spouseCenter.x}`,
+        })
+      }
     }
 
     for (const spouse of spouses) {
@@ -448,6 +498,19 @@ export function buildFamilyTreeLayout(
       )
     }
   }
+
+  layoutDown(
+    rootId,
+    rootCenterX,
+    rootY,
+    ids,
+    peopleById,
+    positions,
+    connectors,
+    downMemo,
+    new Set(),
+    coRootId,
+  )
 
   const extended = people
     .filter((p) => generationOf(p) >= 110 && !positions.has(p.id))
@@ -478,12 +541,42 @@ export function buildFamilyTreeLayout(
     maxX = Math.max(maxX, node.x + TREE_CARD_WIDTH)
   }
 
+  const householdIds = primaryRootIds(rootId, peopleById)
+  const householdFocusIds = new Set<string>(householdIds)
+  for (const id of householdIds) {
+    const person = peopleById[id]
+    if (!person) continue
+    for (const parentId of person.parents ?? []) {
+      if (positions.has(parentId)) householdFocusIds.add(parentId)
+    }
+    for (const childId of person.children ?? []) {
+      if (positions.has(childId)) householdFocusIds.add(childId)
+    }
+  }
+
+  let householdBounds: TreeLayout['householdBounds'] = null
+  for (const node of nodes) {
+    if (!householdFocusIds.has(node.person.id)) continue
+    const maxNodeX = node.x + TREE_CARD_WIDTH
+    const maxNodeY = node.y + TREE_CARD_HEIGHT
+    if (!householdBounds) {
+      householdBounds = { minX: node.x, minY: node.y, maxX: maxNodeX, maxY: maxNodeY }
+    } else {
+      householdBounds.minX = Math.min(householdBounds.minX, node.x)
+      householdBounds.minY = Math.min(householdBounds.minY, node.y)
+      householdBounds.maxX = Math.max(householdBounds.maxX, maxNodeX)
+      householdBounds.maxY = Math.max(householdBounds.maxY, maxNodeY)
+    }
+  }
+
   return {
     nodes,
     connectors,
     width: maxX + TREE_PADDING,
     height: maxY + TREE_PADDING,
     rootId,
+    householdIds,
+    householdBounds,
   }
 }
 

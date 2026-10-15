@@ -388,8 +388,8 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
     ),
   )
 
-  if (!historyVisible) return <div id="historyLayer" className="history-layer" style={{ display: 'none' }} />
-
+  // Stay mounted when Historical Events is off: `placed` empties and AnimatePresence
+  // fades the markers out instead of the whole layer disappearing in one frame.
   const dissolveTransition = prefersReducedMotion
     ? { duration: 0.01 }
     : {
@@ -460,16 +460,24 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
           )
         })
       )}
+      <AnimatePresence mode="sync">
       {unlabeledHistory.map((group) => {
         const event = group.items[0]
         const eventKey = historyEventHeroKey(event)
         const axisY = timelineAxisY(height, width)
+        const fade = {
+          initial: eventFadeEnabled ? { opacity: 0 } : false,
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+          transition: eventFadeEnabled ? dissolveTransition : { duration: 0 },
+        } as const
         if (group.items.length > 1) {
           return (
-            <div
+            <motion.div
               key={`history-cluster:${eventKey}:${group.items.length}`}
               className="history-event-anchor history-event-marker-cluster-anchor"
               style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) || isTabletStage(width) ? 40 : 22)) }}
+              {...fade}
             >
               <button
                 type="button"
@@ -483,14 +491,15 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
               >
                 <span>{group.items.length}</span>
               </button>
-            </div>
+            </motion.div>
           )
         }
         return (
-          <div
+          <motion.div
             key={`history-marker:${eventKey}`}
             className="history-event-anchor"
             style={{ left: Math.round(group.x), top: Math.round(axisY + (isNarrowStage(width) || isTabletStage(width) ? 40 : 22)) }}
+            {...fade}
           >
             <HistoryEventButton
               event={event}
@@ -499,9 +508,10 @@ export function WorldHistoryLayer({ start, end, width, height }: WorldHistoryLay
               onOpen={openHistory}
               markerOnly
             />
-          </div>
+          </motion.div>
         )
       })}
+      </AnimatePresence>
     </div>
   )
 }

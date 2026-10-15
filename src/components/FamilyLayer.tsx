@@ -35,13 +35,21 @@ import { movementSummary } from '../utils/placeUtils'
 import { eventAccessibleTitle } from '../utils/detailPlacement'
 import { categoryTypeLabel, clampAnchorBelowEditorialPanels, clampAnchorBelowPlaque, deconflictFamilyAnchorYs, displayName, measureDetailedFootprint, type LabelAlignment } from '../utils/labelMeasure'
 import { canonicalEventId, assertNoDuplicateEvents } from '../utils/canonicalEvent'
-import { freezeLandmarkStability, unfreezeLandmarkStability } from '../utils/landmarkSelectionStability'
+import {
+  freezeLandmarkStability,
+  resetLandmarkStability,
+  restoreLandmarkStability,
+  snapshotLandmarkStability,
+  unfreezeLandmarkStability,
+  type LandmarkStabilitySnapshot,
+} from '../utils/landmarkSelectionStability'
 import { admitPersistentMarkers, maxFamilyEventsForSpan, staggerFamilyEventLanes } from '../utils/landmarkSelection'
 import { connectorStemColor, familyEventStemLength, familyLabelCeilingY } from '../utils/eventConnector'
 import { spanFromZoomValue, yearX, zoomMode } from '../utils/timelineMath'
 import { isNarrowStage } from '../utils/stageBreakpoints'
 import { leftoverUnlabeledLayout, phoneLabelPlacement } from '../utils/phoneTimelineDensity'
 import { PhoneSheet } from './phone/PhoneSheet'
+import { FILTER_SETTLE_MS, useFilterSettling } from '../hooks/useFilterSettling'
 import type { FamilyEvent } from '../types'
 
 type PhonePeek =
@@ -64,6 +72,7 @@ type FamilyLayerProps = {
 
 const motionEase = [0.22, 0.8, 0.2, 1] as const
 const detailMotionEase = [0.22, 0.8, 0.2, 1] as const
+const filterEase = [0.4, 0, 0.2, 1] as const
 
 const SunriseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -292,6 +301,26 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   const phoneExploring = Boolean(phoneUi?.phone && phoneUi.exploring)
   const [phonePeek, setPhonePeek] = useState<PhonePeek | null>(null)
 
+  const filterSettling = useFilterSettling(timelineFilters)
+  // Authoritative visibility set: pins, frozen snapshots and sticky IDs may only
+  // reuse events that still pass the applied filters.
+  const allowedEventIds = useMemo(
+    () => new Set(filteredFamilyEvents.map((event) => canonicalEventId(event))),
+    [filteredFamilyEvents],
+  )
+  const familyEventSetKey = useMemo(() => {
+    // FNV-1a over the visible IDs: a compact identity for "which family events pass".
+    let hash = 0x811c9dc5
+    for (const id of allowedEventIds) {
+      for (let i = 0; i < id.length; i++) {
+        hash ^= id.charCodeAt(i)
+        hash = Math.imul(hash, 0x01000193)
+      }
+      hash ^= 0x2c
+    }
+    return `${allowedEventIds.size}:${(hash >>> 0).toString(36)}`
+  }, [allowedEventIds])
+
   const modeLive = zoomMode(span)
   const earliestYear = familyDatabase.stats.earliestYear
   const totalTimelineEnd = presentYear
@@ -381,6 +410,49 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     eventIntroDelayMs,
     completeIntro,
   } = useJourneyIntro()
+
+  // Pan stickiness is scoped per filtered family-event set. Otherwise markers admitted
+  // while a filter was off would keep their seats after it is re-enabled, and the result
+  // would depend on toggle history. Keyed on the set (not the raw filters) so toggles that
+  // never touch family events — e.g. Historical Events — leave family markers in place.
+  // Swap before the layout memos below read it: restore the selection last shown for this
+  // set at this zoom, or start fresh.
+  const stickinessKey = familyEventSetKey
+  const lastStickinessKeyRef = useRef(stickinessKey)
+  const stickinessByEventSetRef = useRef(
+    new Map<
+      string,
+      {
+        spanBucket: number | null
+        pinned: typeof pinnedEventsRef.current
+        previousIds: string[]
+        landmark: LandmarkStabilitySnapshot
+      }
+    >(),
+  )
+  if (lastStickinessKeyRef.current !== stickinessKey) {
+    const cache = stickinessByEventSetRef.current
+    cache.delete(lastStickinessKeyRef.current)
+    cache.set(lastStickinessKeyRef.current, {
+      spanBucket: pinnedSpanBucketRef.current,
+      pinned: pinnedEventsRef.current,
+      previousIds: previousRenderedIdsRef.current,
+      landmark: snapshotLandmarkStability(),
+    })
+    while (cache.size > 24) cache.delete(cache.keys().next().value!)
+
+    const cached = cache.get(stickinessKey)
+    if (cached && cached.spanBucket === pinnedSpanBucketRef.current) {
+      restoreLandmarkStability(cached.landmark)
+      pinnedEventsRef.current = cached.pinned
+      previousRenderedIdsRef.current = cached.previousIds
+    } else {
+      resetLandmarkStability()
+      pinnedEventsRef.current = []
+      previousRenderedIdsRef.current = []
+    }
+    lastStickinessKeyRef.current = stickinessKey
+  }
 
   useLayoutEffect(() => {
     if (interactionLocked) {
@@ -618,6 +690,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       previousRenderedIdsRef.current = []
       return
     }
+    pinnedEventsRef.current = pinnedEventsRef.current.filter((entry) =>
+      allowedEventIds.has(canonicalEventId(entry.event)),
+    )
+    previousRenderedIdsRef.current = previousRenderedIdsRef.current.filter((id) =>
+      allowedEventIds.has(id),
+    )
+
     const layoutEvents = activeLayout?.events
     if (!layoutEvents?.length && pinnedEventsRef.current.length === 0) return
 
@@ -642,7 +721,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     pinnedEventsRef.current = [...byId.values()].filter(
       (entry) => entry.event.year >= start - edgePad && entry.event.year <= end + edgePad,
     )
-  }, [isZooming, spanBucket, activeLayout?.events, start, end, span])
+  }, [isZooming, spanBucket, activeLayout?.events, start, end, span, allowedEventIds])
 
   const renderLayout = useMemo(() => {
     // While dragging / coasting / zooming: keep the idle folded mix (events + clusters)
@@ -651,13 +730,23 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       const frozen = frozenRenderLayoutRef.current
       return {
         events: frozen.events
-          .filter(({ event }) => event.year >= start && event.year <= end)
+          .filter(
+            ({ event }) =>
+              event.year >= start &&
+              event.year <= end &&
+              allowedEventIds.has(canonicalEventId(event)),
+          )
           .map((entry) => ({
             ...entry,
             x: yearX(entry.event.year, start, span, width),
           })),
         clusters: frozen.clusters
-          .filter((cluster) => cluster.to >= start && cluster.from <= end)
+          .filter(
+            (cluster) =>
+              cluster.to >= start &&
+              cluster.from <= end &&
+              cluster.events.every((event) => allowedEventIds.has(canonicalEventId(event))),
+          )
           .map((cluster) => ({
             ...cluster,
             x: yearX((cluster.from + cluster.to) / 2, start, span, width),
@@ -672,7 +761,9 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       pinnedEventsRef.current.length > 0
     ) {
       for (const entry of pinnedEventsRef.current) {
-        byId.set(canonicalEventId(entry.event), entry)
+        const id = canonicalEventId(entry.event)
+        if (!allowedEventIds.has(id)) continue
+        byId.set(id, entry)
       }
     }
     for (const entry of activeLayout?.events ?? []) {
@@ -764,6 +855,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
     detail,
     center,
     filteredFamilyEvents,
+    allowedEventIds,
     phoneExploring,
   ])
 
@@ -810,12 +902,15 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       byId.set(canonicalEventId(entry.event), { ...entry })
     }
     pinnedEventsRef.current = [...byId.values()].filter(
-      (entry) => entry.event.year >= start && entry.event.year <= end,
+      (entry) =>
+        entry.event.year >= start &&
+        entry.event.year <= end &&
+        allowedEventIds.has(canonicalEventId(entry.event)),
     )
     if (pinnedSpanBucketRef.current !== spanBucket) {
       pinnedSpanBucketRef.current = spanBucket
     }
-  }, [renderEvents, conflictClusters, isZooming, start, end, spanBucket])
+  }, [renderEvents, conflictClusters, isZooming, start, end, spanBucket, allowedEventIds])
 
   registerFamilyPulseTargets(
     useMemo(
@@ -945,6 +1040,51 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       }
     : { duration: 0.01 }
 
+  const filterSettleSeconds = FILTER_SETTLE_MS / 1000
+
+  // `custom` = filter settling. Exiting children receive AnimatePresence's latest
+  // custom value, so removals triggered by a filter change also get the soft drop.
+  const filterAwareFade = {
+    hidden: (settling: boolean) =>
+      settling
+        ? {
+            opacity: 0,
+            y: 6,
+            transition: { duration: filterSettleSeconds, ease: filterEase },
+          }
+        : { opacity: 0, y: 0 },
+    shown: (settling: boolean) =>
+      settling
+        ? {
+            opacity: 1,
+            y: 0,
+            transition: { duration: filterSettleSeconds, ease: filterEase },
+          }
+        : { opacity: 1, y: 0 },
+  }
+
+  const renderFadingGroup = (key: string, className: string, left: number, top: number, content: ReactNode) =>
+    eventFadeEnabled ? (
+      <motion.div
+        key={key}
+        className={className}
+        style={{ left, top }}
+        custom={filterSettling}
+        variants={filterAwareFade}
+        initial="hidden"
+        animate="shown"
+        exit="hidden"
+        transition={opacityFadeTransition}
+        layout={false}
+      >
+        {content}
+      </motion.div>
+    ) : (
+      <div key={key} className={className} style={{ left, top }}>
+        {content}
+      </div>
+    )
+
   const detailOpacityTransition = motionEnabled
     ? {
         opacity: { duration: 0.2, ease: detailMotionEase },
@@ -980,9 +1120,11 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         key={eventKey}
         className="family-event-anchor"
         style={{ left: Math.round(x), top: Math.round(renderY) }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        custom={filterSettling}
+        variants={filterAwareFade}
+        initial="hidden"
+        animate="shown"
+        exit="hidden"
         transition={detailMotion ? detailOpacityTransition : opacityFadeTransition}
         layout={false}
       >
@@ -1122,24 +1264,27 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         />
       )}
 
-      <div id="nodes">
+      <div
+        id="nodes"
+        className={filterSettling && eventFadeEnabled ? 'is-filter-settling' : undefined}
+      >
         {eventFadeEnabled ? (
-          <AnimatePresence mode="sync">
+          <AnimatePresence mode="sync" custom={filterSettling}>
             {placedFamilyEvents}
           </AnimatePresence>
         ) : (
           placedFamilyEvents
         )}
 
-        {unlabeledMarkerGroups.ticks.map((group) => {
-          const event = group.items[0]
-          if (!event) return null
-          return (
-            <div
-              key={`marker:${canonicalEventId(event)}`}
-              className="family-event-anchor family-event-marker-anchor"
-              style={{ left: Math.round(group.x), top: Math.round(axisY) }}
-            >
+        {(() => {
+          const ticks = unlabeledMarkerGroups.ticks.map((group) => {
+            const event = group.items[0]
+            if (!event) return null
+            return renderFadingGroup(
+              `marker:${canonicalEventId(event)}`,
+              'family-event-anchor family-event-marker-anchor',
+              Math.round(group.x),
+              Math.round(axisY),
               <FamilyEventButton
                 event={event}
                 x={0}
@@ -1149,21 +1294,28 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                 compact
                 stemLength={12}
                 onOpen={handleEventOpen}
-              />
-            </div>
+              />,
+            )
+          })
+          return eventFadeEnabled ? (
+            <AnimatePresence mode="sync" custom={filterSettling}>
+              {ticks}
+            </AnimatePresence>
+          ) : (
+            ticks
           )
-        })}
+        })()}
 
-        {unlabeledMarkerGroups.clusters.map((group) => {
+        {(() => {
+          const groups = unlabeledMarkerGroups.clusters.map((group) => {
           const years = group.items.map((event) => event.year)
           const from = Math.min(...years)
           const to = Math.max(...years)
-          return (
-            <div
-              key={`unlabeled:${from}-${to}:${group.items.length}`}
-              className="family-event-anchor family-event-marker-cluster-anchor"
-              style={{ left: Math.round(group.x), top: Math.round(axisY - (isNarrowStage(width) ? 36 : 0)) }}
-            >
+          return renderFadingGroup(
+              `unlabeled:${from}-${to}:${group.items.length}`,
+              'family-event-anchor family-event-marker-cluster-anchor',
+              Math.round(group.x),
+              Math.round(axisY - (isNarrowStage(width) ? 36 : 0)),
               <button
                 type="button"
                 className="family-event-marker-cluster"
@@ -1187,17 +1339,26 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                 aria-label={`${group.items.length} events from ${from} to ${to}. Zoom in to read them.`}
               >
                 <span className="marker-cluster-count">{group.items.length}</span>
-              </button>
-            </div>
+              </button>,
           )
-        })}
+          })
+          return eventFadeEnabled ? (
+            <AnimatePresence mode="sync" custom={filterSettling}>
+              {groups}
+            </AnimatePresence>
+          ) : (
+            groups
+          )
+        })()}
 
-        {conflictClusters.map((cluster) => (
-          <div
-            key={cluster.id}
-            className="family-event-anchor family-event-cluster-anchor"
-            style={{ left: Math.round(cluster.x), top: Math.round(cluster.y) }}
-          >
+        {(() => {
+          // Cluster IDs encode membership, so a regrouping crossfades old → new circle.
+          const clusters = conflictClusters.map((cluster) =>
+            renderFadingGroup(
+              cluster.id,
+              'family-event-anchor family-event-cluster-anchor',
+              Math.round(cluster.x),
+              Math.round(cluster.y),
             <button
               type="button"
               className="family-event-cluster"
@@ -1226,9 +1387,17 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                 {cluster.from === cluster.to ? cluster.from : `${cluster.from}–${cluster.to}`}
               </span>
               <span className="cluster-stem" aria-hidden="true" />
-            </button>
-          </div>
-        ))}
+            </button>,
+            ),
+          )
+          return eventFadeEnabled ? (
+            <AnimatePresence mode="sync" custom={filterSettling}>
+              {clusters}
+            </AnimatePresence>
+          ) : (
+            clusters
+          )
+        })()}
 
         {representativeNodes.map(({ person: p, x, y }) => (
           <div

@@ -31,6 +31,20 @@ export function resetLandmarkStability(): void {
   interactionFrozenKey = null
 }
 
+export type LandmarkStabilitySnapshot = Readonly<StabilityState>
+
+export function snapshotLandmarkStability(): LandmarkStabilitySnapshot {
+  return { key: state.key, ids: [...state.ids], placements: new Map(state.placements) }
+}
+
+export function restoreLandmarkStability(snapshot: LandmarkStabilitySnapshot): void {
+  state = {
+    key: snapshot.key,
+    ids: [...snapshot.ids],
+    placements: new Map(snapshot.placements),
+  }
+}
+
 function spanStabilityBucket(span: number): number {
   if (span <= 14) return Math.round(span * 10) / 10
   if (span <= 40) return Math.round(span / 4) * 4

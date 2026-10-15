@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTimeline } from '../context/TimelineContext'
 import { useFamilyData } from '../family-data/FamilyDataProvider'
 import {
@@ -19,6 +19,7 @@ const BRANCH_FILTER_KEYS = new Set<TimelineFilterKey>([
 ])
 
 const panelEase = [0.22, 0.8, 0.2, 1] as const
+const SCROLL_EDGE_PX = 4
 
 function FilterIcon() {
   return (
@@ -44,6 +45,22 @@ function FilterIcon() {
 type TimelineFiltersPanelProps = {
   onClose: () => void
   hideHeader?: boolean
+  /** Render the pinned Apply footer inside the panel (off when a host sheet pins it). */
+  showFooter?: boolean
+}
+
+/**
+ * Filters already apply live, so Apply only finishes the interaction —
+ * it never re-triggers timeline animation or touches the camera.
+ */
+export function TimelineFiltersApplyButton({ onApply }: { onApply: () => void }) {
+  return (
+    <div className="timeline-filters-footer">
+      <button type="button" className="timeline-filters-apply" onClick={onApply}>
+        Apply filters
+      </button>
+    </div>
+  )
 }
 
 export function TimelineFiltersControl({ open, onToggle, onClose }: { open: boolean; onToggle: () => void; onClose: () => void }) {
@@ -117,7 +134,8 @@ export function TimelineFiltersControl({ open, onToggle, onClose }: { open: bool
 export function TimelineFiltersPanel({
   onClose,
   hideHeader = false,
-}: TimelineFiltersPanelProps & { hideHeader?: boolean }) {
+  showFooter = true,
+}: TimelineFiltersPanelProps) {
   const { database: familyDatabase } = useFamilyData()
   const { timelineFilters, setTimelineFilter, setTimelineFilters } = useTimeline()
   const masterCheckboxRef = useRef<HTMLInputElement>(null)
@@ -149,6 +167,30 @@ export function TimelineFiltersPanel({
     master.indeterminate = !allSelected && ALL_FILTER_KEYS.some((key) => timelineFilters[key])
   }, [timelineFilters, allSelected])
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [overflow, setOverflow] = useState({ above: false, below: false })
+
+  useEffect(() => {
+    const node = scrollRef.current
+    if (!node) return
+    const update = () => {
+      const above = node.scrollTop > SCROLL_EDGE_PX
+      const below = node.scrollHeight - node.scrollTop - node.clientHeight > SCROLL_EDGE_PX
+      setOverflow((prev) => (prev.above === above && prev.below === below ? prev : { above, below }))
+    }
+    update()
+    node.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    for (const child of Array.from(node.children)) observer.observe(child)
+    window.addEventListener('resize', update)
+    return () => {
+      node.removeEventListener('scroll', update)
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
+
   const handleChange = (key: TimelineFilterKey, checked: boolean) => {
     setTimelineFilter(key, checked)
   }
@@ -169,6 +211,12 @@ export function TimelineFiltersPanel({
         </header>
       )}
 
+      <div
+        className="timeline-filters-viewport"
+        data-more-above={overflow.above || undefined}
+        data-more-below={overflow.below || undefined}
+      >
+      <div className="timeline-filters-scroll" ref={scrollRef}>
       <div className="timeline-filters-toggle-all">
         <label className="timeline-filter-option timeline-filter-option--master">
           <input
@@ -219,6 +267,24 @@ export function TimelineFiltersPanel({
           </ul>
         </section>
       ))}
+      </div>
+      <svg
+        className="timeline-filters-more"
+        viewBox="0 0 16 16"
+        width="14"
+        height="14"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 6l4 4 4-4" />
+      </svg>
+      </div>
+
+      {showFooter ? <TimelineFiltersApplyButton onApply={onClose} /> : null}
     </div>
   )
 }

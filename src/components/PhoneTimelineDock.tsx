@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { useFollowPerson } from '../context/FollowPersonContext'
-import { TimelineFiltersPanel } from './TimelineFiltersPanel'
+import { TimelineFiltersApplyButton, TimelineFiltersPanel } from './TimelineFiltersPanel'
 import { PhoneHelpGuide } from './phone/PhoneHelpGuide'
 import { PhoneSheet } from './phone/PhoneSheet'
 
@@ -136,9 +136,11 @@ export function PhoneTimelineDock() {
         title="Filters"
         onClose={() => ui.openSheet(null)}
         size="auto"
-        placement="panel"
+        placement="sheet"
+        className="phone-sheet-layer--filters"
+        footer={<TimelineFiltersApplyButton onApply={() => ui.openSheet(null)} />}
       >
-        <TimelineFiltersPanel onClose={() => ui.openSheet(null)} hideHeader />
+        <TimelineFiltersPanel onClose={() => ui.openSheet(null)} hideHeader showFooter={false} />
       </PhoneSheet>
     </div>
   )

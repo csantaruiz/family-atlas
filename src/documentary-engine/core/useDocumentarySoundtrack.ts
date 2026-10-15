@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createVolumeControl, type VolumeControl } from '../../audio/elementVolume'
+import { resumeSharedAudioContext } from '../../audio/sharedAudioContext'
 import {
   DEFAULT_DOCUMENTARY_SOUNDTRACK,
   SOUNDTRACK_MUTE_SESSION_KEY,
@@ -40,6 +42,7 @@ export function useDocumentarySoundtrack({
   enabled,
 }: UseDocumentarySoundtrackOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const volumeRef = useRef<VolumeControl | null>(null)
   const fadeRafRef = useRef<number | null>(null)
   const softLoopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const targetVolumeRef = useRef(config.baseVolume)
@@ -80,16 +83,16 @@ export function useDocumentarySoundtrack({
 
   const fadeTo = useCallback(
     (toVolume: number, durationMsFade: number, kind: FadeKind = 'level') => {
-      const audio = audioRef.current
-      if (!audio) return Promise.resolve()
+      const volume = volumeRef.current
+      if (!volume) return Promise.resolve()
 
       cancelFade()
-      const from = audio.volume
+      const from = volume.get()
       const to = mutedRef.current ? 0 : toVolume
       targetVolumeRef.current = toVolume
 
       if (durationMsFade <= 0 || Math.abs(from - to) < 0.004) {
-        audio.volume = to
+        volume.set(to)
         return Promise.resolve()
       }
 
@@ -99,12 +102,12 @@ export function useDocumentarySoundtrack({
           const t = Math.min(1, (now - startedAt) / durationMsFade)
           const eased =
             kind === 'in' ? t * t : kind === 'out' ? 1 - (1 - t) * (1 - t) : t
-          audio.volume = from + (to - from) * eased
+          volume.set(from + (to - from) * eased)
           if (t < 1) {
             fadeRafRef.current = requestAnimationFrame(tick)
           } else {
             fadeRafRef.current = null
-            audio.volume = to
+            volume.set(to)
             resolve()
           }
         }
@@ -124,8 +127,10 @@ export function useDocumentarySoundtrack({
     const audio = new Audio(config.src)
     audio.preload = 'auto'
     audio.loop = false
-    audio.volume = 0
+    const volume = createVolumeControl(audio)
+    volume.set(0)
     audioRef.current = audio
+    volumeRef.current = volume
 
     const onMeta = () => {
       if (Number.isFinite(audio.duration)) {
@@ -144,7 +149,7 @@ export function useDocumentarySoundtrack({
         const el = audioRef.current
         if (!el || !startedRef.current || outroActiveRef.current) return
         el.currentTime = 0
-        el.volume = 0
+        volumeRef.current?.set(0)
         void el.play().then(() => {
           void fadeToRef.current(
             resolvePresenceRef.current(presenceRef.current),
@@ -168,6 +173,7 @@ export function useDocumentarySoundtrack({
       audio.removeAttribute('src')
       audio.load()
       audioRef.current = null
+      volumeRef.current = null
     }
   }, [cancelFade, clearSoftLoop, config.src])
 
@@ -188,10 +194,11 @@ export function useDocumentarySoundtrack({
     } catch {
       // Ignore seek-before-metadata errors.
     }
-    audio.volume = 0
+    volumeRef.current?.set(0)
 
     try {
-      // play() must run in the user-gesture stack (before long awaits).
+      // play() and the context resume must run in the user-gesture stack (before long awaits).
+      if (volumeRef.current?.routed) resumeSharedAudioContext()
       const playAttempt = audio.play()
       await playAttempt
       await fadeTo(cfg.baseVolume, cfg.fadeInMs, 'in')
@@ -215,6 +222,7 @@ export function useDocumentarySoundtrack({
     const audio = audioRef.current
     if (!audio || !startedRef.current || outroActiveRef.current) return
     try {
+      if (volumeRef.current?.routed) resumeSharedAudioContext()
       await audio.play()
       await fadeTo(resolveTargetForPresence(presenceRef.current), 900, 'level')
     } catch (error) {
@@ -296,7 +304,7 @@ export function useDocumentarySoundtrack({
     } catch {
       // ignore
     }
-    audio.volume = 0
+    volumeRef.current?.set(0)
     setIsPlaying(false)
   }, [cancelFade, clearSoftLoop])
 
@@ -306,11 +314,12 @@ export function useDocumentarySoundtrack({
       setMuted(next)
       writeSessionMuted(next)
       const audio = audioRef.current
-      if (!audio) return
+      const volume = volumeRef.current
+      if (!audio || !volume) return
       if (next) {
-        audio.volume = 0
+        volume.set(0)
       } else if (startedRef.current && !audio.paused) {
-        audio.volume = resolveTargetForPresence(presenceRef.current)
+        volume.set(resolveTargetForPresence(presenceRef.current))
       }
     },
     [resolveTargetForPresence],

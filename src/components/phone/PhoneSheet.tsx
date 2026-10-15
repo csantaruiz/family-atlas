@@ -45,6 +45,8 @@ export function PhoneSheet({
   placement = 'panel',
   titleSize = 'default',
   list = false,
+  footer,
+  className,
 }: {
   open: boolean
   title: string
@@ -55,6 +57,10 @@ export function PhoneSheet({
   placement?: 'panel' | 'sheet'
   titleSize?: 'default' | 'display'
   list?: boolean
+  /** Pinned below the scrolling body (e.g. a primary action). */
+  footer?: ReactNode
+  /** Extra class on the overlay layer. */
+  className?: string
 }) {
   const { present, shown } = usePresence(open, PHONE_OVERLAY_MS)
   usePhoneOverlayLock(shown)
@@ -93,7 +99,7 @@ export function PhoneSheet({
     .join(' ')
 
   const sheet = (
-    <div className={`phone-sheet-layer${shown ? ' is-open' : ''}`}>
+    <div className={`phone-sheet-layer${shown ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
       <button type="button" className="phone-sheet-scrim" aria-label="Close" onClick={onClose} />
       <div className={sheetClass} role="dialog" aria-modal="true" aria-label={title}>
         <div className="phone-sheet-head">
@@ -109,6 +115,7 @@ export function PhoneSheet({
         >
           {children}
         </div>
+        {footer ? <div className="phone-sheet-footer">{footer}</div> : null}
       </div>
     </div>
   )

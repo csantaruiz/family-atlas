@@ -4,6 +4,7 @@ import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
 import { AtlasReviewEntry } from '../atlas-review/AtlasReviewEntry'
 import { EXPLORE_NAV, OWNER_ACTIONS, exploreMenuLabel } from '../navigation/atlasNav'
+import { AmbientSoundControl, AmbientSoundMenuItem } from './AmbientSoundControl'
 import { HeaderManageMenu } from './HeaderManageMenu'
 import { useAtlasReview } from '../atlas-review/AtlasReviewRoot'
 import { useManageFamilyTree } from '../atlas-manage/ManageFamilyTreeRoot'
@@ -69,6 +70,7 @@ export function Header() {
         </div>
       </div>
       <div className="top-nav" ref={exploreRef}>
+        <AmbientSoundControl />
         <button
           type="button"
           className={`explore-toggle${exploreOpen || menu.shown ? ' is-open' : ''}`}
@@ -115,6 +117,7 @@ export function Header() {
                 </button>
               )
             })}
+            <AmbientSoundMenuItem />
             <div className="explore-manage-block">
               <p className="explore-menu-kicker">Manage Atlas</p>
               {OWNER_ACTIONS.map((action) => (

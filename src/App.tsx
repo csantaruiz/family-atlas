@@ -29,6 +29,7 @@ import { isAtlasDebugEnabled } from './atlas-health/dev/atlasDebugEnabled'
 import { ensureOverrideCacheLoaded } from './overrides/overrideCache'
 import { AtlasReviewRoot } from './atlas-review/AtlasReviewRoot'
 import { ManageFamilyTreeRoot } from './atlas-manage/ManageFamilyTreeRoot'
+import { AmbientSoundtrackProvider, useAmbientHold } from './soundtrack/AmbientSoundtrackContext'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -101,6 +102,8 @@ function AtlasAppShell() {
 function AppGate() {
   const { phase, transition } = useDocumentaryEngine()
   const [atlasVisible, setAtlasVisible] = useState(false)
+  // The documentary owns sound (score + narration) until the visitor is in the Atlas.
+  useAmbientHold('documentary', phase === 'complete' ? null : 0)
 
   // First load / reload always stays on DocumentaryEngineRoot (welcome fork)
   // until the user chooses Begin Documentary or Explore the Atlas.
@@ -147,6 +150,7 @@ function App() {
   }
 
   return (
+    <AmbientSoundtrackProvider>
     <FamilyDataProvider>
     <TimelineProvider>
       <AppNavigationProvider>
@@ -160,6 +164,7 @@ function App() {
       </AppNavigationProvider>
     </TimelineProvider>
     </FamilyDataProvider>
+    </AmbientSoundtrackProvider>
   )
 }
 

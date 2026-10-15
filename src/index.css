@@ -2678,6 +2678,11 @@
 }
 
 .timeline-filters-panel-inner {
+  display: flex;
+  flex-direction: column;
+  /* Stay inside the viewport on short desktops / tablets so Apply is always reachable. */
+  max-height: min(640px, calc(100dvh - 190px));
+  overflow: hidden;
   background: linear-gradient(
     165deg,
     rgba(28, 24, 20, 0.94) 0%,
@@ -2686,7 +2691,7 @@
   backdrop-filter: blur(18px);
   border: 1px solid rgba(102, 183, 199, 0.34);
   border-radius: 14px;
-  padding: 20px 22px 18px;
+  padding: 0;
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(228, 214, 188, 0.06);
@@ -2694,9 +2699,164 @@
 
 .timeline-filters-header {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
+  padding: 20px 22px 0;
   margin-bottom: 14px;
+}
+
+@property --filters-fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --filters-fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+.timeline-filters-viewport {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.timeline-filters-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 22px 16px;
+  -webkit-overflow-scrolling: touch;
+  /* Masking (not an overlay) lets items fade into whatever surface sits behind,
+     so the edge always matches the panel or sheet without a hard-coded colour. */
+  --filters-fade-top: 0px;
+  --filters-fade-bottom: 0px;
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 var(--filters-fade-top),
+    #000 calc(100% - var(--filters-fade-bottom)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    transparent 0,
+    #000 var(--filters-fade-top),
+    #000 calc(100% - var(--filters-fade-bottom)),
+    transparent 100%
+  );
+  transition:
+    --filters-fade-top 0.28s ease,
+    --filters-fade-bottom 0.28s ease;
+}
+
+.timeline-filters-viewport[data-more-above] .timeline-filters-scroll {
+  --filters-fade-top: 28px;
+}
+
+.timeline-filters-viewport[data-more-below] .timeline-filters-scroll {
+  --filters-fade-bottom: 60px;
+}
+
+.timeline-filters-more {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  margin-left: -7px;
+  color: rgba(214, 181, 108, 0.72);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+
+.timeline-filters-viewport[data-more-below] .timeline-filters-more {
+  opacity: 1;
+  animation: timeline-filters-more-bob 2.6s ease-in-out infinite;
+}
+
+@keyframes timeline-filters-more-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-filters-scroll,
+  .timeline-filters-more {
+    transition: none;
+  }
+
+  .timeline-filters-viewport[data-more-below] .timeline-filters-more {
+    animation: none;
+  }
+}
+
+.timeline-filters-panel-inner > .timeline-filters-viewport:first-child .timeline-filters-scroll {
+  padding-top: 20px;
+}
+
+.timeline-filters-footer {
+  flex: 0 0 auto;
+  padding: 12px 22px 16px;
+  border-top: 1px solid rgba(196, 176, 138, 0.14);
+  background: linear-gradient(180deg, rgba(16, 15, 14, 0.6), rgba(12, 13, 14, 0.92));
+}
+
+.timeline-filters-apply {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 16px;
+  border: 1px solid rgba(214, 181, 108, 0.55);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(214, 181, 108, 0.2), rgba(214, 181, 108, 0.1));
+  color: #f3e6c4;
+  font: 500 12px/1.2 Inter, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.timeline-filters-apply:hover {
+  border-color: var(--gold);
+  background: linear-gradient(180deg, rgba(214, 181, 108, 0.28), rgba(214, 181, 108, 0.14));
+  color: #fff4d8;
+}
+
+.timeline-filters-apply:focus-visible,
+.timeline-filters-close:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.timeline-filter-option:focus-within .timeline-filter-check {
+  outline: 2px solid rgba(214, 181, 108, 0.8);
+  outline-offset: 2px;
+}
+
+/* Filter changes only: persistent markers ease to their new slot.
+   Drag / coast / zoom rules (transition: none !important) still win. */
+#nodes.is-filter-settling .family-event-anchor {
+  transition:
+    left 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    top 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #nodes.is-filter-settling .family-event-anchor {
+    transition: none;
+  }
 }
 
 .timeline-filters-header .eyebrow {
@@ -8314,6 +8474,164 @@
   overflow: visible;
 }
 
+/* ── Ambient soundtrack control ── */
+
+.ambient-sound {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.ambient-sound-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--menu-beige-border);
+  border-radius: 999px;
+  background: var(--menu-beige-bg);
+  backdrop-filter: blur(10px);
+  color: rgba(214, 181, 108, 0.62);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.ambient-sound.is-on .ambient-sound-toggle {
+  color: rgba(214, 181, 108, 0.92);
+}
+
+.ambient-sound-toggle:hover,
+.ambient-sound-toggle:focus-visible {
+  color: #ead9b4;
+  background: var(--menu-beige-bg-active);
+}
+
+.ambient-sound-toggle:focus-visible,
+.ambient-sound-volume:focus-visible {
+  outline: 1px solid rgba(214, 181, 108, 0.7);
+  outline-offset: 2px;
+}
+
+.ambient-sound-icon {
+  display: block;
+  overflow: visible;
+}
+
+.ambient-sound-wave {
+  opacity: 0.45;
+  transition: opacity 0.6s ease;
+}
+
+.ambient-sound.is-audible .ambient-sound-wave {
+  opacity: 1;
+}
+
+.ambient-sound.is-audible .ambient-sound-wave--outer {
+  opacity: 0.7;
+}
+
+/* Volume pops below the toggle on hover / keyboard focus; padding bridges the pointer gap. */
+.ambient-sound-volume-wrap {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 30;
+  padding-top: 8px;
+  /* Opacity, not visibility, so the slider stays in the tab order and focus reveals it. */
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.ambient-sound:hover .ambient-sound-volume-wrap,
+.ambient-sound:focus-within .ambient-sound-volume-wrap {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+
+.ambient-sound-volume {
+  display: block;
+  width: 112px;
+  height: 28px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--menu-beige-border);
+  border-radius: 999px;
+  background: rgba(16, 15, 13, 0.92);
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+/* Touch devices use hardware volume; the toggle alone stays. */
+@media (hover: none) {
+  .ambient-sound-volume-wrap {
+    display: none;
+  }
+}
+
+.explore-sound-block {
+  display: none;
+}
+
+/* Phone header has no room beside the full title — the toggle lives in the Explore menu. */
+@media (max-width: 760px) {
+  .ambient-sound {
+    display: none;
+  }
+
+  .explore-sound-block {
+    display: block;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(196, 176, 138, 0.18);
+  }
+
+  .nav-cluster .nav button.explore-sound-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .explore-sound-item .ambient-sound-icon {
+    flex: 0 0 auto;
+    color: rgba(214, 181, 108, 0.85);
+  }
+
+  .explore-sound-item span {
+    white-space: nowrap;
+  }
+
+  .explore-sound-state {
+    margin-left: auto;
+    color: rgba(232, 212, 168, 0.58);
+    font-size: 0.78em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .explore-sound-item[aria-pressed='true'] .explore-sound-state {
+    color: var(--gold);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-sound-volume-wrap,
+  .ambient-sound:hover .ambient-sound-volume-wrap,
+  .ambient-sound:focus-within .ambient-sound-volume-wrap {
+    transform: translate(-50%, 0);
+    transition: none;
+  }
+
+  .ambient-sound-wave {
+    transition: none;
+  }
+}
+
 .header-manage-menu {
   position: absolute;
   right: 0;
@@ -10978,6 +11296,66 @@ body {
 
   .phone-sheet--sheet .phone-sheet-body {
     padding-bottom: 24px;
+  }
+
+  .phone-sheet-footer {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  .phone-sheet-footer .timeline-filters-footer {
+    padding: 12px var(--phone-sheet-pad-x) 14px;
+  }
+
+  .phone-sheet-footer .timeline-filters-apply {
+    min-height: var(--phone-touch, 48px);
+    font-size: 0.85rem;
+  }
+
+  /* The sheet is the surface on phones — no nested desktop card. */
+  .phone-sheet-body .timeline-filters-panel-inner {
+    max-height: none;
+    overflow: visible;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    border-radius: 0;
+  }
+
+  /* The filter list owns scrolling so its edge fades stay pinned above the footer. */
+  .phone-sheet-layer--filters .phone-sheet-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .phone-sheet-layer--filters .phone-sheet-body .timeline-filters-panel-inner {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .phone-sheet-body .timeline-filters-viewport {
+    flex: 0 1 auto;
+  }
+
+  .phone-sheet-body .timeline-filters-panel-inner .timeline-filters-scroll,
+  .phone-sheet-body .timeline-filters-panel-inner > .timeline-filters-viewport:first-child .timeline-filters-scroll {
+    /* Side gutter keeps checkbox focus rings from being clipped by the scroller. */
+    margin: 0 -6px;
+    padding: 4px 6px 20px;
+  }
+
+  /* Lighter scrim so live filter changes stay visible above the sheet. */
+  .phone-sheet-layer--filters .phone-sheet-scrim {
+    background: rgba(6, 7, 9, 0.28);
+  }
+
+  .phone-sheet-layer--filters .phone-sheet--sheet {
+    max-height: min(62dvh, calc(100dvh - var(--phone-header-h) - var(--phone-dock-h) - 12px));
   }
 
   .phone-sheet--list .phone-sheet-body.has-more {

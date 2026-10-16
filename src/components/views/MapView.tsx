@@ -3,6 +3,7 @@ import { useMaxWidth } from '../../hooks/useMaxWidth'
 import { useFamilyData } from '../../family-data/FamilyDataProvider'
 import { MapExplorationProvider, useMapExploration } from '../../context/MapExplorationContext'
 import { useTimeline } from '../../context/TimelineContext'
+import { MapSoundtrackReporter } from '../../soundtrack/atlas/SoundtrackDirector'
 import {
   centuryOptions,
 } from '../../utils/personDirectory'
@@ -314,6 +315,7 @@ function MapViewContent({ active }: MapViewProps) {
 export function MapView({ active }: MapViewProps) {
   return (
     <MapExplorationProvider>
+      <MapSoundtrackReporter active={active} />
       <MapViewContent active={active} />
     </MapExplorationProvider>
   )

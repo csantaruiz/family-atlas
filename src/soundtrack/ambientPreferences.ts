@@ -5,19 +5,26 @@ export type AmbientPreferences = {
   volume: number
 }
 
+/** Quiet museum-like level; track gain (~0.35) brings the effective output lower still. */
+export const DEFAULT_AMBIENT_VOLUME = 0.4
+
 export const DEFAULT_AMBIENT_PREFERENCES: AmbientPreferences = {
   enabled: false,
-  volume: 0.7,
+  volume: DEFAULT_AMBIENT_VOLUME,
 }
+
+/** Phase 1 shipped 0.7; treat that stored default as the quieter Phase 2 level. */
+const LEGACY_DEFAULT_VOLUME = 0.7
 
 export function parseAmbientPreferences(raw: string | null): AmbientPreferences {
   if (!raw) return DEFAULT_AMBIENT_PREFERENCES
   try {
     const value = JSON.parse(raw) as Partial<AmbientPreferences>
-    const volume =
+    let volume =
       typeof value.volume === 'number' && Number.isFinite(value.volume)
         ? Math.min(1, Math.max(0, value.volume))
         : DEFAULT_AMBIENT_PREFERENCES.volume
+    if (volume === LEGACY_DEFAULT_VOLUME) volume = DEFAULT_AMBIENT_VOLUME
     return { enabled: value.enabled === true, volume }
   } catch {
     return DEFAULT_AMBIENT_PREFERENCES

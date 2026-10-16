@@ -43,8 +43,9 @@ export function AmbientSoundMenuItem() {
   )
 }
 
+/** Unobtrusive on/off control; volume is fixed at a quiet atmospheric level. */
 export function AmbientSoundControl() {
-  const { supported, wantsSound, audible, volume, toggleSound, setVolume } = useAmbientSoundtrack()
+  const { supported, wantsSound, audible, toggleSound } = useAmbientSoundtrack()
   if (!supported) return null
 
   const label = wantsSound ? 'Turn off background music' : 'Turn on background music'
@@ -60,21 +61,6 @@ export function AmbientSoundControl() {
       >
         <SpeakerIcon on={wantsSound} />
       </button>
-      {wantsSound ? (
-        <div className="ambient-sound-volume-wrap">
-          <input
-            type="range"
-            className="ambient-sound-volume"
-            min={0}
-            max={100}
-            step={1}
-            value={Math.round(volume * 100)}
-            aria-label="Music volume"
-            aria-valuetext={`${Math.round(volume * 100)}%`}
-            onChange={(event) => setVolume(Number(event.target.value) / 100)}
-          />
-        </div>
-      ) : null}
     </div>
   )
 }

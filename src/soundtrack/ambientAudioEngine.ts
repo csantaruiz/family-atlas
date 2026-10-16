@@ -3,23 +3,20 @@ import {
   isWebAudioSupported,
   resumeSharedAudioContext,
 } from '../audio/sharedAudioContext'
-import {
-  DEFAULT_SOUNDTRACK_ENVIRONMENT,
-  tracksForEnvironment,
-  type AmbientTrack,
-  type SoundtrackEnvironment,
-} from './ambientManifest'
+import { getMainTheme, type ActiveTrack } from './ambientManifest'
 
 export const AMBIENT_CROSSFADE_S = 4
 const FADE_IN_FROM_SILENCE_S = 4
 const FADE_TO_SILENCE_S = 1.2
 const DUCK_FADE_S = 1.2
+/** Coming back up after a duck (e.g. narration ends) is slower than going down. */
+const RESTORE_FADE_S = 2.5
 const VOLUME_SMOOTHING_S = 0.12
 
 type Deck = {
   el: HTMLAudioElement
   gain: GainNode
-  track: AmbientTrack | null
+  track: ActiveTrack | null
   loadedSrc: string | null
   primed: boolean
   stopTimer: number | null
@@ -32,8 +29,8 @@ export type AmbientSnapshot = {
   /** Music is actually sounding (enabled and not held silent). */
   audible: boolean
   volume: number
-  environment: SoundtrackEnvironment
-  trackId: string | null
+  /** The track chosen for the current context (plays once sound is audible). */
+  trackId: string
 }
 
 let silentWavUrl: string | null = null
@@ -82,8 +79,7 @@ export class AmbientAudioEngine {
   private enabled = false
   private sounding = false
   private volume: number
-  private environment: SoundtrackEnvironment = DEFAULT_SOUNDTRACK_ENVIRONMENT
-  private rotation = new Map<SoundtrackEnvironment, number>()
+  private desired: ActiveTrack = getMainTheme()
   private holds = new Map<string, number>()
   private pauseTimer: number | null = null
   private listeners = new Set<() => void>()
@@ -136,15 +132,24 @@ export class AmbientAudioEngine {
     this.emit()
   }
 
-  /** Switch musical environment; a no-op when it is already playing (never restarts a track). */
-  setEnvironment(environment: SoundtrackEnvironment): void {
-    if (environment === this.environment) return
-    this.environment = environment
+  /** Crossfade to a track; a no-op when it is already the chosen one (never restarts a track). */
+  setTrack(track: ActiveTrack): void {
+    if (track.id === this.desired.id) return
+    this.desired = track
     const current = this.decks[this.active]?.track
-    if (this.sounding && current && !tracksForEnvironment(environment).includes(current)) {
-      this.crossfadeTo(this.nextTrack(environment))
-    }
+    if (this.sounding && current && current.id !== track.id) this.crossfadeTo(track)
     this.emit()
+  }
+
+  /** Fetch only the metadata of a likely next track on the idle deck, so its crossfade starts promptly. */
+  prepare(track: ActiveTrack): void {
+    if (!this.sounding || track.id === this.desired.id) return
+    const idle = this.decks[this.active === 0 ? 1 : 0]
+    if (!idle || idle.stopTimer != null || !idle.el.paused || idle.loadedSrc === track.src) return
+    idle.track = null
+    idle.loadedSrc = track.src
+    idle.el.preload = 'metadata'
+    idle.el.src = track.src
   }
 
   /**
@@ -159,7 +164,7 @@ export class AmbientAudioEngine {
       if (released) return
       released = true
       this.holds.delete(reason)
-      this.reconcile(DUCK_FADE_S)
+      this.reconcile(RESTORE_FADE_S)
     }
   }
 
@@ -194,7 +199,7 @@ export class AmbientAudioEngine {
     const deck: Deck = { el, gain, track: null, loadedSrc: null, primed: false, stopTimer: null }
     el.addEventListener('timeupdate', () => this.onTimeUpdate(deck))
     el.addEventListener('ended', () => {
-      if (deck === this.decks[this.active] && this.sounding) this.crossfadeTo(this.nextTrack(this.environment))
+      if (deck === this.decks[this.active] && this.sounding) this.crossfadeTo(this.desired, true)
     })
     return deck
   }
@@ -227,9 +232,11 @@ export class AmbientAudioEngine {
       const fromSilence = !this.sounding
       this.sounding = true
       const deck = this.decks[this.active]
-      if (!deck.track) {
-        this.load(deck, this.nextTrack(this.environment))
-        deck.gain.gain.value = deck.track!.gain
+      if (deck.track?.id !== this.desired.id) {
+        this.clearDeckTimer(deck)
+        this.load(deck, this.desired)
+        deck.gain.gain.cancelScheduledValues(this.ctx.currentTime)
+        deck.gain.gain.value = this.desired.gain
       }
       if (deck.el.paused) this.play(deck)
       this.ramp(this.output.gain, target, fromSilence ? FADE_IN_FROM_SILENCE_S : fadeS)
@@ -249,25 +256,27 @@ export class AmbientAudioEngine {
     this.emit()
   }
 
-  private nextTrack(environment: SoundtrackEnvironment): AmbientTrack {
-    const tracks = tracksForEnvironment(environment)
-    const index = this.rotation.get(environment) ?? 0
-    this.rotation.set(environment, index + 1)
-    return tracks[index % tracks.length]
-  }
-
-  private load(deck: Deck, track: AmbientTrack): void {
+  private load(deck: Deck, track: ActiveTrack, fromLoopStart = false): void {
     deck.track = track
+    const startAt = fromLoopStart ? (track.playback.loopStartSec ?? 0) : 0
     if (deck.loadedSrc !== track.src) {
       deck.loadedSrc = track.src
       deck.el.preload = 'auto'
       deck.el.src = track.src
-    } else {
-      try {
-        deck.el.currentTime = 0
-      } catch {
-        // Not seekable yet — it is already at the start.
+      if (startAt > 0) {
+        deck.el.addEventListener('loadedmetadata', () => this.seek(deck, startAt), { once: true })
       }
+    } else {
+      deck.el.preload = 'auto'
+      this.seek(deck, startAt)
+    }
+  }
+
+  private seek(deck: Deck, seconds: number): void {
+    try {
+      deck.el.currentTime = seconds
+    } catch {
+      // Not seekable yet — it is already at the start.
     }
   }
 
@@ -277,34 +286,35 @@ export class AmbientAudioEngine {
     })
   }
 
-  private crossfadeTo(track: AmbientTrack): void {
+  /** Only two decks exist, so at most the outgoing and incoming track ever overlap. */
+  private crossfadeTo(track: ActiveTrack, isLoop = false): void {
     if (!this.ctx) return
+    const seconds = isLoop ? (track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S) : AMBIENT_CROSSFADE_S
     const from = this.decks[this.active]
     const toIndex = this.active === 0 ? 1 : 0
     const to = this.decks[toIndex]
     this.clearDeckTimer(to)
     this.clearDeckTimer(from)
-    this.load(to, track)
+    this.load(to, track, isLoop)
     to.gain.gain.cancelScheduledValues(this.ctx.currentTime)
     to.gain.gain.value = 0
     this.play(to)
-    this.ramp(to.gain.gain, track.gain, AMBIENT_CROSSFADE_S)
-    this.ramp(from.gain.gain, 0, AMBIENT_CROSSFADE_S)
+    this.ramp(to.gain.gain, track.gain, seconds)
+    this.ramp(from.gain.gain, 0, seconds)
     from.stopTimer = window.setTimeout(() => {
       from.stopTimer = null
       from.el.pause()
-    }, AMBIENT_CROSSFADE_S * 1000 + 100)
+    }, seconds * 1000 + 100)
     this.active = toIndex
     this.emit()
   }
 
   private onTimeUpdate(deck: Deck): void {
     if (deck !== this.decks[this.active] || !this.sounding || !deck.track) return
-    const end = deck.track.loopEndSec ?? deck.el.duration
+    const end = deck.track.playback.loopEndSec ?? deck.el.duration
     if (!Number.isFinite(end)) return
-    if (end - deck.el.currentTime <= AMBIENT_CROSSFADE_S) {
-      this.crossfadeTo(this.nextTrack(this.environment))
-    }
+    const overlap = deck.track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S
+    if (end - deck.el.currentTime <= overlap) this.crossfadeTo(this.desired, deck.track.id === this.desired.id)
   }
 
   private ramp(param: AudioParam, target: number, seconds: number): void {
@@ -337,8 +347,7 @@ export class AmbientAudioEngine {
       enabled: this.enabled,
       audible: this.sounding,
       volume: this.volume,
-      environment: this.environment,
-      trackId: this.decks[this.active]?.track?.id ?? null,
+      trackId: this.desired.id,
     }
   }
 
@@ -350,7 +359,6 @@ export class AmbientAudioEngine {
       prev.enabled === next.enabled &&
       prev.audible === next.audible &&
       prev.volume === next.volume &&
-      prev.environment === next.environment &&
       prev.trackId === next.trackId
     ) {
       return

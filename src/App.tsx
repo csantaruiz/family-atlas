@@ -30,6 +30,7 @@ import { ensureOverrideCacheLoaded } from './overrides/overrideCache'
 import { AtlasReviewRoot } from './atlas-review/AtlasReviewRoot'
 import { ManageFamilyTreeRoot } from './atlas-manage/ManageFamilyTreeRoot'
 import { AmbientSoundtrackProvider, useAmbientHold } from './soundtrack/AmbientSoundtrackContext'
+import { SoundtrackDirector } from './soundtrack/atlas/SoundtrackDirector'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -89,7 +90,9 @@ function AtlasAppShell() {
         <AtlasMapBackdrop />
         <div className="grain" aria-hidden="true" />
         <Header />
-        <AppViews />
+        <SoundtrackDirector>
+          <AppViews />
+        </SoundtrackDirector>
         <FollowPersonOverlay />
         <DetailPanel />
         {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}

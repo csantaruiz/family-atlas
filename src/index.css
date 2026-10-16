@@ -8508,8 +8508,7 @@
   background: var(--menu-beige-bg-active);
 }
 
-.ambient-sound-toggle:focus-visible,
-.ambient-sound-volume:focus-visible {
+.ambient-sound-toggle:focus-visible {
   outline: 1px solid rgba(214, 181, 108, 0.7);
   outline-offset: 2px;
 }
@@ -8530,47 +8529,6 @@
 
 .ambient-sound.is-audible .ambient-sound-wave--outer {
   opacity: 0.7;
-}
-
-/* Volume pops below the toggle on hover / keyboard focus; padding bridges the pointer gap. */
-.ambient-sound-volume-wrap {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  z-index: 30;
-  padding-top: 8px;
-  /* Opacity, not visibility, so the slider stays in the tab order and focus reveals it. */
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -4px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-
-.ambient-sound:hover .ambient-sound-volume-wrap,
-.ambient-sound:focus-within .ambient-sound-volume-wrap {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translate(-50%, 0);
-}
-
-.ambient-sound-volume {
-  display: block;
-  width: 112px;
-  height: 28px;
-  margin: 0;
-  padding: 0 12px;
-  border: 1px solid var(--menu-beige-border);
-  border-radius: 999px;
-  background: rgba(16, 15, 13, 0.92);
-  accent-color: var(--gold);
-  cursor: pointer;
-}
-
-/* Touch devices use hardware volume; the toggle alone stays. */
-@media (hover: none) {
-  .ambient-sound-volume-wrap {
-    display: none;
-  }
 }
 
 .explore-sound-block {
@@ -8620,13 +8578,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-sound-volume-wrap,
-  .ambient-sound:hover .ambient-sound-volume-wrap,
-  .ambient-sound:focus-within .ambient-sound-volume-wrap {
-    transform: translate(-50%, 0);
-    transition: none;
-  }
-
   .ambient-sound-wave {
     transition: none;
   }

@@ -26,10 +26,11 @@ export function EngineEnding({
         <h2 className="documentary-welcome__title">Enter the Atlas</h2>
         <p className="documentary-welcome__subtitle">
           You have traveled {Math.round(durationMs / 60000)} minutes through your family&apos;s
-          history. The interactive Atlas awaits — explore every generation at your own pace.
+          history. Continue in the interactive Atlas — follow ancestors, events, and journeys at your
+          own pace.
         </p>
         <button type="button" className="documentary-ending__cta" onClick={exploreAtlas}>
-          Explore the Atlas
+          Explore Our Family Story
         </button>
       </div>
     </div>

@@ -45,10 +45,15 @@ export function DetailPanel() {
   }, [portraitPersonKey])
 
   // Escape dismisses the description panel so soundtrack context is released consistently.
+  // Defer when a higher-priority overlay already handled Escape (e.g. follow-person journey).
   useEffect(() => {
     if (!isOpen) return
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeDetail()
+      if (event.key !== 'Escape') return
+      if (event.defaultPrevented) return
+      if (document.querySelector('[data-follow-person-active="true"]')) return
+      event.preventDefault()
+      closeDetail()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

@@ -75,42 +75,58 @@ export function MapDetailPanel({
     return (
       <aside className={panelClass} {...sheetDrag}>
         <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
-        <div className="eyebrow map-inspector-kicker">Migration corridor</div>
+        <div className="eyebrow map-inspector-kicker">Family migration</div>
         <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
         {phone ? (
           <>
             <p className="map-sheet-peek-meta">
-              {yearLabel} · {route.people.length} {route.people.length === 1 ? 'person' : 'people'} · {route.confidence}
+              {route.fromName} → {route.toName} · {yearLabel}
             </p>
             <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
               View details
             </button>
           </>
         ) : null}
-        <p className="map-inspector-lede place-region">
-          {route.fromName} → {route.toName}
-        </p>
+        <dl className="map-journey-facts">
+          <div>
+            <dt>Who moved</dt>
+            <dd>
+              {route.people.length === 1
+                ? route.people[0].name
+                : `${route.people.length} people on this corridor`}
+            </dd>
+          </div>
+          <div>
+            <dt>From</dt>
+            <dd>{route.fromName}</dd>
+          </div>
+          <div>
+            <dt>To</dt>
+            <dd>{route.toName}</dd>
+          </div>
+          <div>
+            <dt>When</dt>
+            <dd>{yearLabel}</dd>
+          </div>
+        </dl>
         <p className="map-inspector-synopsis">{routeSynopsis}</p>
+        <p className="map-journey-trust">
+          {route.confidence === 'documented'
+            ? 'Supported by documented move events in the family record. Lines show origin and destination, not an exact historical path.'
+            : 'Inferred from places of life in the family record. Lines show origin and destination, not an exact historical path.'}
+        </p>
         <div className="place-detail-stats map-inspector-meta">
           <div>
-            <label>Year range</label>
-            <span>{yearLabel}</span>
-          </div>
-          <div>
-            <label>People</label>
-            <span>{route.people.length}</span>
-          </div>
-          <div>
-            <label>Moves</label>
+            <label>Documented moves</label>
             <span>{route.moveCount}</span>
           </div>
           <div>
-            <label>Confidence</label>
-            <span>{route.confidence}</span>
+            <label>Evidence</label>
+            <span>{route.confidence === 'documented' ? 'Documented' : 'Inferred'}</span>
           </div>
         </div>
         <div className="place-detail-section map-inspector-section">
-          <div className="eyebrow">Travelers on this corridor</div>
+          <div className="eyebrow">People on this corridor</div>
           <ul className="place-detail-list">
             {route.people.slice(0, 12).map((p) => (
               <li key={p.id}>

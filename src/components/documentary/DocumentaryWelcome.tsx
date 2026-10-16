@@ -50,11 +50,11 @@ export function DocumentaryWelcome() {
         </dl>
 
         <div className="documentary-welcome__actions">
-          <button type="button" className="documentary-welcome__primary" onClick={beginDocumentary}>
-            Begin Documentary
+          <button type="button" className="documentary-welcome__primary" onClick={skipToAtlas}>
+            Explore Our Family Story
           </button>
-          <button type="button" className="documentary-welcome__secondary" onClick={skipToAtlas}>
-            Skip to Atlas
+          <button type="button" className="documentary-welcome__secondary" onClick={beginDocumentary}>
+            Begin Documentary
           </button>
         </div>
 

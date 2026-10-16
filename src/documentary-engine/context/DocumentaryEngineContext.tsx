@@ -11,7 +11,6 @@ import {
 import { getDocumentaryStats } from '../../data/documentaryStats'
 import { writeDocumentarySeen } from '../../constants/documentarySession'
 import { useAppNavigation } from '../../context/AppNavigationContext'
-import { useJourneyIntro } from '../../context/JourneyIntroContext'
 import { DOCUMENTARY_MANIFEST } from '../data/documentaryManifest'
 import { finalizeManifest } from '../utils/migrationPaths'
 import { AUDIO_ANALYZED_DURATION_MS } from '../core/audioSyncDirector'
@@ -62,7 +61,6 @@ const DocumentaryEngineContext = createContext<DocumentaryEngineContextValue | n
 export function DocumentaryEngineProvider({ children }: { children: ReactNode }) {
   const stats = useMemo(() => getDocumentaryStats(), [])
   const { navigateToView } = useAppNavigation()
-  const { completeIntro } = useJourneyIntro()
   // Always show the fork/welcome screen on cold load and hard reload.
   // sessionStorage is only for Journey intro after the user enters Atlas.
   const [phase, setPhase] = useState<DocumentaryEnginePhase>('welcome')
@@ -145,8 +143,9 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
     reset()
     void soundtrackRef.current?.stop()
     navigateToView('journey')
-    completeIntro()
-  }, [completeIntro, navigateToView, pause, reset])
+    // Do not completeJourneyIntro here — first Atlas entry should reveal the chapter card
+    // so visitors see a clear starting period (GEDCOM-agnostic).
+  }, [navigateToView, pause, reset])
 
   const begin = useCallback(() => {
     resetDisplayRevealRegistry()

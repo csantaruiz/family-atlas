@@ -115,6 +115,11 @@ function MapViewContent({ active }: MapViewProps) {
     [branch, eventType, century, directAncestorsOnly],
   )
 
+  // Leaving Journeys clears map selection so returning never shows a stale corridor.
+  useEffect(() => {
+    if (!active) resetExploration()
+  }, [active, resetExploration])
+
   useEffect(() => {
     if (!selection) return
 

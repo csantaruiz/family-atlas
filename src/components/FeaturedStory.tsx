@@ -66,7 +66,9 @@ export function FeaturedStory({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
       const target = event.target as HTMLElement | null
-      if (target?.closest('input, textarea, select')) return
+      if (target?.closest('input, textarea, select, [role="dialog"], .drawer')) return
+      // Don't steal arrows while a description panel or another overlay owns focus.
+      if (document.querySelector('.drawer.open, [data-follow-person-active="true"]')) return
       event.preventDefault()
       move(event.key === 'ArrowLeft' ? -1 : 1)
     }

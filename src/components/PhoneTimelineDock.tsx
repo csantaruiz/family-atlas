@@ -68,7 +68,7 @@ export function PhoneTimelineDock() {
             <circle cx="8" cy="7" r="3.2" />
             <path d="M5.5 11.5 4 14h8l-1.5-2.5" />
           </svg>
-          AI Insights
+          Atlas Thinking
         </button>
         <button
           type="button"
@@ -122,7 +122,7 @@ export function PhoneTimelineDock() {
       </PhoneSheet>
       <PhoneSheet
         open={ui.sheet === 'thinking'}
-        title="AI Insights"
+        title="Atlas Thinking"
         onClose={() => ui.openSheet(null)}
         size="auto"
         placement="panel"

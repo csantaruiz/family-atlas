@@ -32,6 +32,7 @@ export function FollowPersonOverlay() {
   return (
     <div
       className={`follow-person-overlay${overlay.shown ? ' is-open' : ''}`}
+      data-follow-person-active={overlay.shown ? 'true' : undefined}
       role="dialog"
       aria-label={`${journeyHeading(journey.givenName)} · ${beatIndex + 1} of ${total}`}
     >

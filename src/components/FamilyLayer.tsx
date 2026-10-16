@@ -201,8 +201,12 @@ function FamilyEventButton({
   } as React.CSSProperties
 
   const { pulse } = useTimelinePulse()
+  const { detail } = useTimeline()
   const { active: followActive, journey, beat } = useFollowPerson()
   const eventKey = canonicalEventId(event)
+  const isSelected =
+    (detail?.type === 'familyEvent' && canonicalEventId(detail.event) === eventKey) ||
+    (detail?.type === 'person' && detail.personId === event.person.id)
   const followRelated =
     followActive &&
     Boolean(journey && (event.person.id === journey.personId || event.spouse?.id === journey.personId))
@@ -220,6 +224,7 @@ function FamilyEventButton({
     compact ? 'compact' : '',
     markerOnly ? 'marker-only' : '',
     motionEnabled ? 'placement-animated' : '',
+    isSelected ? 'is-selected' : '',
     followActive && followFocus ? 'is-follow-focus' : '',
     followActive && followRelated && !followFocus ? 'is-follow-related' : '',
     followActive && !followRelated ? 'is-follow-muted' : '',
@@ -1378,13 +1383,13 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
                   }
                   zoomToConflictCluster(cluster)
                 }}
-              aria-label={`${cluster.count} events from ${cluster.from} to ${cluster.to}. Zoom in to reveal.`}
-              title={`Zoom in to reveal ${cluster.count} events`}
+              aria-label={`${cluster.count} family events from ${cluster.from} to ${cluster.to}. Zoom in to reveal each person.`}
+              title={`Zoom in to reveal ${cluster.count} family events`}
             >
               <span className="cluster-count">{cluster.count}</span>
-              <span className="cluster-label">Events</span>
+              <span className="cluster-label">Family</span>
               <span className="cluster-range">
-                {cluster.from === cluster.to ? cluster.from : `${cluster.from}–${cluster.to}`}
+                {cluster.from === cluster.to ? cluster.from : `${cluster.from}–${cluster.to}`} · Zoom
               </span>
               <span className="cluster-stem" aria-hidden="true" />
             </button>,

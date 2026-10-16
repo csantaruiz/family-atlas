@@ -8,6 +8,9 @@ export function TimelineControls() {
 
   return (
     <div className="controls">
+      <p className="timeline-gesture-hint" aria-hidden="true">
+        Drag to pan · Scroll or pinch to zoom · Select a marker for details
+      </p>
       <div className="controls-group">
         <TimelineFiltersControl
           open={filtersOpen}
@@ -24,6 +27,7 @@ export function TimelineControls() {
           max={100}
           value={zoomValue}
           onChange={(e) => setZoom(Number(e.target.value))}
+          aria-label="Zoom between centuries and years"
         />
         <span>Years</span>
       </label>

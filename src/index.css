@@ -12473,9 +12473,12 @@ body {
 
 .app--guided .map-page-intro,
 .app--guided .map-page-controls,
-.app--guided .journey-insight {
-  opacity: 0.28;
-  pointer-events: none;
+.app--guided .journey-insight,
+.app--guided .map-narrative-caption,
+.app--guided .map-page-vignette {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .app--guided .map-detail-panel {
@@ -12498,13 +12501,11 @@ body {
 .guided-caption-inner {
   pointer-events: auto;
   width: min(560px, 100%);
-  padding: 14px 4px 8px;
-  background: linear-gradient(
-    180deg,
-    rgba(8, 7, 6, 0) 0%,
-    rgba(8, 7, 6, 0.55) 28%,
-    rgba(8, 7, 6, 0.82) 100%
-  );
+  padding: 16px 18px 12px;
+  border-radius: 12px;
+  background: rgba(8, 7, 6, 0.78);
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
   text-align: left;
   transition: opacity 480ms ease, transform 480ms ease;
 }

@@ -188,15 +188,24 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   // ── Chapter 3: A World in Change ────────────────────────────────────
   const scoredHistory = worldHistory
     .map((event) => {
-      const nearby = familyEvents.filter(
-        (fe) => Math.abs(fe.year - event.year) <= 28 && fe.importance >= 2,
-      )
+      const country = event.country.toLowerCase()
+      const nearby = familyEvents.filter((fe) => {
+        if (Math.abs(fe.year - event.year) > 28 || fe.importance < 2) return false
+        return true
+      })
       if (nearby.length === 0) return null
+      const geoMatched = nearby.filter((fe) => personMatchesHistoryCountry(fe.person, country))
+      const pool = geoMatched.length > 0 ? geoMatched : nearby
+      // Prefer history events that share geography with family records in range.
+      if (geoMatched.length === 0 && /mexico|england|britain|united states|america/.test(country)) {
+        return null
+      }
       const score =
         event.importance * 12 +
-        nearby.length * 4 +
-        nearby.reduce((sum, fe) => sum + fe.importance, 0)
-      return { event, nearby, score }
+        pool.length * 4 +
+        pool.reduce((sum, fe) => sum + fe.importance, 0) +
+        geoMatched.length * 18
+      return { event, nearby: pool, score }
     })
     .filter((row): row is NonNullable<typeof row> => row != null)
     .sort((a, b) => b.score - a.score)
@@ -315,6 +324,18 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   }
 
   return chapters.filter((c) => wordCount(c.narration) >= 12)
+}
+
+function personMatchesHistoryCountry(person: Person, country: string): boolean {
+  const place = `${person.birthPlace ?? ''} ${person.deathPlace ?? ''} ${(person.places ?? []).join(' ')}`.toLowerCase()
+  if (/mexico/.test(country)) return /mexico|chihuahua|coahuila|durango|sonora/.test(place)
+  if (/england|britain|uk|united kingdom/.test(country)) {
+    return /england|britain|cheshire|ireland|scotland|wales|lancashire/.test(place)
+  }
+  if (/united states|america|u\.s/.test(country)) {
+    return /united states|usa|california|pennsylvania|new jersey|texas|arizona/.test(place)
+  }
+  return place.includes(country.slice(0, 6))
 }
 
 function pickBestRoute(routes: RegionalRoute[]): RegionalRoute | null {

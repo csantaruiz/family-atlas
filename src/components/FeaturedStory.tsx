@@ -16,7 +16,7 @@ export function FeaturedStory({
   const { center, span, openPerson, setHighlightedStoryPersonId, timelineFilters } = useTimeline()
   const { active: followActive } = useFollowPerson()
   const { status: guidedStatus } = useGuidedDiscovery()
-  const guidedActive = guidedStatus === 'active'
+  const guidedActive = guidedStatus === 'active' || guidedStatus === 'closing'
   const [index, setIndex] = useState(0)
   const candidatesKeyRef = useRef('')
   const swipeStartX = useRef<number | null>(null)

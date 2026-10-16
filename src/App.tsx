@@ -89,7 +89,7 @@ function AtlasAppShellInner() {
     void ensureOverrideCacheLoaded()
   }, [])
 
-  const guidedActive = guidedStatus === 'active'
+  const guidedPresentation = guidedStatus === 'active' || guidedStatus === 'closing'
 
   return (
     <AtlasReviewRoot>
@@ -99,7 +99,8 @@ function AtlasAppShellInner() {
           'app',
           `app--view-${activeView}`,
           followActive ? 'app--follow-person' : '',
-          guidedActive ? 'app--guided' : '',
+          guidedPresentation ? 'app--guided' : '',
+          guidedStatus === 'closing' ? 'app--guided-closing' : '',
         ]
           .filter(Boolean)
           .join(' ')}

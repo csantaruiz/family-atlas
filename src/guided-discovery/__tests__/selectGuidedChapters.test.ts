@@ -81,14 +81,14 @@ describe('selectGuidedChapters', () => {
       person({
         id: 'm',
         name: 'Maria',
-        birthYear: 1810,
+        birthYear: 1785,
         birthPlace: 'Chihuahua, Mexico',
       }),
     ]
     const events: FamilyEvent[] = [
       {
         kind: 'birth',
-        year: 1810,
+        year: 1785,
         title: 'Birth of Maria',
         detail: 'Maria',
         person: people[0],
@@ -120,7 +120,59 @@ describe('selectGuidedChapters', () => {
     expect(world).toBeTruthy()
     expect(world?.focusHistory?.title).toBe('Mexican War of Independence')
     expect(world?.openHistory).toBeNull()
-    expect(world?.narration.toLowerCase()).toContain('not a claim of participation')
+    expect(world?.highlightPersonIds).toContain('m')
+    expect(world?.narration.toLowerCase()).toContain('not proof of participation')
+  })
+
+  it('does not name an infant as the personal connection to a historical event', () => {
+    const toddler = person({
+      id: 'v',
+      name: 'Victor Manuel Ruiz',
+      birthYear: 1915,
+      birthPlace: 'California, USA',
+    })
+    const adult = person({
+      id: 'p',
+      name: 'Pedro G Luna',
+      birthYear: 1880,
+      birthPlace: 'Mexico',
+    })
+    const events: FamilyEvent[] = [
+      {
+        kind: 'birth',
+        year: 1915,
+        title: 'Birth of Victor',
+        detail: toddler.name,
+        person: toddler,
+        importance: 3,
+      },
+      {
+        kind: 'birth',
+        year: 1880,
+        title: 'Birth of Pedro',
+        detail: adult.name,
+        person: adult,
+        importance: 3,
+      },
+    ]
+    const worldHistory: HistoryEvent[] = [
+      {
+        year: 1917,
+        title: 'United States enters World War I',
+        country: 'United States',
+        importance: 3,
+        summary: 'America enters the war.',
+      },
+    ]
+    const chapters = selectGuidedChapters({
+      database: buildDb([toddler, adult], 'v'),
+      familyEvents: events,
+      worldHistory,
+    })
+    const world = chapters.find((c) => c.kind === 'world_in_change')
+    // Toddler must never be the named subject of WWI.
+    expect(world?.highlightPersonIds ?? []).not.toContain('v')
+    expect(world?.narration ?? '').not.toMatch(/Victor Manuel Ruiz/)
   })
 
   it('returns empty chapters when no birth years exist', () => {

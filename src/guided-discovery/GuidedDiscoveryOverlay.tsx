@@ -1,5 +1,5 @@
 import { useAppNavigation } from '../context/AppNavigationContext'
-import { useGuidedDiscovery } from './GuidedDiscoveryContext'
+import { GUIDED_CLOSING_LINE, useGuidedDiscovery } from './GuidedDiscoveryContext'
 import type { AppView } from '../types/navigation'
 
 const EXIT_CHOICES: { view: AppView; label: string }[] = [
@@ -17,11 +17,24 @@ export function GuidedDiscoveryOverlay() {
     chapterCount,
     pausedForDetail,
     captionReady,
+    closingLineVisible,
     next,
     back,
     skip,
   } = useGuidedDiscovery()
   const { navigateToView } = useAppNavigation()
+
+  if (status === 'closing') {
+    return (
+      <div
+        className={`guided-closing${closingLineVisible ? ' is-visible' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
+        <p className="guided-closing-line">{GUIDED_CLOSING_LINE}</p>
+      </div>
+    )
+  }
 
   if (status !== 'active' || !chapter) return null
 

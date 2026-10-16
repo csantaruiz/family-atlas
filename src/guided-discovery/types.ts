@@ -36,4 +36,4 @@ export type GuidedChapter = {
   focusHistory?: HistoryEvent | null
 }
 
-export type GuidedDiscoveryStatus = 'idle' | 'active' | 'completed'
+export type GuidedDiscoveryStatus = 'idle' | 'active' | 'closing' | 'completed'

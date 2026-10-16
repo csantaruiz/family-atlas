@@ -202,8 +202,10 @@ function FamilyEventButton({
   } as React.CSSProperties
 
   const { pulse } = useTimelinePulse()
-  const { detail } = useTimeline()
+  const { detail, highlightedStoryPersonId } = useTimeline()
   const { active: followActive, journey, beat } = useFollowPerson()
+  const { status: guidedStatus, chapter: guidedChapter } = useGuidedDiscovery()
+  const guidedFocusing = guidedStatus === 'active' && Boolean(highlightedStoryPersonId)
   const eventKey = canonicalEventId(event)
   const isSelected =
     (detail?.type === 'familyEvent' && canonicalEventId(detail.event) === eventKey) ||
@@ -218,6 +220,14 @@ function FamilyEventButton({
         (beat.eventId === eventKey ||
           (event.person.id === journey?.personId && Math.abs(event.year - beat.year) <= 1)),
     )
+  const guidedRelated =
+    guidedFocusing &&
+    (event.person.id === highlightedStoryPersonId ||
+      event.spouse?.id === highlightedStoryPersonId ||
+      (guidedChapter?.focusHistory != null &&
+        Math.abs(event.year - guidedChapter.focusHistory.year) <= 2 &&
+        event.person.id === highlightedStoryPersonId))
+  const guidedFocus = guidedRelated && event.person.id === highlightedStoryPersonId
   const className = [
     'family-event',
     event.kind,
@@ -229,6 +239,8 @@ function FamilyEventButton({
     followActive && followFocus ? 'is-follow-focus' : '',
     followActive && followRelated && !followFocus ? 'is-follow-related' : '',
     followActive && !followRelated ? 'is-follow-muted' : '',
+    guidedFocusing && guidedFocus ? 'is-guided-focus' : '',
+    guidedFocusing && !guidedFocus ? 'is-guided-muted' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -304,7 +316,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   const { viewOnTree } = useAppNavigation()
   const { active: followActive, journey, startFollow, journeyForPerson } = useFollowPerson()
   const { status: guidedStatus } = useGuidedDiscovery()
-  const guidedActive = guidedStatus === 'active'
+  const guidedActive = guidedStatus === 'active' || guidedStatus === 'closing'
   const phoneUi = usePhoneTimelineUi()
   const phoneExploring = Boolean(phoneUi?.phone && phoneUi.exploring)
   const [phonePeek, setPhonePeek] = useState<PhonePeek | null>(null)

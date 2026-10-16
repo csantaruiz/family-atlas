@@ -195,26 +195,35 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       })
       if (nearby.length === 0) return null
       const geoMatched = nearby.filter((fe) => personMatchesHistoryCountry(fe.person, country))
-      const pool = geoMatched.length > 0 ? geoMatched : nearby
       // Prefer history events that share geography with family records in range.
       if (geoMatched.length === 0 && /mexico|england|britain|united states|america/.test(country)) {
         return null
       }
+      const pool = geoMatched.length > 0 ? geoMatched : nearby
+      const peopleScores = uniqueById(pool.map((fe) => fe.person)).map((person) => ({
+        person,
+        relevance: personEventRelevance(person, event.year, country),
+      }))
+      const meaningful = peopleScores
+        .filter((row) => row.relevance >= MEANINGFUL_PERSON_THRESHOLD)
+        .sort((a, b) => b.relevance - a.relevance)
       const score =
         event.importance * 12 +
-        pool.length * 4 +
-        pool.reduce((sum, fe) => sum + fe.importance, 0) +
-        geoMatched.length * 18
-      return { event, nearby: pool, score }
+        pool.length * 3 +
+        geoMatched.length * 18 +
+        (meaningful[0]?.relevance ?? 0)
+      return { event, nearby: pool, meaningful, score }
     })
     .filter((row): row is NonNullable<typeof row> => row != null)
     .sort((a, b) => b.score - a.score)
 
   const worldPick = scoredHistory[0]
   if (worldPick) {
-    const subject = worldPick.nearby.sort((a, b) => b.importance - a.importance)[0]
+    const subject = worldPick.meaningful[0]?.person ?? null
     const narration = clampNarration(
-      `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. In the archive, ${subject.person.name} is recorded in the same years — a coincidence of calendars, not a claim of participation.`,
+      subject
+        ? `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. ${subject.name} was an adult in the archive during these years — a shared era, not proof of participation.`
+        : `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. Documented family lives share this era in the archive — a coincidence of calendars, not a claim that any ancestor took part.`,
     )
     chapters.push({
       id: 'world_in_change',
@@ -226,7 +235,7 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
         center: worldPick.event.year,
         span: 48,
       },
-      highlightPersonIds: [subject.person.id],
+      highlightPersonIds: subject ? [subject.id] : [],
       openPersonId: null,
       openHistory: null,
       mapIntent: null,
@@ -324,6 +333,43 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   }
 
   return chapters.filter((c) => wordCount(c.narration) >= 12)
+}
+
+const MEANINGFUL_PERSON_THRESHOLD = 28
+
+/** Age at event year, or null if not alive / unknown birth. */
+export function ageAtHistoricalEvent(person: Person, eventYear: number): number | null {
+  if (typeof person.birthYear !== 'number' || !Number.isFinite(person.birthYear)) return null
+  if (typeof person.deathYear === 'number' && person.deathYear < eventYear) return null
+  return eventYear - person.birthYear
+}
+
+/**
+ * Score how meaningful a named person–event connection is.
+ * Lifespan overlap alone is not enough — prefer documented adults in matching geography.
+ */
+export function personEventRelevance(person: Person, eventYear: number, country: string): number {
+  const age = ageAtHistoricalEvent(person, eventYear)
+  if (age === null) {
+    // Dead before the event, or no birth year — do not name them.
+    if (typeof person.birthYear === 'number' && typeof person.deathYear === 'number' && person.deathYear < eventYear) {
+      return -100
+    }
+    return 0
+  }
+  // Infants and young children are not meaningful personal connections.
+  if (age < 12) return -40
+  if (age < 16) return 8
+
+  let score = 0
+  if (age >= 16 && age <= 55) score += 42
+  else if (age <= 70) score += 28
+  else score += 12
+
+  if (personMatchesHistoryCountry(person, country)) score += 22
+  else score -= 8
+
+  return score
 }
 
 function personMatchesHistoryCountry(person: Person, country: string): boolean {

@@ -4,6 +4,7 @@ import { historyEvents } from '../data'
 import { historyEventHeroKey } from '../data/historyEventImagery'
 import { useTimelinePulse } from '../context/TimelinePulseContext'
 import { useTimeline } from '../context/TimelineContext'
+import { useGuidedDiscovery } from '../guided-discovery'
 import { MIN_VIEWPORT_EVENTS } from '../utils/semanticZoom'
 import { activeCountriesAt } from '../utils/placeUtils'
 import { yearX } from '../utils/timelineMath'
@@ -531,10 +532,23 @@ function HistoryEventButton({
   markerOnly?: boolean
   align?: 'left' | 'center' | 'right'
 }) {
+  const { status: guidedStatus, chapter: guidedChapter } = useGuidedDiscovery()
+  const guidedFocusing = guidedStatus === 'active' && Boolean(guidedChapter?.focusHistory)
+  const isGuidedFocus =
+    guidedFocusing &&
+    guidedChapter?.focusHistory != null &&
+    guidedChapter.focusHistory.year === event.year &&
+    guidedChapter.focusHistory.title === event.title
+  const guidedClass = guidedFocusing
+    ? isGuidedFocus
+      ? ' is-guided-focus'
+      : ' is-guided-muted'
+    : ''
+
   return (
     <button
       type="button"
-      className={`history-event below align-${align}${isAmbientPulse ? ' is-ambient-pulse' : ''}${markerOnly ? ' marker-only' : ''}`}
+      className={`history-event below align-${align}${isAmbientPulse ? ' is-ambient-pulse' : ''}${markerOnly ? ' marker-only' : ''}${guidedClass}`}
       title={`${event.year} · ${event.title}`}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {

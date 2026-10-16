@@ -12485,6 +12485,77 @@ body {
   max-width: min(340px, 38vw);
 }
 
+.app--guided #timeline {
+  padding-bottom: 150px;
+}
+
+.app--guided .family-event.is-guided-muted,
+.app--guided .history-event.is-guided-muted {
+  opacity: 0.28;
+  filter: saturate(0.7);
+  transition: opacity 420ms ease, filter 420ms ease;
+}
+
+.app--guided .family-event.is-guided-focus,
+.app--guided .history-event.is-guided-focus {
+  opacity: 1;
+  filter: none;
+  z-index: 4;
+}
+
+.app--guided .family-event.is-guided-focus .event-copy,
+.app--guided .history-event.is-guided-focus .history-label {
+  color: rgba(246, 238, 222, 0.98);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
+
+.app--guided-closing .guided-caption {
+  display: none;
+}
+
+.guided-closing {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 18%;
+  z-index: 46;
+  display: flex;
+  justify-content: center;
+  padding: 0 24px;
+  pointer-events: none;
+}
+
+.guided-closing-line {
+  margin: 0;
+  max-width: 28ch;
+  text-align: center;
+  font: 400 1.35rem/1.4 Georgia, 'Times New Roman', serif;
+  color: rgba(246, 238, 222, 0.94);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 900ms ease, transform 900ms ease;
+}
+
+.guided-closing.is-visible .guided-closing-line {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guided-closing-line {
+    transition: none;
+  }
+
+  .app--guided .family-event.is-guided-muted,
+  .app--guided .history-event.is-guided-muted,
+  .app--guided .family-event.is-guided-focus,
+  .app--guided .history-event.is-guided-focus {
+    transition: none;
+  }
+}
+
+
 
 .guided-caption {
   position: absolute;

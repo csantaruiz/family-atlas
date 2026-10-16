@@ -118,8 +118,9 @@ describe('selectGuidedChapters', () => {
     })
     const world = chapters.find((c) => c.kind === 'world_in_change')
     expect(world).toBeTruthy()
-    expect(world?.openHistory?.title).toBe('Mexican War of Independence')
-    expect(world?.narration.toLowerCase()).toContain('not proof of participation')
+    expect(world?.focusHistory?.title).toBe('Mexican War of Independence')
+    expect(world?.openHistory).toBeNull()
+    expect(world?.narration.toLowerCase()).toContain('not a claim of participation')
   })
 
   it('returns empty chapters when no birth years exist', () => {
@@ -165,7 +166,9 @@ describe('selectGuidedChapters', () => {
     })
     const branches = chapters.find((c) => c.kind === 'branches')
     expect(branches).toBeTruthy()
-    expect(branches?.highlightPersonIds.length).toBeGreaterThanOrEqual(2)
+    expect(branches?.view).toBe('map')
+    expect(branches?.mapIntent?.type).toBe('overview')
     expect(branches?.narration.toLowerCase()).not.toContain('ruiz')
+    expect(branches?.focusLabel).toBeTruthy()
   })
 })

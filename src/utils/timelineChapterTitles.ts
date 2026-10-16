@@ -72,6 +72,36 @@ function placeBlob(events: FamilyEvent[]): string {
     .toLowerCase()
 }
 
+/** Dominant geography from birth/death places — prevents mixed-viewport title/narrative mismatch. */
+function dominantGeoSignal(
+  events: FamilyEvent[],
+): 'mexico' | 'england' | 'us_east' | 'california' | 'mixed' | null {
+  const counts: Record<'mexico' | 'england' | 'us_east' | 'california', number> = {
+    mexico: 0,
+    england: 0,
+    us_east: 0,
+    california: 0,
+  }
+  for (const event of events) {
+    const blob = `${event.person.birthPlace ?? ''} ${event.person.deathPlace ?? ''}`.toLowerCase()
+    if (/chihuahua|mexico|coahuila|durango|sonora|parral|rosales|allende|santa isabel/.test(blob)) {
+      counts.mexico += 1
+    } else if (/england|cheshire|gawsworth|lancashire|britain|ireland|scotland|wales/.test(blob)) {
+      counts.england += 1
+    } else if (/pennsylvania|new jersey|connecticut|new york|massachusetts|ohio/.test(blob)) {
+      counts.us_east += 1
+    } else if (/california|san diego|los angeles|anaheim/.test(blob)) {
+      counts.california += 1
+    }
+  }
+  const ranked = (Object.entries(counts) as [keyof typeof counts, number][])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1])
+  if (ranked.length === 0) return null
+  if (ranked.length >= 2 && ranked[1][1] >= ranked[0][1] * 0.65) return 'mixed'
+  return ranked[0][0]
+}
+
 function normalizeTitle(s: string): string {
   return s
     .toLowerCase()
@@ -319,15 +349,17 @@ function generateNarrativeSentence(input: {
   const moves = events.filter((e) => e.kind === 'move')
   const military = events.filter((e) => e.kind === 'service')
   const span = yearEnd - yearStart
+  const geo = dominantGeoSignal(events)
 
   if (scope === 'full_timeline') {
-    if (/chihuahua|mexico/.test(blob) && /california|pennsylvania|new jersey/.test(blob)) {
+    if (geo === 'mixed' || (geo === 'mexico' && /california|pennsylvania|new jersey/.test(blob))) {
       return 'The documented line moves from colonial Mexico through industrial America into the present.'
     }
     return `The uploaded tree traces more than ${span} years of births, migrations, and family change.`
   }
 
-  if (/chihuahua|rosales|parral|santa isabel/.test(blob)) {
+  // Geography narratives only when that region dominates the viewport events.
+  if (geo === 'mexico') {
     if (yearEnd < 1821) {
       return 'Several generations remained in Chihuahua before the upheaval of Independence.'
     }
@@ -343,19 +375,23 @@ function generateNarrativeSentence(input: {
     return 'Births and local records suggest a family line taking root in northern Mexico.'
   }
 
-  if (/pennsylvania|iron|hendry|new jersey/.test(blob)) {
+  if (geo === 'us_east') {
     if (military.length >= 1) {
       return 'Industrial work and wartime service shape this American chapter of the family.'
     }
     return 'Ironwork, settlement, and new births mark the family’s arrival in industrial America.'
   }
 
-  if (/california|san diego/.test(blob)) {
+  if (geo === 'california') {
     return 'Later generations consolidate in California as the western branch of the family.'
   }
 
-  if (/england|cheshire|gawsworth/.test(blob)) {
+  if (geo === 'england') {
     return 'Sparse early records suggest branches forming in England before later migrations.'
+  }
+
+  if (geo === 'mixed') {
+    return 'Records from more than one homeland share these years — the Atlas holds them side by side.'
   }
 
   if (moves.length >= 2) {

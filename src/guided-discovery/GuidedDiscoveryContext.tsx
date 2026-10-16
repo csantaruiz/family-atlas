@@ -29,12 +29,13 @@ type GuidedDiscoveryValue = {
   chapterCount: number
   /** True while a detail panel is open mid-guide (visitor exploring). */
   pausedForDetail: boolean
+  /** Caption visible after camera settles (false during chapter transition). */
+  captionReady: boolean
   mapIntent: GuidedMapIntent | null
   start: () => void
   next: () => void
   back: () => void
   skip: () => void
-  /** Clear a consumed map intent after MapView applies it. */
   clearMapIntent: () => void
 }
 
@@ -47,8 +48,15 @@ function motionDuration(preferredMs: number): number {
 
 export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
   const { database } = useFamilyData()
-  const { familyEvents, animateView, openPerson, openHistory, closeDetail, detail, setHighlightedStoryPersonId, setMapHighlightYears, setThinkingFocusRange } =
-    useTimeline()
+  const {
+    familyEvents,
+    animateView,
+    closeDetail,
+    detail,
+    setHighlightedStoryPersonId,
+    setMapHighlightYears,
+    setThinkingFocusRange,
+  } = useTimeline()
   const { navigateToView, setTreeFocus } = useAppNavigation()
   const { completeIntro } = useJourneyIntro()
   const { active: followActive, exit: exitFollow } = useFollowPerson()
@@ -56,7 +64,9 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<GuidedDiscoveryStatus>('idle')
   const [chapterIndex, setChapterIndex] = useState(0)
   const [mapIntent, setMapIntent] = useState<GuidedMapIntent | null>(null)
+  const [captionReady, setCaptionReady] = useState(true)
   const appliedChapterRef = useRef<string | null>(null)
+  const applyGenRef = useRef(0)
   const autoStartedRef = useRef(false)
 
   const chapters = useMemo(
@@ -74,10 +84,12 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
   }, [setHighlightedStoryPersonId, setMapHighlightYears, setThinkingFocusRange])
 
   const finish = useCallback(() => {
+    applyGenRef.current += 1
     writeGuidedSeen()
     clearGuidedPending()
     setStatus('completed')
     setMapIntent(null)
+    setCaptionReady(true)
     appliedChapterRef.current = null
     clearHighlights()
     closeDetail()
@@ -86,25 +98,31 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
 
   const applyChapter = useCallback(
     (next: GuidedChapter) => {
+      const gen = ++applyGenRef.current
       if (followActive) exitFollow()
       completeIntro()
       closeDetail()
       clearHighlights()
+      setCaptionReady(false)
 
       if (next.highlightPersonIds[0]) {
         setHighlightedStoryPersonId(next.highlightPersonIds[0])
       }
+
+      const historyYear = next.focusHistory?.year
       if (next.camera) {
         setMapHighlightYears({
           start: next.camera.center - next.camera.span / 2,
           end: next.camera.center + next.camera.span / 2,
         })
+      } else if (historyYear != null) {
+        setMapHighlightYears({ start: historyYear - 12, end: historyYear + 12 })
       }
 
       navigateToView(next.view)
 
       if (next.view === 'journey' && next.camera) {
-        animateView(next.camera.center, next.camera.span, motionDuration(900))
+        animateView(next.camera.center, next.camera.span, motionDuration(920))
       }
 
       if (next.view === 'tree' && next.openPersonId) {
@@ -113,20 +131,11 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
 
       setMapIntent(next.view === 'map' ? next.mapIntent : null)
 
-      // Defer panel opens so camera/view transitions begin first.
+      // Reveal caption after the camera/view has begun to settle — no auto drawers.
       window.setTimeout(() => {
-        if (next.openHistory) {
-          openHistory(next.openHistory)
-          return
-        }
-        if (next.openPersonId && next.kind !== 'branches') {
-          // Branches keep multiple highlights without locking one panel.
-          if (next.kind === 'origins' || next.kind === 'present' || next.kind === 'world_in_change') {
-            if (next.kind === 'world_in_change') return
-            openPerson(next.openPersonId)
-          }
-        }
-      }, motionDuration(700))
+        if (gen !== applyGenRef.current) return
+        setCaptionReady(true)
+      }, motionDuration(640))
     },
     [
       animateView,
@@ -136,8 +145,6 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
       exitFollow,
       followActive,
       navigateToView,
-      openHistory,
-      openPerson,
       setHighlightedStoryPersonId,
       setMapHighlightYears,
       setTreeFocus,
@@ -155,10 +162,10 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     if (followActive) exitFollow()
     setChapterIndex(0)
     setStatus('active')
+    setCaptionReady(false)
     appliedChapterRef.current = null
   }, [chapters.length, completeIntro, exitFollow, followActive, navigateToView])
 
-  // Apply chapter when index/status changes.
   useEffect(() => {
     if (status !== 'active') return
     const current = chapters[chapterIndex]
@@ -171,12 +178,10 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     applyChapter(current)
   }, [applyChapter, chapterIndex, chapters, finish, status])
 
-  // Auto-start after Explore Our Family Story for first-time visitors.
   useEffect(() => {
     if (autoStartedRef.current) return
     if (!consumeGuidedPending()) return
     autoStartedRef.current = true
-    // Wait a tick so Atlas shell + Journey intro mount cleanly.
     const timer = window.setTimeout(() => start(), 120)
     return () => window.clearTimeout(timer)
   }, [start])
@@ -211,6 +216,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
       chapter,
       chapterCount: chapters.length,
       pausedForDetail,
+      captionReady,
       mapIntent,
       start,
       next,
@@ -220,6 +226,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     }),
     [
       back,
+      captionReady,
       chapter,
       chapterIndex,
       chapters,
@@ -248,6 +255,7 @@ export function useGuidedDiscovery(): GuidedDiscoveryValue {
       chapter: null,
       chapterCount: 0,
       pausedForDetail: false,
+      captionReady: true,
       mapIntent: null,
       start: () => {},
       next: () => {},

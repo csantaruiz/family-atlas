@@ -10,46 +10,60 @@ const EXIT_CHOICES: { view: AppView; label: string }[] = [
 ]
 
 export function GuidedDiscoveryOverlay() {
-  const { status, chapter, chapterIndex, chapterCount, pausedForDetail, next, back, skip } =
-    useGuidedDiscovery()
+  const {
+    status,
+    chapter,
+    chapterIndex,
+    chapterCount,
+    pausedForDetail,
+    captionReady,
+    next,
+    back,
+    skip,
+  } = useGuidedDiscovery()
   const { navigateToView } = useAppNavigation()
 
   if (status !== 'active' || !chapter) return null
 
   const isLast = chapterIndex >= chapterCount - 1
-  const progressLabel = `${chapterIndex + 1} of ${chapterCount}`
+  const progressLabel = `${String(chapterIndex + 1).padStart(2, '0')} / ${String(chapterCount).padStart(2, '0')}`
 
   return (
     <div
-      className={`guided-discovery${pausedForDetail ? ' is-paused' : ''}`}
+      className={[
+        'guided-caption',
+        captionReady ? 'is-ready' : 'is-settling',
+        pausedForDetail ? 'is-paused' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       role="region"
       aria-label="Guided family story"
     >
-      <div className="guided-discovery-panel">
-        <div className="guided-discovery-meta">
-          <span className="guided-discovery-kicker">Guided discovery</span>
-          <span className="guided-discovery-progress" aria-live="polite">
+      <div className="guided-caption-inner">
+        <div className="guided-caption-meta">
+          <span className="guided-caption-progress" aria-live="polite">
             {progressLabel}
           </span>
+          {chapter.focusLabel ? (
+            <span className="guided-caption-focus">{chapter.focusLabel}</span>
+          ) : null}
         </div>
-        <h2 className="guided-discovery-title">{chapter.title}</h2>
-        <p className="guided-discovery-narration">{chapter.narration}</p>
+        <h2 className="guided-caption-title">{chapter.title}</h2>
+        <p className="guided-caption-narration">{chapter.narration}</p>
         {chapter.evidenceNote ? (
-          <p className="guided-discovery-evidence">{chapter.evidenceNote}</p>
-        ) : null}
-        {pausedForDetail ? (
-          <p className="guided-discovery-paused">Close the record to continue the guide.</p>
+          <p className="guided-caption-evidence">{chapter.evidenceNote}</p>
         ) : null}
 
         {isLast ? (
-          <div className="guided-discovery-exit-choices" role="group" aria-label="Continue exploring">
-            <p className="guided-discovery-exit-prompt">Now explore the stories that brought us here.</p>
-            <div className="guided-discovery-exit-buttons">
+          <div className="guided-caption-exit" role="group" aria-label="Continue exploring">
+            <p className="guided-caption-exit-prompt">Now explore the stories that brought us here.</p>
+            <div className="guided-caption-exit-buttons">
               {EXIT_CHOICES.map(({ view, label }) => (
                 <button
                   key={view}
                   type="button"
-                  className="guided-discovery-exit-btn"
+                  className="guided-caption-exit-btn"
                   onClick={() => {
                     skip()
                     navigateToView(view)
@@ -62,27 +76,19 @@ export function GuidedDiscoveryOverlay() {
           </div>
         ) : null}
 
-        <div className="guided-discovery-controls">
+        <div className="guided-caption-controls">
           <button
             type="button"
-            className="guided-discovery-btn guided-discovery-btn--ghost"
+            className="guided-caption-btn"
             onClick={back}
             disabled={chapterIndex === 0}
           >
-            Back
+            Previous
           </button>
-          <button
-            type="button"
-            className="guided-discovery-btn guided-discovery-btn--ghost"
-            onClick={skip}
-          >
-            Skip / Explore freely
+          <button type="button" className="guided-caption-btn" onClick={skip}>
+            Exit
           </button>
-          <button
-            type="button"
-            className="guided-discovery-btn guided-discovery-btn--primary"
-            onClick={next}
-          >
+          <button type="button" className="guided-caption-btn guided-caption-btn--primary" onClick={next}>
             {isLast ? 'Finish' : 'Next'}
           </button>
         </div>

@@ -122,9 +122,9 @@ export function PeopleView({ active }: PeopleViewProps) {
             <div className="notable-lives-header">
               <div className="notable-lives-heading-block">
                 <div className="eyebrow" id="notable-lives-heading">
-                  Notable lives
+                  Discoveries in Your Family
                 </div>
-                <p className="notable-lives-lede">Highlights drawn from the archive</p>
+                <p className="notable-lives-lede">Evidence-backed stories from the archive</p>
                 {notableLivesExplanation && (
                   <div
                     className={`notable-lives-disclosure${notableLivesExplanationOpen ? ' is-expanded' : ''}`}

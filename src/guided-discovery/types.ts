@@ -19,10 +19,10 @@ export type GuidedChapter = {
   id: string
   kind: GuidedChapterKind
   title: string
-  /** Concise visitor narration (target ~40–80 words). */
+  /** Concise visitor narration (target ~35–55 words). */
   narration: string
   view: Extract<AppView, 'journey' | 'map' | 'tree'>
-  /** Timeline camera target when view is journey (or after returning from map). */
+  /** Timeline camera target when view is journey. */
   camera?: { center: number; span: number }
   highlightPersonIds: string[]
   openPersonId: string | null
@@ -30,6 +30,10 @@ export type GuidedChapter = {
   mapIntent: GuidedMapIntent | null
   /** Evidence / confidence note for Journeys chapters. */
   evidenceNote: string | null
+  /** One-line focus cue for the caption (person, event, or place). */
+  focusLabel: string | null
+  /** Optional history event to emphasize without opening a drawer. */
+  focusHistory?: HistoryEvent | null
 }
 
 export type GuidedDiscoveryStatus = 'idle' | 'active' | 'completed'

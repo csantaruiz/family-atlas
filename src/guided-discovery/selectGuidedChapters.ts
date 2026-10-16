@@ -17,10 +17,10 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
 
-function clampNarration(text: string): string {
+function clampNarration(text: string, maxWords = 55): string {
   const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 80) return words.join(' ')
-  return `${words.slice(0, 78).join(' ')}…`
+  if (words.length <= maxWords) return words.join(' ')
+  return `${words.slice(0, maxWords - 1).join(' ')}…`
 }
 
 function peopleWithBirthYear(people: Person[]): Person[] {
@@ -69,12 +69,10 @@ function formatYear(year: number): string {
   return String(Math.round(year))
 }
 
-function listNames(people: Person[], limit = 3): string {
-  const names = people.slice(0, limit).map((p) => p.name.split(' ')[0] || p.name)
-  if (names.length === 0) return 'documented ancestors'
-  if (names.length === 1) return names[0]
-  if (names.length === 2) return `${names[0]} and ${names[1]}`
-  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+function shortPlace(place: string): string {
+  const parts = place.split(',').map((p) => p.trim()).filter(Boolean)
+  if (parts.length >= 2) return parts.slice(-2).join(', ')
+  return place
 }
 
 function regionDisplayName(id: FamilyRegionId): string {
@@ -87,6 +85,15 @@ function regionDisplayName(id: FamilyRegionId): string {
   }
   return names[id]
 }
+
+const PREFERRED_ROUTE_KEYS = new Set([
+  'mexico->california',
+  'mexico->southwest_us',
+  'southwest_us->california',
+  'britain_ireland->eastern_us',
+  'eastern_us->california',
+  'california->southwest_us',
+])
 
 /**
  * Score and assemble guided chapters from family data.
@@ -106,19 +113,18 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
 
   // ── Chapter 1: Origins ──────────────────────────────────────────────
   const earliestPeople = uniqueById(people.slice(0, 8))
-  const originPeople = earliestPeople.filter((p) => placeLabel(p)).slice(0, 3)
-  const originFocus = originPeople.length > 0 ? originPeople : earliestPeople.slice(0, 3)
-  if (originFocus.length > 0) {
+  const originPeople = earliestPeople.filter((p) => placeLabel(p)).slice(0, 2)
+  const originFocus = originPeople.length > 0 ? originPeople : earliestPeople.slice(0, 2)
+  const originLead = originFocus[0]
+  if (originLead) {
+    const place = placeLabel(originLead)
     const years = originFocus.map((p) => p.birthYear as number)
     const yMin = Math.min(...years)
     const yMax = Math.max(...years)
-    const places = [
-      ...new Set(originFocus.map(placeLabel).filter((p): p is string => Boolean(p))),
-    ].slice(0, 3)
-    const placePhrase =
-      places.length > 0 ? places.join(', ') : 'places still waiting for fuller place evidence'
     const narration = clampNarration(
-      `The archive opens in ${formatYear(earliest)}. Among the earliest documented lives are ${listNames(originFocus)}, recorded near ${placePhrase}. From here the tree stretches across ${Math.round(spanYears)} years — a span of generations, not a single origin story.`,
+      place
+        ? `The archive begins in ${formatYear(earliest)}. ${originLead.name} stands near its earliest edge, recorded in ${shortPlace(place)}. From this slender start, the tree stretches across ${Math.round(spanYears)} years — not one origin, but a long trail of evidence.`
+        : `The archive begins in ${formatYear(earliest)}. ${originLead.name} stands near its earliest edge. From this slender start, the tree stretches across ${Math.round(spanYears)} years — not one origin, but a long trail of evidence.`,
     )
     chapters.push({
       id: 'origins',
@@ -127,18 +133,19 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       narration,
       view: 'journey',
       camera: {
-        center: (yMin + yMax) / 2,
-        span: Math.max(60, Math.min(140, yMax - yMin + 40)),
+        center: originLead.birthYear as number,
+        span: Math.max(50, Math.min(100, yMax - yMin + 36)),
       },
-      highlightPersonIds: originFocus.map((p) => p.id),
-      openPersonId: originFocus[0]?.id ?? null,
+      highlightPersonIds: [originLead.id],
+      openPersonId: null,
       openHistory: null,
       mapIntent: null,
       evidenceNote: null,
+      focusLabel: originLead.name,
     })
   }
 
-  // ── Chapter 2: Different Worlds (branches by region) ────────────────
+  // ── Chapter 2: Different Worlds — map shows geography that words claim ─
   const byRegion = new Map<FamilyRegionId, Person[]>()
   for (const person of people) {
     const region = regionForPerson(person)
@@ -156,36 +163,25 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
     .sort((a, b) => b.people.length - a.people.length)
 
   if (regionEntries.length >= 2) {
-    const picks = regionEntries.slice(0, 3).map((entry) => {
-      // Prefer a mid-early person so branches feel concurrent, not one root.
-      const idx = Math.min(2, Math.floor(entry.people.length / 3))
-      return { regionId: entry.regionId, person: entry.people[idx] ?? entry.people[0] }
-    })
-    const pickPeople = picks.map((p) => p.person)
-    const years = pickPeople.map((p) => p.birthYear as number)
-    const yMin = Math.min(...years)
-    const yMax = Math.max(...years)
-    const branchPhrase = picks
-      .map((p) => `${p.person.name.split(' ')[0]} in ${regionDisplayName(p.regionId)}`)
-      .join('; ')
+    const top = regionEntries.slice(0, 3)
+    const names = top.map((e) => regionDisplayName(e.regionId))
+    const placePhrase =
+      names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
     const narration = clampNarration(
-      `These lines did not share one homeland. Documented branches appear in different worlds at once — ${branchPhrase}. The Atlas holds them side by side without declaring a single beginning.`,
+      `These lives did not share one homeland. Documented places gather across ${placePhrase}. The map holds them together without naming a single beginning.`,
     )
     chapters.push({
       id: 'branches',
       kind: 'branches',
       title: 'Different Worlds',
       narration,
-      view: 'journey',
-      camera: {
-        center: (yMin + yMax) / 2,
-        span: Math.max(90, Math.min(220, yMax - yMin + 50)),
-      },
-      highlightPersonIds: pickPeople.map((p) => p.id),
+      view: 'map',
+      highlightPersonIds: top.flatMap((e) => e.people.slice(0, 1).map((p) => p.id)),
       openPersonId: null,
       openHistory: null,
-      mapIntent: null,
+      mapIntent: { type: 'overview' },
       evidenceNote: null,
+      focusLabel: 'Documented places',
     })
   }
 
@@ -193,7 +189,7 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   const scoredHistory = worldHistory
     .map((event) => {
       const nearby = familyEvents.filter(
-        (fe) => Math.abs(fe.year - event.year) <= 35 && fe.importance >= 2,
+        (fe) => Math.abs(fe.year - event.year) <= 28 && fe.importance >= 2,
       )
       if (nearby.length === 0) return null
       const score =
@@ -209,7 +205,7 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   if (worldPick) {
     const subject = worldPick.nearby.sort((a, b) => b.importance - a.importance)[0]
     const narration = clampNarration(
-      `Around ${formatYear(worldPick.event.year)}, ${worldPick.event.title.toLowerCase()} reshaped ${worldPick.event.country}. In the family archive, lives such as ${subject.person.name} are documented near this period. Shared years are not proof of participation — only that personal records and world history coincide.`,
+      `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. In the archive, ${subject.person.name} is recorded in the same years — a coincidence of calendars, not a claim of participation.`,
     )
     chapters.push({
       id: 'world_in_change',
@@ -219,19 +215,19 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       view: 'journey',
       camera: {
         center: worldPick.event.year,
-        span: Math.max(40, Math.min(90, 55)),
+        span: 48,
       },
-      highlightPersonIds: uniqueById(worldPick.nearby.map((e) => e.person))
-        .slice(0, 4)
-        .map((p) => p.id),
+      highlightPersonIds: [subject.person.id],
       openPersonId: null,
-      openHistory: worldPick.event,
+      openHistory: null,
       mapIntent: null,
       evidenceNote: null,
+      focusLabel: worldPick.event.title,
+      focusHistory: worldPick.event,
     })
   }
 
-  // ── Chapter 4: Journeys (documented migrations) ─────────────────────
+  // ── Chapter 4: Journeys ─────────────────────────────────────────────
   const places = buildPlaceIndex(database.people, familyEvents, resolveExploreMapCoordinate)
   const migrations = buildMigrationSegments(database.people, familyEvents, resolveExploreMapCoordinate)
   const regions = buildFamilyRegions(places)
@@ -244,22 +240,19 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
         ? bestRoute.yearMin === bestRoute.yearMax
           ? formatYear(bestRoute.yearMin)
           : `${formatYear(bestRoute.yearMin)}–${formatYear(bestRoute.yearMax)}`
-        : 'years still being refined'
-    const who =
-      bestRoute.people.length > 0
-        ? listNames(
-            bestRoute.people
-              .map((p) => database.people.find((person) => person.id === p.id))
-              .filter((p): p is Person => Boolean(p)),
-            3,
-          )
-        : 'documented family members'
+        : null
+    const lead =
+      bestRoute.people
+        .map((p) => database.people.find((person) => person.id === p.id))
+        .filter((p): p is Person => Boolean(p))[0] ?? null
     const confidence =
       bestRoute.confidence === 'documented'
         ? 'Supported by move events linking known places.'
-        : 'Inferred from place changes in the tree — presented as regional connection, not a verified travel corridor.'
+        : 'Inferred from place changes — a regional connection, not a verified travel corridor.'
     const narration = clampNarration(
-      `Journeys follows movement the records can support. ${who} connect ${bestRoute.fromName} and ${bestRoute.toName} around ${yearLabel}. ${confidence}`,
+      bestRoute.confidence === 'documented' && lead
+        ? `Records place movement between ${bestRoute.fromName} and ${bestRoute.toName}${yearLabel ? ` around ${yearLabel}` : ''}. ${lead.name} appears among the lives on this corridor. The map shows endpoints the evidence supports — not an imagined path between them.`
+        : `Place changes in the tree link ${bestRoute.fromName} and ${bestRoute.toName}${yearLabel ? ` across ${yearLabel}` : ''}. ${confidence} The map marks connection, not a reconstructed voyage.`,
     )
     chapters.push({
       id: 'journeys',
@@ -267,16 +260,17 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       title: 'Journeys Across Generations',
       narration,
       view: 'map',
-      highlightPersonIds: bestRoute.people.slice(0, 4).map((p) => p.id),
-      openPersonId: bestRoute.people[0]?.id ?? null,
+      highlightPersonIds: lead ? [lead.id] : bestRoute.people.slice(0, 2).map((p) => p.id),
+      openPersonId: null,
       openHistory: null,
       mapIntent: { type: 'route', routeId: bestRoute.id },
       evidenceNote: confidence,
+      focusLabel: `${bestRoute.fromName} → ${bestRoute.toName}`,
     })
   } else if (regions.length >= 2) {
     const top = [...regions].sort((a, b) => b.peopleCount - a.peopleCount).slice(0, 3)
     const narration = clampNarration(
-      `When individual migration corridors are thin, geography still speaks. Documented lives gather in ${top.map((r) => r.name).join(', ')}. This chapter shows distribution the places support — without inventing routes between them.`,
+      `When corridors are thin, geography still speaks. Documented lives gather in ${top.map((r) => r.name).join(', ')}. Distribution the places support — without inventing routes between them.`,
     )
     chapters.push({
       id: 'journeys-distribution',
@@ -289,17 +283,17 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       openHistory: null,
       mapIntent: { type: 'overview' },
       evidenceNote: 'Geographic distribution from resolved places; no route claimed.',
+      focusLabel: 'Known places',
     })
   }
 
   // ── Chapter 5: The Family Today ─────────────────────────────────────
-  const recent = [...people].sort((a, b) => (b.birthYear ?? 0) - (a.birthYear ?? 0)).slice(0, 6)
+  const recent = [...people].sort((a, b) => (b.birthYear ?? 0) - (a.birthYear ?? 0)).slice(0, 4)
   const root = database.people.find((p) => p.id === database.root) ?? recent[0]
-  const presentFocus = uniqueById([root, ...recent].filter(Boolean)).slice(0, 4)
-  if (presentFocus.length > 0) {
-    const y = presentFocus.map((p) => p.birthYear as number)
+  if (root?.birthYear != null) {
+    const y = root.birthYear
     const narration = clampNarration(
-      `The archive arrives near the present with ${listNames(presentFocus)}. What came before — separate branches, shared eras, and documented movements — gathers here. Now explore the stories that brought us here.`,
+      `Near the present, the archive gathers around ${root.name}. What came before — separate worlds, shared eras, and careful geography — arrives here. Now explore the stories that brought us here.`,
     )
     chapters.push({
       id: 'present',
@@ -308,18 +302,18 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
       narration,
       view: 'journey',
       camera: {
-        center: (Math.min(...y) + Math.max(...y)) / 2,
-        span: Math.max(50, Math.min(100, Math.max(...y) - Math.min(...y) + 30)),
+        center: y,
+        span: 58,
       },
-      highlightPersonIds: presentFocus.map((p) => p.id),
-      openPersonId: root?.id ?? presentFocus[0]?.id ?? null,
+      highlightPersonIds: [root.id],
+      openPersonId: null,
       openHistory: null,
       mapIntent: null,
       evidenceNote: null,
+      focusLabel: root.name,
     })
   }
 
-  // Drop empty narrations / over-long safety
   return chapters.filter((c) => wordCount(c.narration) >= 12)
 }
 
@@ -327,12 +321,22 @@ function pickBestRoute(routes: RegionalRoute[]): RegionalRoute | null {
   if (routes.length === 0) return null
   const scored = routes
     .map((route) => {
+      const key = `${route.fromRegionId}->${route.toRegionId}`
       const yearSpan =
         route.yearMin != null && route.yearMax != null
           ? Math.max(0, route.yearMax - route.yearMin)
-          : 0
-      const documentedBonus = route.confidence === 'documented' ? 40 : 0
-      const score = documentedBonus + route.moveCount * 8 + route.people.length * 5 + Math.min(30, yearSpan / 4)
+          : 120
+      let score = 0
+      if (route.confidence === 'documented') score += 100
+      else score += 18
+      if (PREFERRED_ROUTE_KEYS.has(key)) score += 55
+      if (yearSpan <= 40) score += 40
+      else if (yearSpan <= 80) score += 18
+      else score -= Math.min(70, (yearSpan - 80) / 2)
+      score += Math.min(28, route.moveCount * 3)
+      if (route.people.length <= 4) score += 28
+      else if (route.people.length <= 8) score += 8
+      else score -= 20
       return { route, score }
     })
     .sort((a, b) => b.score - a.score)

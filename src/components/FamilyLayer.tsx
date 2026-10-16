@@ -16,6 +16,7 @@ import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { useFollowPerson } from '../context/FollowPersonContext'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
+import { useGuidedDiscovery } from '../guided-discovery'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
   buildBirthClusters,
@@ -302,6 +303,8 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
   const { active: followActive, journey, startFollow, journeyForPerson } = useFollowPerson()
+  const { status: guidedStatus } = useGuidedDiscovery()
+  const guidedActive = guidedStatus === 'active'
   const phoneUi = usePhoneTimelineUi()
   const phoneExploring = Boolean(phoneUi?.phone && phoneUi.exploring)
   const [phonePeek, setPhonePeek] = useState<PhonePeek | null>(null)
@@ -1210,7 +1213,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         ))}
       </div>
 
-      {useBirthClusters && primaryCluster && (
+      {useBirthClusters && primaryCluster && !guidedActive && (
         <ChapterCalloutPresence
           primary={primaryCluster}
           clusters={activeClusters}
@@ -1235,7 +1238,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
         />
       )}
 
-      {!useBirthClusters && primaryCluster && (
+      {!useBirthClusters && primaryCluster && !guidedActive && (
         <ChapterCalloutPresence
           primary={primaryCluster}
           clusters={activeClusters}

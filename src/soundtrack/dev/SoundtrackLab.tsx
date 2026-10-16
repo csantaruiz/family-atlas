@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAmbientSoundtrack } from '../AmbientSoundtrackContext'
 import { AMBIENT_TRACKS, isActiveTrack } from '../ambientManifest'
-import { SOUNDTRACK_ENVIRONMENTS, type SoundtrackEnvironmentId } from '../context/environments'
+import { authenticityLabel } from '../context/historicalMeta'
 import { isSoundtrackLabEnabled } from './soundtrackLabEnabled'
 
 function formatDuration(seconds: number): string {
@@ -10,7 +10,14 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-/** Development / Preview-only panel to audition environments and inspect auto selection. */
+function yearLabel(from: number | null, to: number | null, attestation: number | null): string {
+  const range =
+    from == null && to == null ? 'no period claim' : `${from ?? '…'}–${to ?? 'present'}`
+  const attested = attestation != null ? ` · attested ${attestation}` : ''
+  return `${range}${attested}`
+}
+
+/** Development / Preview-only panel for auditioning and historical transparency. */
 export function SoundtrackLab() {
   const enabled = useMemo(() => isSoundtrackLabEnabled(), [])
   const [open, setOpen] = useState(false)
@@ -19,9 +26,11 @@ export function SoundtrackLab() {
     toggleSound,
     trackId,
     audible,
-    previewEnvironment,
-    setPreviewEnvironment,
+    previewTrackId,
+    setPreviewTrack,
     autoContext,
+    lastChoiceReason,
+    lastEligibleCount,
     schedulerStatus,
     pendingTrackId,
     usingFallback,
@@ -30,12 +39,8 @@ export function SoundtrackLab() {
   if (!enabled) return null
 
   const playing = AMBIENT_TRACKS.find((track) => track.id === trackId)
-  const environments = SOUNDTRACK_ENVIRONMENTS.map((environment) => {
-    const track = AMBIENT_TRACKS.find(
-      (candidate) => candidate.environment === environment.id && isActiveTrack(candidate),
-    )
-    return { environment, track: track && isActiveTrack(track) ? track : null }
-  })
+  const playable = AMBIENT_TRACKS.filter(isActiveTrack)
+  const gaps = AMBIENT_TRACKS.filter((track) => track.status === 'placeholder')
 
   return (
     <div className={`soundtrack-lab${open ? ' is-open' : ''}`}>
@@ -60,50 +65,123 @@ export function SoundtrackLab() {
             </span>
           </div>
 
-          <div className="soundtrack-lab-row">
+          <div className="soundtrack-lab-section">
             <strong>Now playing</strong>
-            <span>
-              {playing && isActiveTrack(playing)
-                ? `${playing.title} — ${playing.artist}`
-                : trackId || '—'}
-            </span>
-            {usingFallback ? <span className="soundtrack-lab-flag">fallback</span> : null}
-            {previewEnvironment ? <span className="soundtrack-lab-flag">manual preview</span> : null}
+            {playing && isActiveTrack(playing) ? (
+              <dl className="soundtrack-lab-diag">
+                <div>
+                  <dt>Track</dt>
+                  <dd>
+                    {playing.title}{' '}
+                    {previewTrackId ? <span className="soundtrack-lab-flag">manual</span> : null}
+                    {usingFallback ? <span className="soundtrack-lab-flag">fallback</span> : null}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Composer / tradition</dt>
+                  <dd>{playing.history.composer ?? playing.history.tradition ?? playing.artist}</dd>
+                </div>
+                <div>
+                  <dt>Historical dates</dt>
+                  <dd>
+                    {yearLabel(
+                      playing.history.usableFromYear,
+                      playing.history.usableToYear,
+                      playing.history.earliestAttestationYear,
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Geographic origin</dt>
+                  <dd>{playing.history.geographicOrigin}</dd>
+                </div>
+                <div>
+                  <dt>Authenticity</dt>
+                  <dd>{authenticityLabel(playing.history.authenticity)}</dd>
+                </div>
+                <div>
+                  <dt>Confidence</dt>
+                  <dd>{playing.history.confidence}</dd>
+                </div>
+                <div>
+                  <dt>Why selected</dt>
+                  <dd>{lastChoiceReason ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Eligible alternatives</dt>
+                  <dd>{lastEligibleCount}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="soundtrack-lab-meta">Nothing playing yet.</p>
+            )}
+          </div>
+
+          <div className="soundtrack-lab-section">
+            <strong>Auto context</strong>
+            {autoContext ? (
+              <dl className="soundtrack-lab-diag">
+                <div>
+                  <dt>Subject year</dt>
+                  <dd>{autoContext.subjectYear ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Region</dt>
+                  <dd>{autoContext.region ?? '—'}</dd>
+                </div>
+                <div>
+                  <dt>Period / mood</dt>
+                  <dd>
+                    {autoContext.period ?? '—'} / {autoContext.mood}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Precedence</dt>
+                  <dd>{autoContext.precedence}</dd>
+                </div>
+                <div>
+                  <dt>Atlas reason</dt>
+                  <dd>{autoContext.reason}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="soundtrack-lab-meta">Waiting for Atlas context…</p>
+            )}
           </div>
 
           <div className="soundtrack-lab-section">
             <div className="soundtrack-lab-section-head">
-              <strong>Environments</strong>
-              <button type="button" onClick={() => setPreviewEnvironment(null)} disabled={!previewEnvironment}>
+              <strong>Audition ({playable.length} playable)</strong>
+              <button type="button" onClick={() => setPreviewTrack(null)} disabled={!previewTrackId}>
                 Return to automatic
               </button>
             </div>
             <ul className="soundtrack-lab-list">
-              {environments.map(({ environment, track }) => {
-                const active =
-                  previewEnvironment === environment.id ||
-                  (!previewEnvironment && playing?.environment === environment.id)
+              {playable.map((track) => {
+                const active = trackId === track.id
                 return (
-                  <li key={environment.id}>
+                  <li key={track.id}>
                     <button
                       type="button"
                       className={`soundtrack-lab-env${active ? ' is-active' : ''}`}
-                      disabled={!track}
                       onClick={() => {
                         if (!wantsSound) toggleSound()
-                        setPreviewEnvironment(environment.id as SoundtrackEnvironmentId)
+                        setPreviewTrack(track.id)
                       }}
                     >
-                      <span className="soundtrack-lab-env-label">{environment.label}</span>
+                      <span className="soundtrack-lab-env-label">{track.title}</span>
                       <span className="soundtrack-lab-env-track">
-                        {track
-                          ? `${track.title} · ${formatDuration(track.rights.durationSec)}`
-                          : 'No playable track'}
+                        {track.history.composer ?? track.history.tradition ?? track.artist} ·{' '}
+                        {formatDuration(track.rights.durationSec)}
                       </span>
                       <span className="soundtrack-lab-env-meta">
-                        {environment.regions === 'any' ? 'any region' : environment.regions.join(', ')}
-                        {' · '}
-                        {environment.periods === 'any' ? 'any period' : environment.periods.join(', ')}
+                        {yearLabel(
+                          track.history.usableFromYear,
+                          track.history.usableToYear,
+                          track.history.earliestAttestationYear,
+                        )}{' '}
+                        · {track.history.authenticity} · {track.history.confidence} ·{' '}
+                        {track.history.geographicOrigin}
                       </span>
                     </button>
                   </li>
@@ -112,41 +190,28 @@ export function SoundtrackLab() {
             </ul>
           </div>
 
-          <div className="soundtrack-lab-section">
-            <strong>Auto context</strong>
-            {autoContext ? (
-              <dl className="soundtrack-lab-diag">
-                <div>
-                  <dt>Environment</dt>
-                  <dd>{autoContext.environment}</dd>
-                </div>
-                <div>
-                  <dt>Mood</dt>
-                  <dd>{autoContext.mood}</dd>
-                </div>
-                <div>
-                  <dt>Period</dt>
-                  <dd>{autoContext.period ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>Region</dt>
-                  <dd>{autoContext.region ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>Reason</dt>
-                  <dd>{autoContext.reason}</dd>
-                </div>
-                <div>
-                  <dt>Mode</dt>
-                  <dd>
-                    {autoContext.overview ? 'overview' : autoContext.explicit ? 'explicit' : 'browse'}
-                  </dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="soundtrack-lab-meta">Waiting for Atlas context…</p>
-            )}
-          </div>
+          {gaps.length > 0 ? (
+            <div className="soundtrack-lab-section">
+              <strong>Documented coverage gaps</strong>
+              <ul className="soundtrack-lab-list">
+                {gaps.map((track) => (
+                  <li key={track.id}>
+                    <div className="soundtrack-lab-env">
+                      <span className="soundtrack-lab-env-label">{track.title}</span>
+                      <span className="soundtrack-lab-env-track">{track.brief}</span>
+                      <span className="soundtrack-lab-env-meta">
+                        {yearLabel(
+                          track.history.usableFromYear,
+                          track.history.usableToYear,
+                          track.history.earliestAttestationYear,
+                        )}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

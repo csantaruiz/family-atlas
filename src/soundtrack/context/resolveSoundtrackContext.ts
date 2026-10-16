@@ -44,18 +44,22 @@ export type SoundtrackSignals = {
 }
 
 /**
- * Geography + period choose a musical environment; narrative mood refines selection
- * when multiple tracks exist for that environment.
+ * Historical subject for soundtrack selection.
+ * Track choice is driven primarily by subjectYear + region; environment/mood refine.
  */
 export type SoundtrackContext = {
   environment: SoundtrackEnvironmentId
   mood: SoundtrackCategoryId
+  /** Midpoint year of the focused subject (not merely camera zoom). */
+  subjectYear: number | null
   period: HistoricalPeriod | null
   region: WorldRegion | null
   /** True for broad overviews, which may return to the main theme sooner. */
   overview: boolean
   /** True when the visitor explicitly selected a person, place, event, or route. */
   explicit: boolean
+  /** Precedence tier that produced this context. */
+  precedence: 'historical_event' | 'ancestor_or_story' | 'focused_geo_temporal' | 'viewport' | 'overview'
   reason: string
 }
 
@@ -126,14 +130,17 @@ function pack(
   reason: string,
   overview: boolean,
   explicit: boolean,
+  precedence: SoundtrackContext['precedence'],
 ): SoundtrackContext {
   return {
     environment,
     mood,
+    subjectYear: year,
     period: year != null ? periodForYear(year) : null,
     region: dominantGeography(places)?.region ?? null,
     overview,
     explicit,
+    precedence,
     reason,
   }
 }
@@ -159,25 +166,27 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
         env.reason,
         false,
         true,
+        'historical_event',
       )
     }
     case 'migration': {
       const env = environmentForPlaceAndPeriod(region, period)
       return pack(
-        env.environment === MAIN_ENVIRONMENT ? env.environment : env.environment,
+        env.environment,
         'migration',
         year,
         focus.places,
         env.environment === MAIN_ENVIRONMENT ? 'migration without regional catalog match' : env.reason,
         false,
         true,
+        'focused_geo_temporal',
       )
     }
     case 'region': {
       const env = environmentForPlaceAndPeriod(region, period)
       const mood =
         year != null && isOriginsYear(year, signals) ? 'origins' : ('migration' as SoundtrackCategoryId)
-      return pack(env.environment, mood, year, focus.places, env.reason, false, true)
+      return pack(env.environment, mood, year, focus.places, env.reason, false, true, 'focused_geo_temporal')
     }
     case 'family_event': {
       if (focus.eventKind === 'service') {
@@ -185,17 +194,53 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
           militaryService: true,
           wartimeHint: wartimeHint || period === 'world_wars',
         })
-        return pack(env.environment, 'conflict', year, focus.places, env.reason, false, true)
+        return pack(
+          env.environment,
+          'conflict',
+          year,
+          focus.places,
+          env.reason,
+          false,
+          true,
+          'ancestor_or_story',
+        )
       }
       if (focus.eventKind === 'move') {
         const env = environmentForPlaceAndPeriod(region, period)
-        return pack(env.environment, 'migration', year, focus.places, env.reason, false, true)
+        return pack(
+          env.environment,
+          'migration',
+          year,
+          focus.places,
+          env.reason,
+          false,
+          true,
+          'ancestor_or_story',
+        )
       }
       if (focus.eventKind === 'epilogue') {
-        return pack(MAIN_ENVIRONMENT, 'legacy', year, focus.places, 'journey epilogue', false, true)
+        return pack(
+          MAIN_ENVIRONMENT,
+          'legacy',
+          year,
+          focus.places,
+          'journey epilogue',
+          false,
+          true,
+          'ancestor_or_story',
+        )
       }
       const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
-      return pack(env.environment, moodForEra(year, signals), year, focus.places, env.reason, false, true)
+      return pack(
+        env.environment,
+        moodForEra(year, signals),
+        year,
+        focus.places,
+        env.reason,
+        false,
+        true,
+        'ancestor_or_story',
+      )
     }
     case 'ancestor': {
       const birth = focus.year
@@ -203,7 +248,6 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
       const from = geographyForPlace(first)?.region
       const to = geographyForPlace(last)?.region
       const emigrated = Boolean(from && to && from !== to)
-      // Prefer the birthplace region for the musical environment; destination colours migration mood.
       const env = environmentForPlaceAndPeriod(from ?? region, period, { wartimeHint })
       const mood: SoundtrackCategoryId = emigrated
         ? 'migration'
@@ -212,11 +256,29 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
           : birth != null && isLegacyYear(birth, signals)
             ? 'legacy'
             : 'everyday'
-      return pack(env.environment, mood, year, focus.places, env.reason, false, true)
+      return pack(
+        env.environment,
+        mood,
+        year,
+        focus.places,
+        env.reason,
+        false,
+        true,
+        'ancestor_or_story',
+      )
     }
     case 'insight': {
       const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
-      return pack(env.environment, moodForEra(year, signals), year, focus.places, env.reason, false, true)
+      return pack(
+        env.environment,
+        moodForEra(year, signals),
+        year,
+        focus.places,
+        env.reason,
+        false,
+        true,
+        'ancestor_or_story',
+      )
     }
   }
 }
@@ -229,13 +291,13 @@ export function resolveSoundtrackContext(signals: SoundtrackSignals): Soundtrack
     case 'about':
     case 'tree':
     case 'people':
-      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false)
+      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false, 'overview')
     case 'journeys':
-      return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false)
+      return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false, 'overview')
     case 'timeline': {
       const window = signals.window
       if (!window || window.coverage >= OVERVIEW_COVERAGE) {
-        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false)
+        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false, 'overview')
       }
       const year = (window.start + window.end) / 2
       const span = window.end - window.start
@@ -261,6 +323,7 @@ export function resolveSoundtrackContext(signals: SoundtrackSignals): Soundtrack
         env.environment === MAIN_ENVIRONMENT ? `${env.reason} (${mood} era)` : env.reason,
         false,
         false,
+        'viewport',
       )
     }
   }

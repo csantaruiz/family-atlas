@@ -13,11 +13,9 @@ import { AmbientAudioEngine, type AmbientSnapshot } from './ambientAudioEngine'
 import {
   AMBIENT_TRACKS,
   isActiveTrack,
-  tracksForEnvironment,
   type ActiveTrack,
 } from './ambientManifest'
 import { readAmbientPreferences, writeAmbientPreferences } from './ambientPreferences'
-import type { SoundtrackEnvironmentId } from './context/environments'
 import type { SoundtrackContext } from './context/resolveSoundtrackContext'
 import { selectTrack } from './context/selectTrack'
 import { TransitionScheduler } from './context/transitionScheduler'
@@ -39,11 +37,14 @@ type AmbientSoundtrackValue = AmbientSnapshot & {
   hold: (reason: string, level: number) => () => void
   /** Duck music under spoken content; call the returned function when it ends. */
   duckForNarration: () => () => void
-  /** Manual lab override — temporarily pins an environment; null restores auto. */
-  previewEnvironment: SoundtrackEnvironmentId | null
-  setPreviewEnvironment: (environment: SoundtrackEnvironmentId | null) => void
+  /** Manual lab override — temporarily pins a track; null restores auto. */
+  previewTrackId: string | null
+  setPreviewTrack: (trackId: string | null) => void
   /** Latest automatic context (even while preview override is active). */
   autoContext: SoundtrackContext | null
+  /** Latest automatic track choice diagnostics (for Soundtrack Lab). */
+  lastChoiceReason: string | null
+  lastEligibleCount: number
   schedulerStatus: 'idle' | 'waiting' | 'committed'
   pendingTrackId: string | null
   usingFallback: boolean
@@ -116,9 +117,12 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot)
   const lastReasonRef = useRef<string | null>(null)
   const [autoContext, setAutoContext] = useState<SoundtrackContext | null>(null)
-  const [previewEnvironment, setPreviewEnvironmentState] = useState<SoundtrackEnvironmentId | null>(null)
+  const [previewTrackId, setPreviewTrackIdState] = useState<string | null>(null)
   const [usingFallback, setUsingFallback] = useState(false)
+  const [lastChoiceReason, setLastChoiceReason] = useState<string | null>(null)
+  const [lastEligibleCount, setLastEligibleCount] = useState(0)
   const [schedulerTick, setSchedulerTick] = useState(0)
+  const recentIdsRef = useRef<string[]>([])
 
   const [scheduler] = useState(
     () =>
@@ -127,6 +131,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
         if (!track) return
         if (debugEnabled()) console.info('[soundtrack] now playing', trackId)
         engine.setTrack(track)
+        recentIdsRef.current = [trackId, ...recentIdsRef.current.filter((id) => id !== trackId)].slice(0, 5)
         setSchedulerTick((n) => n + 1)
       }),
   )
@@ -190,23 +195,25 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
     autoContextRef.current = autoContext
   }, [autoContext])
 
-  const setPreviewEnvironment = useCallback(
-    (environment: SoundtrackEnvironmentId | null) => {
-      setPreviewEnvironmentState(environment)
-      if (environment != null) {
-        const candidates = tracksForEnvironment(environment).filter(isActiveTrack)
-        const track = candidates[0]
+  const setPreviewTrack = useCallback(
+    (trackId: string | null) => {
+      setPreviewTrackIdState(trackId)
+      if (trackId != null) {
+        const track = PLAYABLE_BY_ID.get(trackId)
         if (!track) return
         if (!engine.isEnabled()) engine.enable()
         scheduler.force(track.id)
         setUsingFallback(false)
+        setLastChoiceReason('Manual Soundtrack Lab preview')
+        setLastEligibleCount(1)
         return
       }
-      // Restore automatic selection from the latest Atlas context.
       const context = autoContextRef.current
       if (!context) return
-      const choice = selectTrack(context, scheduler.currentTrackId)
+      const choice = selectTrack(context, scheduler.currentTrackId, undefined, recentIdsRef.current)
       setUsingFallback(choice.usingFallback)
+      setLastChoiceReason(choice.selectionReason)
+      setLastEligibleCount(choice.eligibleCount)
       scheduler.force(choice.track.id)
     },
     [engine, scheduler],
@@ -215,18 +222,21 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const reportContext = useCallback(
     (context: SoundtrackContext, unsettled: boolean) => {
       setAutoContext(context)
-      if (previewEnvironment != null) return
+      if (previewTrackId != null) return
 
-      const choice = selectTrack(context, scheduler.currentTrackId)
+      const choice = selectTrack(context, scheduler.currentTrackId, undefined, recentIdsRef.current)
       setUsingFallback(choice.usingFallback)
+      setLastChoiceReason(choice.selectionReason)
+      setLastEligibleCount(choice.eligibleCount)
       if (debugEnabled() && !unsettled) {
-        const reason = `${context.environment}:${context.mood}:${context.period ?? '-'}:${context.region ?? '-'}:${context.reason}`
+        const reason = `${context.subjectYear ?? '-'}:${context.region ?? '-'}:${context.environment}:${context.reason}`
         if (reason !== lastReasonRef.current) {
           lastReasonRef.current = reason
           console.info('[soundtrack] context', {
             ...context,
             ideal: choice.ideal.id,
             playing: choice.track.id,
+            selection: choice.selectionReason,
             placeholder: choice.usingFallback,
           })
         }
@@ -240,7 +250,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       setSchedulerTick((n) => n + 1)
       if (!unsettled) engine.prepare(choice.track)
     },
-    [engine, previewEnvironment, scheduler],
+    [engine, previewTrackId, scheduler],
   )
 
   const hold = useCallback((reason: string, level: number) => engine.hold(reason, level), [engine])
@@ -255,9 +265,11 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       reportContext,
       hold,
       duckForNarration,
-      previewEnvironment,
-      setPreviewEnvironment,
+      previewTrackId,
+      setPreviewTrack,
       autoContext,
+      lastChoiceReason,
+      lastEligibleCount,
       schedulerStatus: scheduler.status,
       pendingTrackId: scheduler.pendingTrackId,
       usingFallback,
@@ -268,11 +280,13 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       autoContext,
       duckForNarration,
       hold,
+      lastChoiceReason,
+      lastEligibleCount,
       prefs.enabled,
-      previewEnvironment,
+      previewTrackId,
       reportContext,
       schedulerTick,
-      setPreviewEnvironment,
+      setPreviewTrack,
       setVolume,
       snapshot,
       toggleSound,

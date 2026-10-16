@@ -1,18 +1,22 @@
-# Soundtrack rights inventory
+# Soundtrack rights inventory (Phase 2.1)
 
-Verified for commercial redistribution inside the Family Atlas product (US-oriented deployment). Composition and recording rights were checked separately. Rejected sources with unclear redistribution rights (including Library of Congress National Jukebox streams) are not included.
+Composition and recording rights checked separately. Recording year is never treated as composition attestation.
 
-| Environment | Track | Performer / composer | Year | Local path | Duration | License evidence |
-| --- | --- | --- | --- | --- | --- | --- |
-| Main Theme | History Documentary | Leberch | — | `/audio/documentary-score.mp3` | ~6:30 | Pixabay Content License; site-owner verified 2026-09-09 |
-| Mexico / Southwest | La Guacamaya (Son Jarocho) | Soneros del Tesechoacán; field recording by Lenguaverde | 2012 | `/audio/soundtrack/mexico-la-guacamaya.mp3` | 7:15 | [Freesound #177562](https://freesound.org/people/Lenguaverde/sounds/177562/) CC0 |
-| Britain & Ireland | Londonderry Air | Traditional; piano arr. Jon Hall | 2010 | `/audio/soundtrack/britain-ireland-londonderry-air.mp3` | 2:24 | [Commons](https://commons.wikimedia.org/wiki/File:Londonderry_Air.ogg) public-domain dedication |
-| Industrial America | Maple Leaf Rag | Scott Joplin; U.S. Marine Band | 1906 | `/audio/soundtrack/industrial-america-maple-leaf-rag.mp3` | 1:55 | Composition PD; recording PD-USGov + PD-US-record-expired (pre-1926) |
-| WWII / 1940s | Goin' Home | After Dvořák; U.S. Air Force Band | ~2004 | `/audio/soundtrack/wwii-goin-home.mp3` | 3:07 | Composition PD; [USAF Public Domain Music](https://www.music.af.mil/Multimedia/Music/Public-Domain-Music/) federal performance |
-| Iberia / Spain | Romance Anónimo | Anonymous; Jim Greeninger (Musopen) | — | `/audio/soundtrack/iberia-spanish-romance.mp3` | 2:47 | [Commons / Musopen](https://commons.wikimedia.org/wiki/File:Romance_An%C3%B3nimo_(Jeux_interdits).ogg) CC0 |
+| Track | Attested | Usable | Origin | License | Local path |
+| --- | --- | --- | --- | --- | --- |
+| History Documentary (Leberch) | — (cinematic) | overview / fallback | Contemporary | Pixabay Content License | `/audio/documentary-score.mp3` |
+| Greensleeves | 1580 | 1580–1820 | England | Melody PD; performance [CC BY 3.0](https://commons.wikimedia.org/wiki/File:Greensleeves.ogg) | `/audio/soundtrack/britain-greensleeves.mp3` |
+| Early One Morning | ~1787 | 1787–1900 | England | Melody PD; performance [CC BY-SA 3.0](https://commons.wikimedia.org/wiki/File:Early_One_Morning.ogg) | `/audio/soundtrack/britain-early-one-morning.mp3` |
+| Londonderry Air | 1855 (Petrie) | 1855– | Ireland | PD dedication ([Commons](https://commons.wikimedia.org/wiki/File:Londonderry_Air.ogg)) | `/audio/soundtrack/britain-ireland-londonderry-air.mp3` |
+| Brian Boru's March | march form ~1800+ | 1800–1950 | Ireland | Traditional + US Marine Band federal PD | `/audio/soundtrack/ireland-brian-boru-march.mp3` |
+| La Guacamaya | son jarocho ~1780+ | 1780– | Veracruz | CC0 ([Freesound](https://freesound.org/people/Lenguaverde/sounds/177562/)) | `/audio/soundtrack/mexico-la-guacamaya.mp3` |
+| Romance Anónimo | uncertain ~19th/20th | 1850– (Iberia only) | Spain | CC0 Musopen/Commons | `/audio/soundtrack/iberia-spanish-romance.mp3` |
+| Maple Leaf Rag | 1899 / rec. 1906 | 1899–1930 | United States | PD composition + federal/pre-1926 recording | `/audio/soundtrack/industrial-america-maple-leaf-rag.mp3` |
+| Goin' Home | theme 1893 | 1914–1955 wartime atmosphere | Concert tradition | PD theme + USAF federal performance | `/audio/soundtrack/wwii-goin-home.mp3` |
 
-## Gaps / notes
+## Documented gaps (placeholders, not playable)
 
-- Authentic Mexican archival 78s from the National Jukebox were **not** used: Sony/LOC streaming licenses typically forbid redistribution.
-- WWII / 1940s uses a restrained remembrance piece rather than a march; true 1940s commercial recordings are generally still copyrighted as sound recordings in the US until their statutory terms expire.
-- Additional regions (Africa, Asia, Oceania, Central/Eastern Europe, etc.) currently fall back to the Main Theme until catalogued.
+- New Spain / early colonial Iberian guitar (1600–1780)
+- Early modern Irish harp/air securely attested before Petrie (1600–1780)
+
+See `COVERAGE.md` for the century × region matrix.

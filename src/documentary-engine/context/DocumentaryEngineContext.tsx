@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { getDocumentaryStats } from '../../data/documentaryStats'
 import { writeDocumentarySeen } from '../../constants/documentarySession'
+import { requestGuidedOnAtlasEntry } from '../../guided-discovery/session'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import { DOCUMENTARY_MANIFEST } from '../data/documentaryManifest'
 import { finalizeManifest } from '../utils/migrationPaths'
@@ -139,12 +140,14 @@ export function DocumentaryEngineProvider({ children }: { children: ReactNode })
 
   const prepareAtlasEntry = useCallback(() => {
     writeDocumentarySeen()
+    // First-time Explore launches Phase 3.1 guided discovery after Atlas mounts.
+    // Returning visitors (guided already seen) enter free exploration as before.
+    requestGuidedOnAtlasEntry()
     pause()
     reset()
     void soundtrackRef.current?.stop()
     navigateToView('journey')
-    // Do not completeJourneyIntro here — first Atlas entry should reveal the chapter card
-    // so visitors see a clear starting period (GEDCOM-agnostic).
+    // Do not completeJourneyIntro here — guided start (or free exploration) owns intro completion.
   }, [navigateToView, pause, reset])
 
   const begin = useCallback(() => {

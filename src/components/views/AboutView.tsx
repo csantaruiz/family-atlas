@@ -1,4 +1,5 @@
 import { useFamilyData } from '../../family-data/FamilyDataProvider'
+import { useGuidedDiscovery } from '../../guided-discovery'
 
 type AboutViewProps = {
   active: boolean
@@ -6,6 +7,7 @@ type AboutViewProps = {
 
 export function AboutView({ active }: AboutViewProps) {
   const { database: familyDatabase } = useFamilyData()
+  const { start: startGuided, chapterCount, status } = useGuidedDiscovery()
   const stats = familyDatabase.stats
   const yearSpan = stats.latestYear - stats.earliestYear
 
@@ -51,6 +53,26 @@ export function AboutView({ active }: AboutViewProps) {
           family lived and moved. Use &ldquo;View on timeline&rdquo; from People or Map to return to
           the Timeline centered on relevant years.
         </p>
+
+        {chapterCount > 0 ? (
+          <>
+            <h3 className="about-subhead">Guided discovery</h3>
+            <p>
+              A short, interactive walk through documented origins, branches, historical context, and
+              journeys — using the live Atlas, not a separate film.
+            </p>
+            <p>
+              <button
+                type="button"
+                className="about-guided-restart"
+                disabled={status === 'active'}
+                onClick={() => startGuided()}
+              >
+                {status === 'active' ? 'Guide in progress' : 'Replay guided family story'}
+              </button>
+            </p>
+          </>
+        ) : null}
 
         <h3 className="about-subhead">Privacy</h3>
         <p>

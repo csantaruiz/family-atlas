@@ -26,6 +26,7 @@ import { JourneyInsight } from '../map/JourneyInsight'
 import { MapNarrativeCaption } from '../map/MapNarrativeCaption'
 import { MapUnresolvedDisclosure } from '../map/MapUnresolvedDisclosure'
 import { PhoneSheet } from '../phone/PhoneSheet'
+import { GuidedMapBridge } from '../../guided-discovery'
 
 type MapViewProps = {
   active: boolean
@@ -215,6 +216,7 @@ function MapViewContent({ active }: MapViewProps) {
       className={`view atlas-page${active ? ' active' : ''}${phone ? ' map-phone' : ''}`}
       aria-hidden={!active}
     >
+      <GuidedMapBridge active={active} regions={regions} routes={routes} />
       <div className="map-wrap">
         <div className="map-page-atmosphere" aria-hidden="true" />
         <div className="map-page-focus" aria-hidden="true" />

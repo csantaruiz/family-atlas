@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { storySeeds } from '../data'
 import { useFollowPerson } from '../context/FollowPersonContext'
 import { useTimeline } from '../context/TimelineContext'
+import { useGuidedDiscovery } from '../guided-discovery'
 import { viewport } from '../utils/timelineMath'
 
 const SWIPE_THRESHOLD_PX = 48
@@ -14,6 +15,8 @@ export function FeaturedStory({
 }) {
   const { center, span, openPerson, setHighlightedStoryPersonId, timelineFilters } = useTimeline()
   const { active: followActive } = useFollowPerson()
+  const { status: guidedStatus } = useGuidedDiscovery()
+  const guidedActive = guidedStatus === 'active'
   const [index, setIndex] = useState(0)
   const candidatesKeyRef = useRef('')
   const swipeStartX = useRef<number | null>(null)
@@ -45,13 +48,13 @@ export function FeaturedStory({
   }, [candidatesKey, candidates.length])
 
   useEffect(() => {
-    if (followActive) return
+    if (followActive || guidedActive) return
     if (!timelineFilters.stories) {
       setHighlightedStoryPersonId(null)
       return
     }
     setHighlightedStoryPersonId(story?.personId ?? null)
-  }, [followActive, story, timelineFilters.stories, setHighlightedStoryPersonId])
+  }, [followActive, guidedActive, story, timelineFilters.stories, setHighlightedStoryPersonId])
 
   const move = useCallback(
     (delta: number) => {

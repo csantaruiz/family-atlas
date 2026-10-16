@@ -31,6 +31,11 @@ import { AtlasReviewRoot } from './atlas-review/AtlasReviewRoot'
 import { ManageFamilyTreeRoot } from './atlas-manage/ManageFamilyTreeRoot'
 import { AmbientSoundtrackProvider, useAmbientHold } from './soundtrack/AmbientSoundtrackContext'
 import { SoundtrackDirector } from './soundtrack/atlas/SoundtrackDirector'
+import {
+  GuidedDiscoveryOverlay,
+  GuidedDiscoveryProvider,
+  useGuidedDiscovery,
+} from './guided-discovery'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -74,19 +79,31 @@ function AppViews() {
   )
 }
 
-function AtlasAppShell() {
+function AtlasAppShellInner() {
   const { activeView } = useAppNavigation()
   const { active: followActive } = useFollowPerson()
+  const { status: guidedStatus } = useGuidedDiscovery()
   usePreventBrowserZoom()
 
   useEffect(() => {
     void ensureOverrideCacheLoaded()
   }, [])
 
+  const guidedActive = guidedStatus === 'active'
+
   return (
     <AtlasReviewRoot>
       <ManageFamilyTreeRoot>
-      <div className={`app app--view-${activeView}${followActive ? ' app--follow-person' : ''}`}>
+      <div
+        className={[
+          'app',
+          `app--view-${activeView}`,
+          followActive ? 'app--follow-person' : '',
+          guidedActive ? 'app--guided' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
         <AtlasMapBackdrop />
         <div className="grain" aria-hidden="true" />
         <Header />
@@ -95,10 +112,19 @@ function AtlasAppShell() {
         </SoundtrackDirector>
         <FollowPersonOverlay />
         <DetailPanel />
+        <GuidedDiscoveryOverlay />
         {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}
       </div>
       </ManageFamilyTreeRoot>
     </AtlasReviewRoot>
+  )
+}
+
+function AtlasAppShell() {
+  return (
+    <GuidedDiscoveryProvider>
+      <AtlasAppShellInner />
+    </GuidedDiscoveryProvider>
   )
 }
 

@@ -8583,6 +8583,148 @@
   }
 }
 
+/* ── Soundtrack Lab (dev / Preview only) ── */
+
+.soundtrack-lab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 80;
+  max-width: min(380px, calc(100vw - 24px));
+  font-family: var(--font-ui, Georgia, 'Times New Roman', serif);
+  font-size: 13px;
+  color: #efe6d4;
+}
+
+.soundtrack-lab-toggle {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(196, 176, 138, 0.35);
+  border-radius: 999px;
+  background: rgba(18, 16, 14, 0.88);
+  color: rgba(232, 212, 168, 0.9);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.soundtrack-lab-panel {
+  margin-top: 8px;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgba(196, 176, 138, 0.28);
+  border-radius: 14px;
+  background: rgba(14, 12, 10, 0.94);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.soundtrack-lab-row,
+.soundtrack-lab-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.soundtrack-lab-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(196, 176, 138, 0.16);
+}
+
+.soundtrack-lab-meta {
+  color: rgba(232, 212, 168, 0.55);
+}
+
+.soundtrack-lab-flag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(214, 181, 108, 0.14);
+  color: var(--gold);
+  font-size: 0.85em;
+}
+
+.soundtrack-lab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.soundtrack-lab-env {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(196, 176, 138, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.soundtrack-lab-env:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.soundtrack-lab-env.is-active,
+.soundtrack-lab-env:hover:not(:disabled) {
+  border-color: rgba(214, 181, 108, 0.55);
+  background: rgba(214, 181, 108, 0.08);
+}
+
+.soundtrack-lab-env-label {
+  font-weight: 600;
+  color: #f3ead8;
+}
+
+.soundtrack-lab-env-track,
+.soundtrack-lab-env-meta {
+  color: rgba(232, 212, 168, 0.62);
+  font-size: 0.92em;
+}
+
+.soundtrack-lab-panel button {
+  border: 1px solid rgba(196, 176, 138, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #efe6d4;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.soundtrack-lab-panel button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.soundtrack-lab-diag {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.soundtrack-lab-diag > div {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px;
+}
+
+.soundtrack-lab-diag dt {
+  margin: 0;
+  color: rgba(232, 212, 168, 0.5);
+}
+
+.soundtrack-lab-diag dd {
+  margin: 0;
+}
+
 .header-manage-menu {
   position: absolute;
   right: 0;

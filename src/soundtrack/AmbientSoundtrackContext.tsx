@@ -10,8 +10,14 @@ import {
   type ReactNode,
 } from 'react'
 import { AmbientAudioEngine, type AmbientSnapshot } from './ambientAudioEngine'
-import { AMBIENT_TRACKS, isActiveTrack, type ActiveTrack } from './ambientManifest'
+import {
+  AMBIENT_TRACKS,
+  isActiveTrack,
+  tracksForEnvironment,
+  type ActiveTrack,
+} from './ambientManifest'
 import { readAmbientPreferences, writeAmbientPreferences } from './ambientPreferences'
+import type { SoundtrackEnvironmentId } from './context/environments'
 import type { SoundtrackContext } from './context/resolveSoundtrackContext'
 import { selectTrack } from './context/selectTrack'
 import { TransitionScheduler } from './context/transitionScheduler'
@@ -33,6 +39,14 @@ type AmbientSoundtrackValue = AmbientSnapshot & {
   hold: (reason: string, level: number) => () => void
   /** Duck music under spoken content; call the returned function when it ends. */
   duckForNarration: () => () => void
+  /** Manual lab override — temporarily pins an environment; null restores auto. */
+  previewEnvironment: SoundtrackEnvironmentId | null
+  setPreviewEnvironment: (environment: SoundtrackEnvironmentId | null) => void
+  /** Latest automatic context (even while preview override is active). */
+  autoContext: SoundtrackContext | null
+  schedulerStatus: 'idle' | 'waiting' | 'committed'
+  pendingTrackId: string | null
+  usingFallback: boolean
 }
 
 const AmbientSoundtrackContext = createContext<AmbientSoundtrackValue | null>(null)
@@ -83,7 +97,6 @@ function useNarrationDucking(hold: (reason: string, level: number) => () => void
       active.delete(event.target as EventTarget)
       release()
     }
-    // Media events do not bubble, so listen in the capture phase.
     document.addEventListener('playing', onPlaying, true)
     for (const type of ['pause', 'ended', 'emptied']) document.addEventListener(type, onStop, true)
     return () => {
@@ -102,6 +115,10 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const [engine] = useState(() => new AmbientAudioEngine(prefs.volume))
   const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot)
   const lastReasonRef = useRef<string | null>(null)
+  const [autoContext, setAutoContext] = useState<SoundtrackContext | null>(null)
+  const [previewEnvironment, setPreviewEnvironmentState] = useState<SoundtrackEnvironmentId | null>(null)
+  const [usingFallback, setUsingFallback] = useState(false)
+  const [schedulerTick, setSchedulerTick] = useState(0)
 
   const [scheduler] = useState(
     () =>
@@ -110,6 +127,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
         if (!track) return
         if (debugEnabled()) console.info('[soundtrack] now playing', trackId)
         engine.setTrack(track)
+        setSchedulerTick((n) => n + 1)
       }),
   )
   useEffect(() => () => scheduler.dispose(), [scheduler])
@@ -151,7 +169,6 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
     }
   }, [engine])
 
-  // enable() must run in the click's call stack (autoplay unlock), not inside a state updater.
   const toggleSound = useCallback(() => {
     const enabled = !prefs.enabled
     if (enabled) engine.enable()
@@ -168,11 +185,42 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
     [engine],
   )
 
+  const autoContextRef = useRef<SoundtrackContext | null>(null)
+  useEffect(() => {
+    autoContextRef.current = autoContext
+  }, [autoContext])
+
+  const setPreviewEnvironment = useCallback(
+    (environment: SoundtrackEnvironmentId | null) => {
+      setPreviewEnvironmentState(environment)
+      if (environment != null) {
+        const candidates = tracksForEnvironment(environment).filter(isActiveTrack)
+        const track = candidates[0]
+        if (!track) return
+        if (!engine.isEnabled()) engine.enable()
+        scheduler.force(track.id)
+        setUsingFallback(false)
+        return
+      }
+      // Restore automatic selection from the latest Atlas context.
+      const context = autoContextRef.current
+      if (!context) return
+      const choice = selectTrack(context, scheduler.currentTrackId)
+      setUsingFallback(choice.usingFallback)
+      scheduler.force(choice.track.id)
+    },
+    [engine, scheduler],
+  )
+
   const reportContext = useCallback(
     (context: SoundtrackContext, unsettled: boolean) => {
+      setAutoContext(context)
+      if (previewEnvironment != null) return
+
       const choice = selectTrack(context, scheduler.currentTrackId)
+      setUsingFallback(choice.usingFallback)
       if (debugEnabled() && !unsettled) {
-        const reason = `${context.category}:${context.period ?? '-'}:${context.region ?? '-'}:${context.reason}`
+        const reason = `${context.environment}:${context.mood}:${context.period ?? '-'}:${context.region ?? '-'}:${context.reason}`
         if (reason !== lastReasonRef.current) {
           lastReasonRef.current = reason
           console.info('[soundtrack] context', {
@@ -183,10 +231,16 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
           })
         }
       }
-      scheduler.propose({ trackId: choice.track.id, unsettled, overview: context.overview })
+      scheduler.propose({
+        trackId: choice.track.id,
+        unsettled,
+        overview: context.overview,
+        explicit: context.explicit,
+      })
+      setSchedulerTick((n) => n + 1)
       if (!unsettled) engine.prepare(choice.track)
     },
-    [engine, scheduler],
+    [engine, previewEnvironment, scheduler],
   )
 
   const hold = useCallback((reason: string, level: number) => engine.hold(reason, level), [engine])
@@ -201,8 +255,29 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       reportContext,
       hold,
       duckForNarration,
+      previewEnvironment,
+      setPreviewEnvironment,
+      autoContext,
+      schedulerStatus: scheduler.status,
+      pendingTrackId: scheduler.pendingTrackId,
+      usingFallback,
     }),
-    [duckForNarration, hold, prefs.enabled, reportContext, setVolume, snapshot, toggleSound],
+    // schedulerTick forces status/pending fields to refresh after propose/commit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick is intentional
+    [
+      autoContext,
+      duckForNarration,
+      hold,
+      prefs.enabled,
+      previewEnvironment,
+      reportContext,
+      schedulerTick,
+      setPreviewEnvironment,
+      setVolume,
+      snapshot,
+      toggleSound,
+      usingFallback,
+    ],
   )
 
   return <AmbientSoundtrackContext.Provider value={value}>{children}</AmbientSoundtrackContext.Provider>

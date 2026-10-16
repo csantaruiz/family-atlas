@@ -1,8 +1,12 @@
 export type TransitionTiming = {
-  /** A new choice must hold this long after the view settles before it plays. */
+  /** Settled browsing must hold this long before a new choice plays. */
   settleMs: number
-  /** Minimum time a track plays before another context can replace it. */
+  /** Explicit person / place / event selections settle faster. */
+  explicitSettleMs: number
+  /** Minimum time a track plays before another browsing context can replace it. */
   minDwellMs: number
+  /** Shorter dwell after an explicit selection so exploration feels responsive. */
+  explicitDwellMs: number
   /** Shorter dwell when returning to the main theme from a broad overview. */
   overviewDwellMs: number
   /** Going straight back to the previous track within this window needs a longer settle. */
@@ -11,9 +15,11 @@ export type TransitionTiming = {
 }
 
 export const DEFAULT_TRANSITION_TIMING: TransitionTiming = {
-  settleMs: 2500,
-  minDwellMs: 30_000,
-  overviewDwellMs: 12_000,
+  settleMs: 4000,
+  explicitSettleMs: 1500,
+  minDwellMs: 20_000,
+  explicitDwellMs: 10_000,
+  overviewDwellMs: 10_000,
   revisitWindowMs: 90_000,
   revisitSettleMs: 8000,
 }
@@ -24,6 +30,8 @@ export type Proposal = {
   unsettled: boolean
   /** The proposal is the broad-overview main theme. */
   overview: boolean
+  /** Visitor explicitly selected a person, place, event, or route. */
+  explicit: boolean
 }
 
 type Clock = {
@@ -37,6 +45,8 @@ const browserClock: Clock = {
   setTimeout: (fn, ms) => window.setTimeout(fn, ms),
   clearTimeout: (id) => window.clearTimeout(id),
 }
+
+export type SchedulerStatus = 'idle' | 'waiting' | 'committed'
 
 /**
  * Turns a stream of context proposals into infrequent, intentional track changes:
@@ -66,7 +76,17 @@ export class TransitionScheduler {
     return this.current
   }
 
-  propose({ trackId, unsettled, overview }: Proposal): void {
+  get status(): SchedulerStatus {
+    if (this.pending) return 'waiting'
+    if (this.current) return 'committed'
+    return 'idle'
+  }
+
+  get pendingTrackId(): string | null {
+    return this.pending?.trackId ?? null
+  }
+
+  propose({ trackId, unsettled, overview, explicit }: Proposal): void {
     if (this.current == null) {
       this.commit(trackId)
       return
@@ -79,8 +99,16 @@ export class TransitionScheduler {
 
     const now = this.clock.now()
     const revisit = trackId === this.previous && now - this.lastCommitAt < this.timing.revisitWindowMs
-    const settle = revisit ? this.timing.revisitSettleMs : this.timing.settleMs
-    const dwell = overview ? this.timing.overviewDwellMs : this.timing.minDwellMs
+    const settle = revisit
+      ? this.timing.revisitSettleMs
+      : explicit
+        ? this.timing.explicitSettleMs
+        : this.timing.settleMs
+    const dwell = overview
+      ? this.timing.overviewDwellMs
+      : explicit
+        ? this.timing.explicitDwellMs
+        : this.timing.minDwellMs
     const delay = Math.max(settle, this.lastCommitAt + dwell - now)
 
     this.cancelPending()
@@ -89,6 +117,12 @@ export class TransitionScheduler {
       this.commit(trackId)
     }, delay)
     this.pending = { trackId, timer }
+  }
+
+  /** Force an immediate commit (manual preview). */
+  force(trackId: string): void {
+    this.cancelPending()
+    this.commit(trackId)
   }
 
   dispose(): void {

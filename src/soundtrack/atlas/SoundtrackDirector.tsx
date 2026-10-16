@@ -87,7 +87,6 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
     return null
   }, [beat, detail, focusedTreePersonId, following, journey, mapState?.focus, peopleById, surface])
 
-  // Window statistics only matter while browsing the timeline, and only once it stops moving.
   const windowSummary = useMemo(() => {
     if (surface !== 'timeline' || focus || unsettled) return null
     return summariseWindow(filteredFamilyEvents, windowStart, windowEnd)

@@ -24,116 +24,102 @@ function focus(partial: Partial<SoundtrackFocus> & Pick<SoundtrackFocus, 'kind' 
 }
 
 describe('resolveSoundtrackContext', () => {
-  it('returns the main theme for broad overviews', () => {
-    expect(resolveSoundtrackContext(signals({ surface: 'tree' })).category).toBe('main')
+  it('returns the main environment for broad overviews', () => {
+    expect(resolveSoundtrackContext(signals({ surface: 'tree' })).environment).toBe('main')
     expect(resolveSoundtrackContext(signals({ surface: 'people' })).overview).toBe(true)
-    expect(resolveSoundtrackContext(signals({})).category).toBe('main')
+    expect(resolveSoundtrackContext(signals({})).environment).toBe('main')
   })
 
-  it('picks migration for the journeys map without a selection', () => {
-    expect(resolveSoundtrackContext(signals({ surface: 'journeys', window: null })).category).toBe(
-      'migration',
-    )
-  })
-
-  it('uses origins for early timeline windows', () => {
+  it('selects Mexico / Southwest for Latin American geography', () => {
     const result = resolveSoundtrackContext(
       signals({
-        window: { start: 1500, end: 1580, coverage: 0.15 },
-        windowPlaces: ['Cheshire, England'],
+        focus: focus({
+          kind: 'ancestor',
+          id: 'p-mx',
+          year: 1880,
+          places: ['Chihuahua, Mexico'],
+        }),
       }),
     )
-    expect(result.category).toBe('origins')
-    expect(result.period).toBe('medieval_early_modern')
-    expect(result.region).toBe('british_isles')
+    expect(result.environment).toBe('mexico_southwest')
+    expect(result.region).toBe('latin_america')
+    expect(result.explicit).toBe(true)
   })
 
-  it('uses conflict for wartime windows and upheaval history', () => {
+  it('selects Britain & Ireland for Isles ancestors', () => {
+    const result = resolveSoundtrackContext(
+      signals({
+        focus: focus({
+          kind: 'ancestor',
+          id: 'p-uk',
+          year: 1600,
+          places: ['Cheshire, England'],
+        }),
+      }),
+    )
+    expect(result.environment).toBe('britain_ireland')
+    expect(result.mood).toBe('origins')
+  })
+
+  it('selects Industrial America for U.S. late-19th / early-20th context', () => {
+    const result = resolveSoundtrackContext(
+      signals({
+        window: { start: 1880, end: 1910, coverage: 0.1 },
+        windowPlaces: ['Pennsylvania, United States', 'New Jersey, United States'],
+      }),
+    )
+    expect(result.environment).toBe('industrial_america')
+    expect(result.period).toBe('c19')
+  })
+
+  it('selects WWII for wartime windows and military service', () => {
     expect(
       resolveSoundtrackContext(
         signals({ window: { start: 1939, end: 1945, coverage: 0.02 } }),
-      ).category,
-    ).toBe('conflict')
-
-    expect(
-      resolveSoundtrackContext(
-        signals({
-          focus: focus({
-            kind: 'historical_event',
-            id: 'h1',
-            year: 1810,
-            places: ['Mexico'],
-            text: 'Mexican War of Independence',
-          }),
-        }),
-      ).category,
-    ).toBe('conflict')
-  })
-
-  it('uses migration for moves and routes', () => {
-    expect(
-      resolveSoundtrackContext(
-        signals({
-          focus: focus({
-            kind: 'migration',
-            id: 'm1',
-            year: 1915,
-            places: ['Chihuahua, Mexico', 'El Paso, Texas'],
-          }),
-        }),
-      ).category,
-    ).toBe('migration')
+      ).environment,
+    ).toBe('wwii_1940s')
 
     expect(
       resolveSoundtrackContext(
         signals({
           focus: focus({
             kind: 'family_event',
-            id: 'e1',
-            year: 1920,
-            places: ['Mexico'],
-            eventKind: 'move',
+            id: 'svc',
+            year: 1943,
+            places: ['United States'],
+            eventKind: 'service',
           }),
         }),
-      ).category,
-    ).toBe('migration')
+      ).environment,
+    ).toBe('wwii_1940s')
   })
 
-  it('uses everyday for intimate ancestor focus and legacy for recent generations', () => {
-    expect(
-      resolveSoundtrackContext(
-        signals({
-          focus: focus({
-            kind: 'ancestor',
-            id: 'p1',
-            year: 1850,
-            places: ['Pennsylvania, United States'],
-          }),
-        }),
-      ).category,
-    ).toBe('everyday')
-
-    expect(
-      resolveSoundtrackContext(
-        signals({
-          focus: focus({
-            kind: 'ancestor',
-            id: 'p2',
-            year: 2000,
-            places: ['California, United States'],
-          }),
-        }),
-      ).category,
-    ).toBe('legacy')
-  })
-
-  it('derives relative origins from the loaded family span, not a fixed surname', () => {
-    const shortTree = resolveSoundtrackContext(
+  it('selects Iberia for Spanish geography', () => {
+    const result = resolveSoundtrackContext(
       signals({
-        familyRange: { start: 1880, end: 2020 },
-        window: { start: 1880, end: 1900, coverage: 0.15 },
+        focus: focus({
+          kind: 'ancestor',
+          id: 'p-es',
+          year: 1650,
+          places: ['Reinos de Castilla, Spain'],
+        }),
       }),
     )
-    expect(shortTree.category).toBe('origins')
+    expect(result.environment).toBe('iberia')
+  })
+
+  it('falls back to main for unsupported regions rather than inventing ethnicity from surnames', () => {
+    const result = resolveSoundtrackContext(
+      signals({
+        focus: focus({
+          kind: 'ancestor',
+          id: 'p-jp',
+          year: 1900,
+          places: ['Tokyo, Japan'],
+        }),
+      }),
+    )
+    expect(result.environment).toBe('main')
+    expect(result.reason.toLowerCase()).toMatch(/no matching|fallback|catalog/)
   })
 })

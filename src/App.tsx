@@ -31,6 +31,7 @@ import { AtlasReviewRoot } from './atlas-review/AtlasReviewRoot'
 import { ManageFamilyTreeRoot } from './atlas-manage/ManageFamilyTreeRoot'
 import { AmbientSoundtrackProvider, useAmbientHold } from './soundtrack/AmbientSoundtrackContext'
 import { SoundtrackDirector } from './soundtrack/atlas/SoundtrackDirector'
+import { SoundtrackLab } from './soundtrack/dev/SoundtrackLab'
 
 const VIEW_RENDERERS: Record<AppView, (active: boolean) => ReactNode> = {
   journey: (active) => <TimelineViewport active={active} />,
@@ -95,6 +96,7 @@ function AtlasAppShell() {
         </SoundtrackDirector>
         <FollowPersonOverlay />
         <DetailPanel />
+        <SoundtrackLab />
         {isAtlasDebugEnabled() ? <AtlasDebuggerPanel /> : null}
       </div>
       </ManageFamilyTreeRoot>

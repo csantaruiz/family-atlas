@@ -1,4 +1,5 @@
 import type { SoundtrackCategoryId } from './categories'
+import { MAIN_ENVIRONMENT, type SoundtrackEnvironmentId } from './environments'
 import { dominantGeography, geographyForPlace, type WorldRegion } from './geography'
 import { describesUpheaval, isWorldWarYear, periodForYear, type HistoricalPeriod } from './periods'
 
@@ -42,12 +43,19 @@ export type SoundtrackSignals = {
   focus: SoundtrackFocus | null
 }
 
+/**
+ * Geography + period choose a musical environment; narrative mood refines selection
+ * when multiple tracks exist for that environment.
+ */
 export type SoundtrackContext = {
-  category: SoundtrackCategoryId
+  environment: SoundtrackEnvironmentId
+  mood: SoundtrackCategoryId
   period: HistoricalPeriod | null
   region: WorldRegion | null
   /** True for broad overviews, which may return to the main theme sooner. */
   overview: boolean
+  /** True when the visitor explicitly selected a person, place, event, or route. */
+  explicit: boolean
   reason: string
 }
 
@@ -76,68 +84,140 @@ function isLegacyYear(year: number, signals: SoundtrackSignals): boolean {
   return year >= signals.presentYear - LEGACY_YEARS
 }
 
-/** Era-only choice for a year when nothing more specific is known. */
-function categoryForEra(year: number, signals: SoundtrackSignals): SoundtrackCategoryId {
+function moodForEra(year: number | null, signals: SoundtrackSignals): SoundtrackCategoryId {
+  if (year == null) return 'everyday'
   if (isOriginsYear(year, signals)) return 'origins'
   if (isLegacyYear(year, signals)) return 'legacy'
   return 'everyday'
 }
 
-function context(
-  category: SoundtrackCategoryId,
+/** Geography + period → musical environment. Unsupported contexts fall back to main. */
+export function environmentForPlaceAndPeriod(
+  region: WorldRegion | null,
+  period: HistoricalPeriod | null,
+  opts: { wartimeHint?: boolean; militaryService?: boolean } = {},
+): { environment: SoundtrackEnvironmentId; reason: string } {
+  if (opts.militaryService && (period === 'world_wars' || opts.wartimeHint)) {
+    return { environment: 'wwii_1940s', reason: 'documented military service in wartime years' }
+  }
+  if (period === 'world_wars' || opts.wartimeHint) {
+    return { environment: 'wwii_1940s', reason: 'world-war years' }
+  }
+  if (region === 'latin_america') {
+    return { environment: 'mexico_southwest', reason: 'Latin American geography' }
+  }
+  if (region === 'british_isles') {
+    return { environment: 'britain_ireland', reason: 'Britain & Ireland geography' }
+  }
+  if (region === 'southern_europe') {
+    return { environment: 'iberia', reason: 'Iberian / southern European geography' }
+  }
+  if (region === 'north_america' && (period === 'c19' || period === 'early_20th')) {
+    return { environment: 'industrial_america', reason: 'industrial-era North America' }
+  }
+  return { environment: MAIN_ENVIRONMENT, reason: 'no matching regional catalog entry' }
+}
+
+function pack(
+  environment: SoundtrackEnvironmentId,
+  mood: SoundtrackCategoryId,
   year: number | null,
   places: readonly (string | null | undefined)[],
   reason: string,
-  overview = false,
+  overview: boolean,
+  explicit: boolean,
 ): SoundtrackContext {
   return {
-    category,
+    environment,
+    mood,
     period: year != null ? periodForYear(year) : null,
     region: dominantGeography(places)?.region ?? null,
     overview,
+    explicit,
     reason,
   }
 }
 
 function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): SoundtrackContext {
   const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
-  const era = (fallback: string) =>
-    context(year != null ? categoryForEra(year, signals) : 'everyday', year, focus.places, fallback)
+  const period = year != null ? periodForYear(year) : null
+  const region = dominantGeography(focus.places)?.region ?? null
+  const wartimeHint = Boolean(
+    (year != null && isWorldWarYear(year)) || describesUpheaval(focus.text),
+  )
 
   switch (focus.kind) {
-    case 'historical_event':
-      if (describesUpheaval(focus.text) || (year != null && isWorldWarYear(year))) {
-        return context('conflict', year, focus.places, 'historical upheaval')
+    case 'historical_event': {
+      const env = environmentForPlaceAndPeriod(region, period, {
+        wartimeHint: wartimeHint || describesUpheaval(focus.text),
+      })
+      return pack(
+        env.environment,
+        wartimeHint || describesUpheaval(focus.text) ? 'conflict' : moodForEra(year, signals),
+        year,
+        focus.places,
+        env.reason,
+        false,
+        true,
+      )
+    }
+    case 'migration': {
+      const env = environmentForPlaceAndPeriod(region, period)
+      return pack(
+        env.environment === MAIN_ENVIRONMENT ? env.environment : env.environment,
+        'migration',
+        year,
+        focus.places,
+        env.environment === MAIN_ENVIRONMENT ? 'migration without regional catalog match' : env.reason,
+        false,
+        true,
+      )
+    }
+    case 'region': {
+      const env = environmentForPlaceAndPeriod(region, period)
+      const mood =
+        year != null && isOriginsYear(year, signals) ? 'origins' : ('migration' as SoundtrackCategoryId)
+      return pack(env.environment, mood, year, focus.places, env.reason, false, true)
+    }
+    case 'family_event': {
+      if (focus.eventKind === 'service') {
+        const env = environmentForPlaceAndPeriod(region, period, {
+          militaryService: true,
+          wartimeHint: wartimeHint || period === 'world_wars',
+        })
+        return pack(env.environment, 'conflict', year, focus.places, env.reason, false, true)
       }
-      return era('historical event era')
-    case 'migration':
-      return context('migration', year, focus.places, 'migration route')
-    case 'region':
-      if (year != null && isOriginsYear(year, signals)) {
-        return context('origins', year, focus.places, 'early region')
+      if (focus.eventKind === 'move') {
+        const env = environmentForPlaceAndPeriod(region, period)
+        return pack(env.environment, 'migration', year, focus.places, env.reason, false, true)
       }
-      return context('migration', year, focus.places, 'family region')
-    case 'family_event':
-      if (focus.eventKind === 'move') return context('migration', year, focus.places, 'relocation')
-      if (focus.eventKind === 'service') return context('conflict', year, focus.places, 'military service')
-      if (focus.eventKind === 'epilogue') return context('legacy', year, focus.places, 'journey epilogue')
-      return era('family event era')
+      if (focus.eventKind === 'epilogue') {
+        return pack(MAIN_ENVIRONMENT, 'legacy', year, focus.places, 'journey epilogue', false, true)
+      }
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
+      return pack(env.environment, moodForEra(year, signals), year, focus.places, env.reason, false, true)
+    }
     case 'ancestor': {
       const birth = focus.year
-      if (birth != null && isOriginsYear(birth, signals)) {
-        return context('origins', birth, focus.places, 'early ancestor')
-      }
-      if (birth != null && isLegacyYear(birth, signals)) {
-        return context('legacy', birth, focus.places, 'recent generation')
-      }
       const [first, last] = [focus.places[0], focus.places[focus.places.length - 1]]
       const from = geographyForPlace(first)?.region
       const to = geographyForPlace(last)?.region
-      if (from && to && from !== to) return context('migration', year, focus.places, 'ancestor who emigrated')
-      return context('everyday', year, focus.places, 'individual ancestor')
+      const emigrated = Boolean(from && to && from !== to)
+      // Prefer the birthplace region for the musical environment; destination colours migration mood.
+      const env = environmentForPlaceAndPeriod(from ?? region, period, { wartimeHint })
+      const mood: SoundtrackCategoryId = emigrated
+        ? 'migration'
+        : birth != null && isOriginsYear(birth, signals)
+          ? 'origins'
+          : birth != null && isLegacyYear(birth, signals)
+            ? 'legacy'
+            : 'everyday'
+      return pack(env.environment, mood, year, focus.places, env.reason, false, true)
     }
-    case 'insight':
-      return era('insight era')
+    case 'insight': {
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
+      return pack(env.environment, moodForEra(year, signals), year, focus.places, env.reason, false, true)
+    }
   }
 }
 
@@ -149,26 +229,39 @@ export function resolveSoundtrackContext(signals: SoundtrackSignals): Soundtrack
     case 'about':
     case 'tree':
     case 'people':
-      return context('main', null, [], 'family overview', true)
+      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false)
     case 'journeys':
-      return context('migration', null, [], 'journeys map')
+      return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false)
     case 'timeline': {
       const window = signals.window
       if (!window || window.coverage >= OVERVIEW_COVERAGE) {
-        return context('main', null, [], 'timeline overview', true)
+        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false)
       }
       const year = (window.start + window.end) / 2
       const span = window.end - window.start
       const places = signals.windowPlaces
-      if (span <= WARTIME_WINDOW_YEARS && isWorldWarYear(year)) {
-        return context('conflict', year, places, 'wartime years')
+      const region = dominantGeography(places)?.region ?? null
+      const period = periodForYear(year)
+      const wartime = span <= WARTIME_WINDOW_YEARS && isWorldWarYear(year)
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint: wartime })
+
+      let mood: SoundtrackCategoryId = 'everyday'
+      if (wartime) mood = 'conflict'
+      else if (isOriginsYear(year, signals)) mood = 'origins'
+      else if (isLegacyYear(year, signals)) mood = 'legacy'
+      else if (signals.migrationShare != null && signals.migrationShare >= MIGRATION_SHARE_THRESHOLD) {
+        mood = 'migration'
       }
-      if (isOriginsYear(year, signals)) return context('origins', year, places, 'early centuries')
-      if (isLegacyYear(year, signals)) return context('legacy', year, places, 'recent decades')
-      if (signals.migrationShare != null && signals.migrationShare >= MIGRATION_SHARE_THRESHOLD) {
-        return context('migration', year, places, 'era of family moves')
-      }
-      return context('everyday', year, places, 'family era')
+
+      return pack(
+        env.environment,
+        mood,
+        year,
+        places,
+        env.environment === MAIN_ENVIRONMENT ? `${env.reason} (${mood} era)` : env.reason,
+        false,
+        false,
+      )
     }
   }
 }

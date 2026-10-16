@@ -23,7 +23,12 @@ function fit<T>(allowed: readonly T[] | 'any', value: T | null): number {
 }
 
 function score(track: AmbientTrack, context: SoundtrackContext): number {
-  return fit(track.periods, context.period) + fit(track.regions, context.region)
+  let value = 0
+  value += fit(track.periods, context.period)
+  value += fit(track.regions, context.region)
+  // Mood is a soft preference within an environment.
+  if (track.moods.includes(context.mood)) value += 1
+  return value
 }
 
 function best(candidates: readonly AmbientTrack[], context: SoundtrackContext, currentId: string | null) {
@@ -31,9 +36,7 @@ function best(candidates: readonly AmbientTrack[], context: SoundtrackContext, c
   let topScore = -Infinity
   for (const track of candidates) {
     const value = score(track, context)
-    // A clear period or region mismatch is worse than the main theme.
     if (value < 0) continue
-    // Equal fit keeps whatever is already playing, so similar contexts never trade tracks.
     const better = value > topScore || (value === topScore && track.id === currentId)
     if (better) {
       top = track
@@ -43,16 +46,19 @@ function best(candidates: readonly AmbientTrack[], context: SoundtrackContext, c
   return top
 }
 
-/** Pick the best-fitting track for a context, preferring the current one on ties. */
+/**
+ * Pick the best-fitting track for a context.
+ * Environment is primary; mood/period/region refine when several tracks share an environment.
+ */
 export function selectTrack(
   context: SoundtrackContext,
   currentTrackId: string | null = null,
   library: readonly AmbientTrack[] = AMBIENT_TRACKS,
 ): TrackChoice {
   const main = getMainTheme(library)
-  const inCategory = library.filter((track) => track.categories.includes(context.category))
-  const ideal = best(inCategory, context, currentTrackId) ?? main
-  const playable = best(inCategory.filter(isActiveTrack), context, currentTrackId)
+  const inEnvironment = library.filter((track) => track.environment === context.environment)
+  const ideal = best(inEnvironment, context, currentTrackId) ?? main
+  const playable = best(inEnvironment.filter(isActiveTrack), context, currentTrackId)
   const track = playable && isActiveTrack(playable) ? playable : main
   return { track, ideal, usingFallback: ideal.id !== track.id }
 }

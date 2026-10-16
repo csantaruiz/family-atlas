@@ -1,76 +1,63 @@
 import { describe, expect, it } from 'vitest'
-import {
-  AMBIENT_TRACKS,
-  getMainTheme,
-  isActiveTrack,
-  MAIN_THEME_ID,
-  type AmbientTrack,
-} from '../ambientManifest'
+import { AMBIENT_TRACKS, MAIN_THEME_ID, isActiveTrack } from '../ambientManifest'
 import type { SoundtrackContext } from '../context/resolveSoundtrackContext'
 import { selectTrack } from '../context/selectTrack'
 
-const MAIN = getMainTheme()
-
 function context(partial: Partial<SoundtrackContext>): SoundtrackContext {
   return {
-    category: 'main',
+    environment: 'main',
+    mood: 'main',
     period: null,
     region: null,
     overview: false,
+    explicit: false,
     reason: 'test',
     ...partial,
   }
 }
 
-/** Library with one playable non-main track so selection can leave the theme. */
-function libraryWithEveryday(): AmbientTrack[] {
-  return [
-    ...AMBIENT_TRACKS,
-    {
-      id: 'test-everyday-active',
-      status: 'active',
-      title: 'Test Everyday',
-      artist: 'Test',
-      categories: ['everyday'],
-      periods: 'any',
-      regions: ['north_america'],
-      mood: ['intimate'],
-      src: MAIN.src,
-      gain: 0.3,
-      playback: {},
-      rights: MAIN.rights,
-    },
-  ]
-}
-
 describe('selectTrack', () => {
-  it('falls back to the main theme when category tracks are only placeholders', () => {
-    const choice = selectTrack(context({ category: 'origins', period: 'c17_18', region: 'british_isles' }))
-    expect(choice.track.id).toBe(MAIN_THEME_ID)
-    expect(choice.usingFallback).toBe(true)
-    expect(choice.ideal.status).toBe('placeholder')
-    expect(choice.ideal.categories).toContain('origins')
-  })
-
-  it('plays an active category match when one exists', () => {
-    const library = libraryWithEveryday()
-    const choice = selectTrack(
-      context({ category: 'everyday', period: 'c19', region: 'north_america' }),
-      null,
-      library,
+  it('plays distinct active recordings for each starter environment', () => {
+    const mexico = selectTrack(context({ environment: 'mexico_southwest', region: 'latin_america' }))
+    const britain = selectTrack(context({ environment: 'britain_ireland', region: 'british_isles' }))
+    const america = selectTrack(
+      context({ environment: 'industrial_america', period: 'c19', region: 'north_america' }),
     )
-    expect(choice.track.id).toBe('test-everyday-active')
-    expect(choice.usingFallback).toBe(false)
-    expect(isActiveTrack(choice.track)).toBe(true)
+    const war = selectTrack(context({ environment: 'wwii_1940s', period: 'world_wars', mood: 'conflict' }))
+    const iberia = selectTrack(context({ environment: 'iberia', region: 'southern_europe' }))
+    const main = selectTrack(context({ environment: 'main', overview: true }))
+
+    expect(mexico.track.id).not.toBe(MAIN_THEME_ID)
+    expect(britain.track.id).not.toBe(MAIN_THEME_ID)
+    expect(america.track.id).not.toBe(MAIN_THEME_ID)
+    expect(war.track.id).not.toBe(MAIN_THEME_ID)
+    expect(iberia.track.id).not.toBe(MAIN_THEME_ID)
+    expect(main.track.id).toBe(MAIN_THEME_ID)
+
+    const ids = new Set([
+      mexico.track.id,
+      britain.track.id,
+      america.track.id,
+      war.track.id,
+      iberia.track.id,
+      main.track.id,
+    ])
+    expect(ids.size).toBe(6)
+    for (const choice of [mexico, britain, america, war, iberia, main]) {
+      expect(isActiveTrack(choice.track)).toBe(true)
+      expect(choice.usingFallback).toBe(false)
+    }
   })
 
   it('keeps the current track on equal fit so similar contexts do not thrash', () => {
-    const library = libraryWithEveryday()
-    const same = selectTrack(
-      context({ category: 'everyday', period: 'c19', region: 'north_america' }),
-      'test-everyday-active',
-      library,
+    const first = selectTrack(
+      context({ environment: 'mexico_southwest', region: 'latin_america', mood: 'everyday' }),
     )
-    expect(same.track.id).toBe('test-everyday-active')
+    const again = selectTrack(
+      context({ environment: 'mexico_southwest', region: 'latin_america', mood: 'everyday' }),
+      first.track.id,
+      AMBIENT_TRACKS,
+    )
+    expect(again.track.id).toBe(first.track.id)
   })
 })

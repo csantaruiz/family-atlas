@@ -89,7 +89,7 @@ describe('guaranteed documentary fallback (Phase 2.6)', () => {
   it('unmatched historical context resolves to documentary, not null/empty', () => {
     const choice = choose({
       subjectYear: 1200,
-      region: 'east_asia',
+      region: 'asia',
       environment: 'main',
       mood: 'everyday',
     })
@@ -160,8 +160,8 @@ describe('guaranteed documentary fallback (Phase 2.6)', () => {
   })
 
   it('two unmatched ancestors keep documentary without requiring a restart signal', () => {
-    const a = choose({ subjectYear: 1200, region: 'east_asia' })
-    const b = choose({ subjectYear: 1250, region: 'east_asia' })
+    const a = choose({ subjectYear: 1200, region: 'asia' })
+    const b = choose({ subjectYear: 1250, region: 'asia' })
     const again = selectTrack(
       {
         environment: 'main',
@@ -169,7 +169,7 @@ describe('guaranteed documentary fallback (Phase 2.6)', () => {
         subjectYear: 1250,
         yearSource: 'test',
         period: null,
-        region: 'east_asia',
+        region: 'asia',
         overview: false,
         explicit: true,
         precedence: 'ancestor_or_story',
@@ -195,7 +195,7 @@ describe('guaranteed documentary fallback (Phase 2.6)', () => {
         subjectYear: 1200,
         yearSource: 'test',
         period: null,
-        region: 'east_asia',
+        region: 'asia',
         overview: false,
         explicit: true,
         precedence: 'ancestor_or_story',

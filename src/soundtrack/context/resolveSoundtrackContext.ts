@@ -126,9 +126,12 @@ export function environmentForPlaceAndPeriod(
   }
   if (
     region === 'north_america' &&
-    (period === 'c19' || period === 'early_20th' || period === 'world_wars')
+    (period === 'c19' ||
+      period === 'early_20th' ||
+      period === 'world_wars' ||
+      period === 'postwar')
   ) {
-    return { environment: 'industrial_america', reason: 'industrial-era North America' }
+    return { environment: 'industrial_america', reason: 'North American family geography' }
   }
   return { environment: MAIN_ENVIRONMENT, reason: 'no matching regional catalog entry' }
 }

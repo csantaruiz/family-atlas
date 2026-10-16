@@ -9,7 +9,12 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from 'react'
-import { AmbientAudioEngine, CONTEXT_CROSSFADE_S, type AmbientSnapshot } from './ambientAudioEngine'
+import {
+  AmbientAudioEngine,
+  CONTEXT_CROSSFADE_S,
+  OVERVIEW_CROSSFADE_S,
+  type AmbientSnapshot,
+} from './ambientAudioEngine'
 import {
   AMBIENT_TRACKS,
   isActiveTrack,
@@ -80,9 +85,8 @@ function debugEnabled(): boolean {
   }
 }
 
-function crossfadeForContext(context: SoundtrackContext, immediate?: boolean): number {
-  if (context.overview && !context.explicit) return 1
-  if (context.explicit || immediate) return CONTEXT_CROSSFADE_S
+function crossfadeForContext(context: SoundtrackContext, _immediate?: boolean): number {
+  if (context.overview && !context.explicit) return OVERVIEW_CROSSFADE_S
   return CONTEXT_CROSSFADE_S
 }
 

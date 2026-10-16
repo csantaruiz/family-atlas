@@ -61,10 +61,10 @@ describe('TransitionScheduler', () => {
       overview: false,
       explicit: true,
       immediate: true,
-      crossfadeSec: 0.6,
+      crossfadeSec: 0.8,
     })
     expect(commits.map((c) => c.id)).toEqual(['main', 'mexico'])
-    expect(commits[1].fade).toBe(0.6)
+    expect(commits[1].fade).toBe(0.8)
   })
 
   it('restores underlying track immediately when an explicit panel closes', () => {
@@ -86,7 +86,7 @@ describe('TransitionScheduler', () => {
       overview: true,
       explicit: false,
       immediate: true,
-      crossfadeSec: 0.6,
+      crossfadeSec: 0.8,
     })
     expect(commits).toEqual(['main', 'alfred', 'main'])
   })

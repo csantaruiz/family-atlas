@@ -132,8 +132,8 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
     const panelLifecycle = focusChanged
     reportContext(soundtrackContext, unsettled && !panelLifecycle, {
       immediate: panelLifecycle || soundtrackContext.explicit,
-      // Panel close → documentary uses the same snappy 0.6s fade as open.
-      crossfadeSec: 0.6,
+      // Overlapping crossfade (~0.8s); overview restore may stretch slightly in the engine.
+      crossfadeSec: 0.8,
     })
   }, [reportContext, soundtrackContext, unsettled])
 

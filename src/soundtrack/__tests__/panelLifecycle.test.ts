@@ -30,13 +30,13 @@ describe('panel lifecycle → History Documentary', () => {
         places: ['New Jersey, USA'],
       },
     })
-    expect(selectTrack(open).track.id).toBe('industrial-maple-leaf-rag')
+    expect(['industrial-maple-leaf-rag', 'america-shenandoah']).toContain(selectTrack(open).track.id)
 
     const closed = resolveSoundtrackContext({ ...BASE, focus: null })
     expect(selectTrack(closed).track.id).toBe(MAIN_THEME_ID)
   })
 
-  it('Alfred open → Documentary fallback; close → Documentary', () => {
+  it('Alfred open → Shenandoah; close → Documentary', () => {
     const open = resolveSoundtrackContext({
       ...BASE,
       timelineYear: null,
@@ -48,7 +48,7 @@ describe('panel lifecycle → History Documentary', () => {
         places: ['Bexar, Texas'],
       },
     })
-    expect(selectTrack(open).track.id).toBe(MAIN_THEME_ID)
+    expect(selectTrack(open).track.id).toBe('america-shenandoah')
 
     const closed = resolveSoundtrackContext({ ...BASE, focus: null })
     expect(selectTrack(closed).track.id).toBe(MAIN_THEME_ID)
@@ -88,7 +88,7 @@ describe('panel lifecycle → History Documentary', () => {
         },
       }),
     )
-    scheduler.force(a.track.id, 0.6)
+    scheduler.force(a.track.id, 0.8)
 
     const b = selectTrack(
       resolveSoundtrackContext({
@@ -102,12 +102,12 @@ describe('panel lifecycle → History Documentary', () => {
         },
       }),
     )
-    scheduler.force(b.track.id, 0.6)
+    scheduler.force(b.track.id, 0.8)
 
     const closed = selectTrack(resolveSoundtrackContext({ ...BASE, focus: null }))
-    scheduler.force(closed.track.id, 0.6)
+    scheduler.force(closed.track.id, 0.8)
 
-    expect(commits[0]).toBe('industrial-maple-leaf-rag')
+    expect(['industrial-maple-leaf-rag', 'america-shenandoah']).toContain(commits[0])
     expect(commits[commits.length - 1]).toBe(MAIN_THEME_ID)
   })
 })

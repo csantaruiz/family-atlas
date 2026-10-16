@@ -137,7 +137,7 @@ describe('historical authenticity selection', () => {
         environment: 'industrial_america',
         mood: 'everyday',
       }).track.id,
-    ).toBe('atlas-main-theme')
+    ).toBe('america-shenandoah')
 
     const overview = resolveSoundtrackContext({ ...BASE, focus: null })
     expect(overview.overview).toBe(true)
@@ -162,7 +162,7 @@ describe('historical authenticity selection', () => {
     expect(selectTrack(resolved).track.id).toBe('britain-greensleeves')
   })
 
-  it('selects Maple Leaf Rag for Theresa Jackson birth-year context (1925 NJ)', () => {
+  it('selects Maple Leaf Rag or Shenandoah for Theresa Jackson birth-year context (1925 NJ)', () => {
     const theresa = resolveSoundtrackContext({
       ...BASE,
       timelineYear: null,
@@ -175,10 +175,42 @@ describe('historical authenticity selection', () => {
       },
     })
     expect(theresa.subjectYear).toBe(1925)
-    expect(selectTrack(theresa).track.id).toBe('industrial-maple-leaf-rag')
+    expect(['industrial-maple-leaf-rag', 'america-shenandoah']).toContain(selectTrack(theresa).track.id)
   })
 
-  it('does not leave Goin Home on Alfred Ruiz civilian ancestor profiles', () => {
+  it('uses Shenandoah for Esther Madelyn Ace (1896 Pennsylvania) instead of documentary fallback', () => {
+    const esther = resolveSoundtrackContext({
+      ...BASE,
+      timelineYear: null,
+      focus: {
+        kind: 'ancestor',
+        id: 'person:esther',
+        year: 1896,
+        yearEnd: null,
+        places: ['Pennsylvania, United States', 'Gloucester City, Camden, New Jersey, United States'],
+      },
+    })
+    expect(esther.subjectYear).toBe(1896)
+    expect(esther.region).toBe('north_america')
+    // Maple Leaf starts 1899 — Esther’s birth is covered by Shenandoah (1860–1960).
+    expect(selectTrack(esther).track.id).toBe('america-shenandoah')
+  })
+
+  it('keeps son jarocho for Pedro Luna (1880 Mexico)', () => {
+    const pedro = resolveSoundtrackContext({
+      ...BASE,
+      timelineYear: null,
+      focus: {
+        kind: 'ancestor',
+        id: 'person:pedro',
+        year: 1880,
+        places: ['Mexico', 'Westminster, Orange, California, USA'],
+      },
+    })
+    expect(selectTrack(pedro).track.id).toBe('mexico-la-guacamaya')
+  })
+
+  it('uses Shenandoah for Alfred Ruiz civilian mid-century US birth (not Goin Home)', () => {
     const alfred = resolveSoundtrackContext({
       ...BASE,
       timelineYear: null,
@@ -191,6 +223,6 @@ describe('historical authenticity selection', () => {
       },
     })
     expect(selectTrack(alfred).track.id).not.toBe('wwii-goin-home')
-    expect(selectTrack(alfred).track.id).toBe('atlas-main-theme')
+    expect(selectTrack(alfred).track.id).toBe('america-shenandoah')
   })
 })

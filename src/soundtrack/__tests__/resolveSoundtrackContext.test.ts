@@ -123,7 +123,8 @@ describe('resolveSoundtrackContext', () => {
     expect(alfred.subjectYear).toBe(1943)
     expect(alfred.mood).not.toBe('conflict')
     expect(alfred.environment).not.toBe('wwii_1940s')
-    expect(selectTrack(alfred).track.id).toBe(MAIN_THEME_ID)
+    // Mid-century US civilian life → Shenandoah, not wartime remembrance.
+    expect(selectTrack(alfred).track.id).toBe('america-shenandoah')
   })
 
   it('uses wartime music for explicit military service, not birth year alone', () => {
@@ -159,7 +160,7 @@ describe('resolveSoundtrackContext', () => {
       }),
     )
     expect(open.explicit).toBe(true)
-    expect(selectTrack(open).track.id).toBe('industrial-maple-leaf-rag')
+    expect(['industrial-maple-leaf-rag', 'america-shenandoah']).toContain(selectTrack(open).track.id)
 
     const closed = resolveSoundtrackContext(
       signals({

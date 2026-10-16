@@ -54,8 +54,8 @@ const browserClock: Clock = {
 
 export type SchedulerStatus = 'idle' | 'waiting' | 'committed'
 
-const DEFAULT_CROSSFADE_SEC = 0.6
-const CONTEXT_CROSSFADE_DEFAULT = 0.6
+const DEFAULT_CROSSFADE_SEC = 0.8
+const CONTEXT_CROSSFADE_DEFAULT = 0.8
 
 /**
  * Turns a stream of context proposals into intentional track changes.

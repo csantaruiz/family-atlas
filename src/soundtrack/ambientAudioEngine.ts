@@ -7,8 +7,10 @@ import { getMainTheme, type ActiveTrack } from './ambientManifest'
 
 /** Default loop / long atmospheric crossfade (seconds). Context switches use shorter fades. */
 export const AMBIENT_CROSSFADE_S = 4
-/** Target crossfade for intentional context changes. */
-export const CONTEXT_CROSSFADE_S = 0.6
+/** Overlapping equal-power crossfade for intentional context changes. */
+export const CONTEXT_CROSSFADE_S = 0.8
+/** Slightly longer fade when returning to a broad Atlas overview. */
+export const OVERVIEW_CROSSFADE_S = 1.2
 const FADE_IN_FROM_SILENCE_S = 0.8
 const FADE_TO_SILENCE_S = 0.35
 const DUCK_FADE_S = 0.45
@@ -17,7 +19,9 @@ const VOLUME_SMOOTHING_S = 0.12
 const MUTE_FADE_S = 0.08
 /** Max wait for a cold asset before starting the fade anyway (avoids UI freeze). */
 const READY_TIMEOUT_MS = 8000
+const HAVE_CURRENT_DATA = 2
 const HAVE_FUTURE_DATA = 3
+const EQUAL_POWER_STEPS = 48
 
 type Deck = {
   el: HTMLAudioElement
@@ -397,33 +401,86 @@ export class AmbientAudioEngine {
     })
   }
 
-  private waitUntilPlayable(deck: Deck, generation: number): Promise<'ready' | 'timeout' | 'cancelled'> {
-    if (deck.el.readyState >= HAVE_FUTURE_DATA) return Promise.resolve('ready')
+  /** True when the deck is decoding frames and advancing (safe to start a crossfade). */
+  private deckIsAudibleReady(deck: Deck): boolean {
+    const el = deck.el
+    if (el.ended || el.error) return false
+    if (el.paused) return false
+    // HAVE_CURRENT_DATA (2) is enough — waiting for HAVE_ENOUGH_DATA / canplaythrough
+    // on large AAC files routinely exceeds several seconds on cold load.
+    return el.readyState >= HAVE_CURRENT_DATA
+  }
+
+  /**
+   * Wait until the destination deck is actually producing audio (playing),
+   * not merely buffered. Outgoing music stays at full gain during this wait —
+   * never fade to silence while the next asset is still loading.
+   */
+  private waitUntilPlaying(deck: Deck, generation: number): Promise<'ready' | 'timeout' | 'cancelled'> {
+    if (this.deckIsAudibleReady(deck)) return Promise.resolve('ready')
     return new Promise((resolve) => {
       let settled = false
       const finish = (result: 'ready' | 'timeout' | 'cancelled') => {
         if (settled) return
         settled = true
-        deck.el.removeEventListener('canplay', onReady)
-        deck.el.removeEventListener('canplaythrough', onReady)
-        deck.el.removeEventListener('playing', onReady)
+        deck.el.removeEventListener('playing', onMaybeReady)
+        deck.el.removeEventListener('canplay', onMaybeReady)
+        deck.el.removeEventListener('canplaythrough', onMaybeReady)
+        deck.el.removeEventListener('loadeddata', onMaybeReady)
         window.clearTimeout(timer)
+        window.clearInterval(poll)
         resolve(result)
       }
-      const onReady = () => {
+      const check = () => {
         if (generation !== this.playbackGeneration) {
           finish('cancelled')
           return
         }
-        finish('ready')
+        if (this.deckIsAudibleReady(deck)) finish('ready')
       }
-      deck.el.addEventListener('canplay', onReady)
-      deck.el.addEventListener('canplaythrough', onReady)
-      deck.el.addEventListener('playing', onReady)
+      const onMaybeReady = () => {
+        if (deck.el.paused) this.play(deck)
+        check()
+      }
+      deck.el.addEventListener('playing', onMaybeReady)
+      deck.el.addEventListener('canplay', onMaybeReady)
+      deck.el.addEventListener('canplaythrough', onMaybeReady)
+      deck.el.addEventListener('loadeddata', onMaybeReady)
+      const poll = window.setInterval(check, 40)
       const timer = window.setTimeout(() => finish('timeout'), READY_TIMEOUT_MS)
-      // Kick decoding/network without making it audible (gain is 0).
-      this.play(deck)
+      // Start decoding at gain 0; outgoing deck remains audible until we crossfade.
+      void deck.el.play().then(check, () => {
+        // Autoplay may refuse until the next gesture; keep polling / listening.
+      })
     })
+  }
+
+  /** Equal-power overlap: incoming rises as outgoing falls — no mid-fade quiet gap. */
+  private equalPowerCrossfade(
+    fromGain: AudioParam,
+    toGain: AudioParam,
+    fromLevel: number,
+    toLevel: number,
+    seconds: number,
+  ): void {
+    const ctx = this.ctx
+    if (!ctx) return
+    const steps = EQUAL_POWER_STEPS
+    const fromCurve = new Float32Array(steps)
+    const toCurve = new Float32Array(steps)
+    for (let i = 0; i < steps; i += 1) {
+      const t = i / (steps - 1)
+      const angle = (t * Math.PI) / 2
+      fromCurve[i] = fromLevel * Math.cos(angle)
+      toCurve[i] = toLevel * Math.sin(angle)
+    }
+    const now = ctx.currentTime
+    fromGain.cancelScheduledValues(now)
+    toGain.cancelScheduledValues(now)
+    fromGain.setValueAtTime(Math.max(0.0001, fromLevel), now)
+    toGain.setValueAtTime(0.0001, now)
+    fromGain.setValueCurveAtTime(fromCurve, now, seconds)
+    toGain.setValueCurveAtTime(toCurve, now, seconds)
   }
 
   /** Only two decks exist, so at most the outgoing and incoming track ever overlap. */
@@ -448,6 +505,8 @@ export class AmbientAudioEngine {
     const to = this.decks[toIndex]
     this.clearDeckTimer(to)
     this.clearDeckTimer(from)
+    // Preserve outgoing level while the destination loads — no premature fade-out.
+    const fromLevel = from.track?.gain ?? (from.gain.gain.value || 1)
     this.load(to, track, isLoop)
     to.gain.gain.cancelScheduledValues(this.ctx.currentTime)
     to.gain.gain.value = 0
@@ -461,7 +520,7 @@ export class AmbientAudioEngine {
     }
     this.emit()
 
-    const ready = await this.waitUntilPlayable(to, generation)
+    const ready = await this.waitUntilPlaying(to, generation)
     if (generation !== this.playbackGeneration || this.desired.id !== track.id) {
       this.noteCancel('superseded while waiting for audio ready')
       return
@@ -483,14 +542,14 @@ export class AmbientAudioEngine {
       trackId: track.id,
       coldLoad: ready === 'timeout' || this.transition.coldLoad,
       readiness: 'playing',
-      lastCancelReason: ready === 'timeout' ? 'ready timeout — fade started anyway' : null,
+      lastCancelReason: ready === 'timeout' ? 'ready timeout — fade started with outgoing still audible' : null,
       recentLatenciesMs: this.recentLatencies,
     }
 
     if (!this.ctx) return
+    // Guarantee play() before the overlapping ramps so samples are flowing.
     this.play(to)
-    this.ramp(to.gain.gain, track.gain, seconds)
-    this.ramp(from.gain.gain, 0, seconds)
+    this.equalPowerCrossfade(from.gain.gain, to.gain.gain, fromLevel, track.gain, seconds)
     from.stopTimer = window.setTimeout(() => {
       from.stopTimer = null
       if (generation !== this.playbackGeneration) return

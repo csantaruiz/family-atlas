@@ -101,8 +101,8 @@ export function AmbientSoundControl() {
             aria-expanded={labOpen}
             aria-haspopup="dialog"
             aria-controls="atlas-soundtrack-lab"
-            aria-label={labOpen ? 'Close Soundtrack Lab' : 'Open Soundtrack Lab'}
-            title="Soundtrack Lab"
+            aria-label={labOpen ? 'Close The Atlas Soundtrack' : 'Open The Atlas Soundtrack'}
+            title="The Atlas Soundtrack"
             onClick={() => setLabOpen(!labOpen)}
           >
             <ChevronIcon open={labOpen} />

@@ -92,6 +92,17 @@ function scoreTrack(track: AmbientTrack, context: SoundtrackContext): Scored | n
     reasons.push(`mood ${context.mood}`)
   }
 
+  // Conflict / service contexts must prefer remembrance repertoire over civilian folk
+  // that happens to be date-eligible in the same years (e.g. Shenandoah vs Goin' Home).
+  if (context.mood === 'conflict') {
+    if (track.moods.includes('conflict') || track.environment === 'wwii_1940s') {
+      score += 10
+      reasons.push('conflict/remembrance preference')
+    } else {
+      score -= 8
+    }
+  }
+
   // 4. Confidence
   if (meta.confidence === 'high') score += 2
   else if (meta.confidence === 'medium') score += 1

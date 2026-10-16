@@ -35,6 +35,11 @@ type AmbientSoundtrackValue = AmbientSnapshot & {
   /** The visitor's saved choice; music starts on their next interaction when true. */
   wantsSound: boolean
   toggleSound: () => void
+  /**
+   * Enable ambient music from an explicit user gesture (e.g. starting guided discovery).
+   * No-ops when already enabled. Fades in gently.
+   */
+  enableSoundFromGesture: () => void
   setVolume: (volume: number) => void
   /** Report what the visitor is exploring; the scheduler decides if and when the music changes. */
   reportContext: (context: SoundtrackContext, unsettled: boolean, opts?: ReportContextOptions) => void
@@ -224,6 +229,15 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
     setPrefs((prev) => ({ ...prev, enabled }))
   }, [engine, prefs.enabled])
 
+  const enableSoundFromGesture = useCallback(() => {
+    if (prefs.enabled) {
+      engine.resumeIfInterrupted()
+      return
+    }
+    engine.enable()
+    setPrefs((prev) => ({ ...prev, enabled: true }))
+  }, [engine, prefs.enabled])
+
   const setVolume = useCallback(
     (volume: number) => {
       engine.setVolume(volume)
@@ -379,6 +393,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       ...snapshot,
       wantsSound: prefs.enabled,
       toggleSound,
+      enableSoundFromGesture,
       setVolume,
       reportContext,
       hold,
@@ -421,6 +436,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       setVolume,
       snapshot,
       toggleSound,
+      enableSoundFromGesture,
       usingFallback,
     ],
   )

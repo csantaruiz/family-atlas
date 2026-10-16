@@ -162,9 +162,11 @@ export class AmbientAudioEngine {
   enable(): void {
     if (!this.ensureGraph()) return
     resumeSharedAudioContext()
+    const fromSilence = !this.enabled || !this.sounding
     this.enabled = true
     this.primeDecks()
-    this.reconcile(MUTE_FADE_S)
+    // Gentle fade when turning sound on — never a sudden loud start.
+    this.reconcile(fromSilence ? FADE_IN_FROM_SILENCE_S : MUTE_FADE_S)
   }
 
   disable(): void {

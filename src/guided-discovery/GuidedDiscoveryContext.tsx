@@ -13,6 +13,7 @@ import { useAppNavigation } from '../context/AppNavigationContext'
 import { useTimeline } from '../context/TimelineContext'
 import { useJourneyIntro } from '../context/JourneyIntroContext'
 import { useFollowPerson } from '../context/FollowPersonContext'
+import { useAmbientSoundtrack } from '../soundtrack/AmbientSoundtrackContext'
 import { selectGuidedChapters } from './selectGuidedChapters'
 import {
   clearGuidedPending,
@@ -69,6 +70,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
   const { navigateToView, setTreeFocus } = useAppNavigation()
   const { completeIntro } = useJourneyIntro()
   const { active: followActive, exit: exitFollow } = useFollowPerson()
+  const { enableSoundFromGesture } = useAmbientSoundtrack()
 
   const [status, setStatus] = useState<GuidedDiscoveryStatus>('idle')
   const [chapterIndex, setChapterIndex] = useState(0)
@@ -243,6 +245,8 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
       navigateToView('journey')
       return
     }
+    // Explicit guided start is a user gesture — attempt a gentle ambient fade-in.
+    enableSoundFromGesture()
     completeIntro()
     if (followActive) exitFollow()
     setChapterIndex(0)
@@ -250,7 +254,14 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     setCaptionReady(false)
     setClosingLineVisible(false)
     appliedChapterRef.current = null
-  }, [chapters.length, completeIntro, exitFollow, followActive, navigateToView])
+  }, [
+    chapters.length,
+    completeIntro,
+    enableSoundFromGesture,
+    exitFollow,
+    followActive,
+    navigateToView,
+  ])
 
   useEffect(() => {
     if (status !== 'active') return

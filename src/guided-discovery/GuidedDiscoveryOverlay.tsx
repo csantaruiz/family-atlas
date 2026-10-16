@@ -1,13 +1,4 @@
-import { useAppNavigation } from '../context/AppNavigationContext'
 import { GUIDED_CLOSING_LINE, useGuidedDiscovery } from './GuidedDiscoveryContext'
-import type { AppView } from '../types/navigation'
-
-const EXIT_CHOICES: { view: AppView; label: string }[] = [
-  { view: 'journey', label: 'Timeline' },
-  { view: 'map', label: 'Journeys' },
-  { view: 'tree', label: 'Tree' },
-  { view: 'people', label: 'People' },
-]
 
 export function GuidedDiscoveryOverlay() {
   const {
@@ -22,7 +13,6 @@ export function GuidedDiscoveryOverlay() {
     back,
     skip,
   } = useGuidedDiscovery()
-  const { navigateToView } = useAppNavigation()
 
   if (status === 'closing') {
     return (
@@ -47,12 +37,14 @@ export function GuidedDiscoveryOverlay() {
         'guided-caption',
         captionReady ? 'is-ready' : 'is-settling',
         pausedForDetail ? 'is-paused' : '',
+        isLast ? 'is-finale' : '',
       ]
         .filter(Boolean)
         .join(' ')}
       role="region"
       aria-label="Guided family story"
     >
+      <div className="guided-caption-scrim" aria-hidden="true" />
       <div className="guided-caption-inner">
         <div className="guided-caption-meta">
           <span className="guided-caption-progress" aria-live="polite">
@@ -68,27 +60,6 @@ export function GuidedDiscoveryOverlay() {
           <p className="guided-caption-evidence">{chapter.evidenceNote}</p>
         ) : null}
 
-        {isLast ? (
-          <div className="guided-caption-exit" role="group" aria-label="Continue exploring">
-            <p className="guided-caption-exit-prompt">Now explore the stories that brought us here.</p>
-            <div className="guided-caption-exit-buttons">
-              {EXIT_CHOICES.map(({ view, label }) => (
-                <button
-                  key={view}
-                  type="button"
-                  className="guided-caption-exit-btn"
-                  onClick={() => {
-                    skip()
-                    navigateToView(view)
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         <div className="guided-caption-controls">
           <button
             type="button"
@@ -98,12 +69,33 @@ export function GuidedDiscoveryOverlay() {
           >
             Previous
           </button>
-          <button type="button" className="guided-caption-btn" onClick={skip}>
-            Exit
-          </button>
-          <button type="button" className="guided-caption-btn guided-caption-btn--primary" onClick={next}>
-            {isLast ? 'Finish' : 'Next'}
-          </button>
+          {isLast ? (
+            <>
+              <button type="button" className="guided-caption-btn" onClick={skip}>
+                Exit
+              </button>
+              <button
+                type="button"
+                className="guided-caption-btn guided-caption-btn--primary"
+                onClick={next}
+              >
+                Explore the Atlas →
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="guided-caption-btn" onClick={skip}>
+                Exit
+              </button>
+              <button
+                type="button"
+                className="guided-caption-btn guided-caption-btn--primary"
+                onClick={next}
+              >
+                Next
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

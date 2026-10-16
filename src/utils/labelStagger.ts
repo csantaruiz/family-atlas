@@ -1,7 +1,7 @@
 import type { LabelAlignment } from './labelMeasure'
 
 /** Minimum horizontal marker gap before labels are treated as independent. */
-export const LABEL_STAGGER_GAP_PX = 56
+export const LABEL_STAGGER_GAP_PX = 64
 
 export type MarkerPosition<T> = {
   item: T

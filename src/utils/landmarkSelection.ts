@@ -135,7 +135,9 @@ function familyLaneOffsets(
     return [72, 154, 236, 318, 400]
   }
   // Keep steps ≥ ~72px so stacked Georgia labels clear each other.
-  if (span > 320) return [78, 160, 242, 324, 400]
+  // Far/full-history views use taller lanes so century milestones breathe.
+  if (span > 400) return [92, 188, 284, 380]
+  if (span > 320) return [84, 172, 260, 348, 420]
   if (span > 180) return [72, 152, 232, 312, 392]
   if (span > 90) return [68, 144, 220, 296, 372]
   return [64, 138, 212, 286, 360, 434]
@@ -143,8 +145,9 @@ function familyLaneOffsets(
 
 /** Padding between label boxes on the same lane. */
 function familyLanePad(span: number): number {
-  if (span > 320) return 28
-  if (span > 180) return 26
+  if (span > 400) return 36
+  if (span > 320) return 32
+  if (span > 180) return 28
   if (span > 90) return 28
   return 24
 }
@@ -175,30 +178,37 @@ function familyEventStaggerScore(event: FamilyEvent): number {
 export function maxFamilyEventsForSpan(span: number, viewportWidth = 1200): number {
   const pxPerYear = viewportWidth / Math.max(1, span)
   let cap = 9
-  if (span > 320) cap = 8
-  else if (span > 180) cap = 9
+  // Full-history / multi-century: fewer labeled milestones, more breathing room.
+  if (span > 400) cap = 6
+  else if (span > 320) cap = 7
+  else if (span > 180) cap = 8
   else if (span > 90) cap = 11
   else if (span > 40) cap = 13
   else cap = 14
 
-  // Fill empty axis when years are wide on screen.
-  if (pxPerYear >= 12) cap += 1
-  if (pxPerYear >= 18) cap += 2
-  if (pxPerYear >= 28) cap += 2
-  if (pxPerYear >= 40) cap += 2
-
-  // Wide century views still have horizontal room for more landmarks.
-  if (span > 180 && viewportWidth > 1180) {
-    const farBudget = Math.floor(Math.max(400, viewportWidth - 280) / 110)
-    cap = Math.max(cap, Math.min(farBudget, 12))
+  // Fill empty axis when years are wide on screen (near / detail zoom).
+  if (span <= 180) {
+    if (pxPerYear >= 12) cap += 1
+    if (pxPerYear >= 18) cap += 2
+    if (pxPerYear >= 28) cap += 2
+    if (pxPerYear >= 40) cap += 2
   }
 
-  // Roughly one readable staggered label per ~100px of usable width.
-  const spaceBudget = Math.floor(
-    Math.max(360, viewportWidth - 220) / (isNarrowStage(viewportWidth) ? 180 : isCompactStage(viewportWidth) ? 120 : 100),
+  // Wide century views: allow a modest number of era anchors, not a dense forest.
+  if (span > 180 && span <= 400 && viewportWidth > 1180) {
+    const farBudget = Math.floor(Math.max(400, viewportWidth - 280) / 140)
+    cap = Math.max(cap, Math.min(farBudget, 9))
+  }
+
+  // Roughly one readable staggered label per ~100–140px of usable width.
+  const pxPerLabel = span > 320 ? 140 : isNarrowStage(viewportWidth) ? 180 : isCompactStage(viewportWidth) ? 120 : 100
+  const spaceBudget = Math.floor(Math.max(360, viewportWidth - 220) / pxPerLabel)
+  const spaceCeil = span > 400 ? 7 : span > 320 ? 8 : isNarrowStage(viewportWidth) ? 4 : isCompactStage(viewportWidth) ? 10 : 16
+  cap = Math.max(cap, Math.min(spaceBudget, spaceCeil))
+  cap = Math.min(
+    cap,
+    span > 400 ? 7 : isTabletStage(viewportWidth) ? 9 : isNarrowStage(viewportWidth) ? 4 : 16,
   )
-  cap = Math.max(cap, Math.min(spaceBudget, isNarrowStage(viewportWidth) ? 4 : isCompactStage(viewportWidth) ? 10 : 16))
-  cap = Math.min(cap, isTabletStage(viewportWidth) ? 9 : isNarrowStage(viewportWidth) ? 4 : 16)
 
   const profileCap = stageLayoutProfile(viewportWidth, 800).familyEventCap(cap)
   if (isNarrowStage(viewportWidth)) {

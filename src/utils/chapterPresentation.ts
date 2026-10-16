@@ -171,10 +171,15 @@ export function getCalloutLayoutProfile(input: {
   placedEventCount: number
   viewportWidth: number
 }): CalloutLayoutProfile {
-  const { totalVisibleEvents, placedEventCount, viewportWidth } = input
-  const maxWidthPx = getPlaqueWidthPx(viewportWidth)
+  const { zoomMode, totalVisibleEvents, placedEventCount, viewportWidth } = input
+  const baseWidth = getPlaqueWidthPx(viewportWidth)
+  // Far / full-history: smaller editorial title block so the timeline stays primary.
+  const maxWidthPx =
+    zoomMode === 'far'
+      ? Math.min(baseWidth, viewportWidth <= 1180 ? 340 : 400)
+      : baseWidth
   const labelDensity: CalloutLayoutTier =
-    placedEventCount >= 4 || (placedEventCount >= 2 && totalVisibleEvents >= 8)
+    zoomMode === 'far' || placedEventCount >= 4 || (placedEventCount >= 2 && totalVisibleEvents >= 8)
       ? 'dense'
       : totalVisibleEvents <= 3 || placedEventCount <= 1
         ? 'sparse'
@@ -182,9 +187,10 @@ export function getCalloutLayoutProfile(input: {
 
   const phone = viewportWidth <= 760
   const tablet = viewportWidth > 760 && viewportWidth <= 1180
-  const showNarrative = !phone && !(tablet && labelDensity === 'dense')
-  const showCta = true
-  const showMeta = placedEventCount < totalVisibleEvents
+  const showNarrative =
+    zoomMode !== 'far' && !phone && !(tablet && labelDensity === 'dense')
+  const showCta = zoomMode !== 'far'
+  const showMeta = zoomMode !== 'far' && placedEventCount < totalVisibleEvents
 
   return {
     tier: labelDensity,

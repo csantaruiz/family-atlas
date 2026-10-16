@@ -152,18 +152,18 @@
 /* Storytelling layer spacing below header */
 
 :root {
-  --story-layer-top: 28px;
-  --story-layer-align-top: calc(var(--story-layer-top) + 6px);
+  --story-layer-top: 22px;
+  --story-layer-align-top: calc(var(--story-layer-top) + 4px);
   --story-sidenote-scale: 0.78;
-  --story-sidenote-width: 340px;
-  --story-sidenote-title-size: 18px;
+  --story-sidenote-width: 300px;
+  --story-sidenote-title-size: 16px;
   --story-sidenote-body-size: 11px;
   --story-sidenote-kicker-size: 7px;
   --story-sidenote-cta-size: 9px;
-  --story-sidenote-pad-y: 11px;
-  --story-sidenote-pad-x: 18px;
-  --story-plaque-gap: 60px;
-  --callout-plaque-half: min(260px, max(160px, 29vw));
+  --story-sidenote-pad-y: 8px;
+  --story-sidenote-pad-x: 14px;
+  --story-plaque-gap: 48px;
+  --callout-plaque-half: min(220px, max(140px, 24vw));
   --menu-beige-bg: rgba(186, 168, 132, 0.14);
   --menu-beige-bg-active: rgba(196, 176, 138, 0.26);
   --menu-beige-border: rgba(196, 176, 138, 0.22);
@@ -1159,17 +1159,17 @@
 }
 
 .featured-story-headline {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   font: 400 var(--story-sidenote-title-size) / 1.18 Georgia, 'Times New Roman', serif;
-  color: rgba(243, 239, 231, 0.86);
+  color: rgba(243, 239, 231, 0.78);
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.22);
 }
 
 .featured-story-narrative {
   margin: 0;
   font: var(--story-sidenote-body-size) / 1.55 Georgia, 'Times New Roman', serif;
-  color: rgba(190, 186, 176, 0.78);
+  color: rgba(190, 186, 176, 0.68);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1348,6 +1348,45 @@
   --callout-narrative-size: 12px;
   --callout-meta-size: 11px;
   --callout-cta-size: 11px;
+}
+
+/* Far / full-history: editorial type over the timeline, not a heavy plaque. */
+.chapter-callout-layer--far {
+  --callout-title-size: 22px;
+  --callout-years-size: 18px;
+  --callout-narrative-size: 11px;
+}
+
+.chapter-callout-layer--far .chapter-callout-frame {
+  padding: 10px 18px 8px;
+  background:
+    radial-gradient(
+      ellipse 110% 90% at 50% 0%,
+      rgba(72, 54, 34, 0.16) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(18, 16, 14, 0.28) 0%,
+      rgba(12, 11, 10, 0.12) 100%
+    );
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.chapter-callout-layer--far .chapter-callout-scenery,
+.chapter-callout-layer--far .chapter-callout-frame::before,
+.chapter-callout-layer--far .chapter-callout-frame::after {
+  opacity: 0;
+}
+
+.chapter-callout-layer--far .chapter-callout-title {
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+
+.chapter-callout-layer--far .chapter-callout-years {
+  opacity: 0.88;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
 }
 
 .chapter-callout-halo {
@@ -5439,42 +5478,64 @@
     );
 }
 
-/* Desktop Journeys: keep ocean readable to the frame edge (no black drop-off). */
+/* Desktop Journeys: soft atmospheric falloff — geography blends into the stage. */
 #map.atlas-page:not(.map-phone) .map-page-vignette {
   border-radius: 0;
+  inset: -8px;
   background:
     radial-gradient(
-      ellipse 150% 125% at 50% 48%,
-      transparent 58%,
-      rgba(2, 4, 6, 0.05) 100%
+      ellipse 160% 130% at 50% 48%,
+      transparent 52%,
+      rgba(6, 8, 10, 0.12) 78%,
+      rgba(6, 8, 10, 0.42) 100%
     );
 }
 
 #map.atlas-page:not(.map-phone) .map-atlas-frame::after {
   border-radius: 0;
+  inset: -4px;
   background:
     radial-gradient(
-      ellipse 130% 115% at 50% 48%,
-      transparent 62%,
-      rgba(0, 0, 0, 0.1) 100%
+      ellipse 140% 120% at 50% 48%,
+      transparent 58%,
+      rgba(6, 8, 10, 0.18) 100%
     );
+}
+
+/* Guided geographic step: map remains the dominant visual, chrome recedes further. */
+.app--guided #map.atlas-page:not(.map-phone) .map-atlas-frame {
+  inset: -20px -24px -28px;
 }
 
 #map .map-atlas-frame {
   inset: 0;
   border-radius: 16px;
-  border-color: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.06);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.045),
-    0 28px 72px rgba(0, 0, 0, 0.36);
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 20px 56px rgba(0, 0, 0, 0.28);
   background: #0c161c;
 }
 
 #map.atlas-page:not(.map-phone) .map-atlas-frame {
+  /* Bleed the geography into the stage — no framed rectangle. */
+  inset: -12px -16px -18px;
   border-radius: 0;
   border-color: transparent;
   box-shadow: none;
-  background: #0c161c;
+  background: transparent;
+  mask-image: radial-gradient(
+    ellipse 98% 92% at 50% 48%,
+    #000 58%,
+    rgba(0, 0, 0, 0.85) 78%,
+    transparent 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 98% 92% at 50% 48%,
+    #000 58%,
+    rgba(0, 0, 0, 0.85) 78%,
+    transparent 100%
+  );
 }
 
 #map .map-atlas-zoom {
@@ -12565,18 +12626,37 @@ body {
   z-index: 46;
   display: flex;
   justify-content: center;
-  padding: 0 24px calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 0 24px calc(18px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
 }
 
+/* Localized floor scrim — keeps type readable without a floating modal card. */
+.guided-caption-scrim {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(42%, 320px);
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(6, 5, 4, 0.28) 38%,
+    rgba(6, 5, 4, 0.62) 78%,
+    rgba(6, 5, 4, 0.78) 100%
+  );
+}
+
 .guided-caption-inner {
+  position: relative;
+  z-index: 1;
   pointer-events: auto;
-  width: min(560px, 100%);
-  padding: 16px 18px 12px;
-  border-radius: 12px;
-  background: rgba(8, 7, 6, 0.78);
-  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(10px);
+  width: min(520px, 100%);
+  padding: 14px 8px 10px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
   text-align: left;
   transition: opacity 480ms ease, transform 480ms ease;
 }
@@ -12639,46 +12719,17 @@ body {
   color: rgba(196, 176, 138, 0.68);
 }
 
-.guided-caption-exit {
-  margin: 6px 0 12px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(196, 176, 138, 0.16);
-}
-
-.guided-caption-exit-prompt {
-  margin: 0 0 8px;
-  font: 400 1rem/1.35 Georgia, 'Times New Roman', serif;
-  color: rgba(234, 217, 180, 0.92);
-}
-
-.guided-caption-exit-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.guided-caption-exit-btn {
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(196, 176, 138, 0.28);
-  background: rgba(186, 168, 132, 0.1);
-  color: rgba(234, 217, 180, 0.92);
-  font: 0.86rem/1 Georgia, 'Times New Roman', serif;
-  cursor: pointer;
-}
-
-.guided-caption-exit-btn:hover,
-.guided-caption-exit-btn:focus-visible {
-  background: rgba(196, 176, 138, 0.2);
-  outline: none;
-}
-
 .guided-caption-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  margin-top: 4px;
+}
+
+.guided-caption.is-finale .guided-caption-btn--primary {
+  min-width: 168px;
+  letter-spacing: 0.04em;
 }
 
 .guided-caption-btn {
@@ -12721,6 +12772,10 @@ body {
 @media (max-width: 760px) {
   .guided-caption {
     padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .guided-caption-scrim {
+    height: min(48%, 280px);
   }
 
   .guided-caption-inner {

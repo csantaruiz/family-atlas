@@ -311,7 +311,7 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   if (root?.birthYear != null) {
     const y = root.birthYear
     const narration = clampNarration(
-      `Near the present, the archive gathers around ${root.name}. What came before — separate worlds, shared eras, and careful geography — arrives here. Now explore the stories that brought us here.`,
+      `Near the present, the archive gathers around ${root.name}. What came before — separate worlds, shared eras, and careful geography — arrives here.`,
     )
     chapters.push({
       id: 'present',

@@ -12516,7 +12516,18 @@ body {
 }
 
 
-/* ── Guided discovery (Phase 3.2) — editorial caption ── */
+/* ── Guided discovery — layout chrome (collision systems untouched) ── */
+
+.app--guided {
+  /* Reserved lower band for narration + Previous / Exit / Next. */
+  --guided-narration-band: 156px;
+}
+
+@media (max-width: 760px) {
+  .app--guided {
+    --guided-narration-band: 168px;
+  }
+}
 
 .app--guided .featured-story,
 .app--guided .atlas-thinking-panel,
@@ -12546,8 +12557,14 @@ body {
   max-width: min(340px, 38vw);
 }
 
-.app--guided #timeline {
-  padding-bottom: 150px;
+/*
+ * Raise the stage bottom while guided is active so narration owns a fixed band.
+ * Axis / markers recalculate from the new stage height via timelineAxisY(height) —
+ * relative collision math stays synchronized. Closing restores full stage height
+ * for the full-history zoom-out.
+ */
+.app--guided:not(.app--guided-closing) #timeline .stage {
+  bottom: var(--guided-narration-band);
 }
 
 .app--guided .family-event.is-guided-muted,
@@ -12625,8 +12642,13 @@ body {
   bottom: 0;
   z-index: 46;
   display: flex;
+  align-items: flex-end;
   justify-content: center;
-  padding: 0 24px calc(18px + env(safe-area-inset-bottom, 0px));
+  /* Stay inside the reserved narration band — never climb into the Timeline stage. */
+  height: calc(var(--guided-narration-band, 156px) + env(safe-area-inset-bottom, 0px));
+  max-height: calc(var(--guided-narration-band, 156px) + env(safe-area-inset-bottom, 0px));
+  padding: 8px 24px calc(12px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
   pointer-events: none;
 }
 
@@ -12636,14 +12658,14 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: min(42%, 320px);
+  top: 0;
   pointer-events: none;
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(6, 5, 4, 0.28) 38%,
-    rgba(6, 5, 4, 0.62) 78%,
-    rgba(6, 5, 4, 0.78) 100%
+    rgba(6, 5, 4, 0.22) 28%,
+    rgba(6, 5, 4, 0.55) 72%,
+    rgba(6, 5, 4, 0.72) 100%
   );
 }
 
@@ -12652,7 +12674,9 @@ body {
   z-index: 1;
   pointer-events: auto;
   width: min(520px, 100%);
-  padding: 14px 8px 10px;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 4px 8px 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -12698,24 +12722,24 @@ body {
 }
 
 .guided-caption-title {
-  margin: 0 0 6px;
-  font: 400 1.28rem/1.18 Georgia, 'Times New Roman', serif;
+  margin: 0 0 4px;
+  font: 400 1.18rem/1.15 Georgia, 'Times New Roman', serif;
   color: rgba(246, 238, 222, 0.96);
   text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
 }
 
 .guided-caption-narration {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   max-width: 46ch;
-  font: 400 0.95rem/1.5 Georgia, 'Times New Roman', serif;
+  font: 400 0.9rem/1.4 Georgia, 'Times New Roman', serif;
   color: rgba(228, 214, 188, 0.9);
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
 }
 
 .guided-caption-evidence {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   max-width: 46ch;
-  font: 0.78rem/1.4 Georgia, 'Times New Roman', serif;
+  font: 0.74rem/1.35 Georgia, 'Times New Roman', serif;
   color: rgba(196, 176, 138, 0.68);
 }
 
@@ -12771,20 +12795,24 @@ body {
 
 @media (max-width: 760px) {
   .guided-caption {
-    padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .guided-caption-scrim {
-    height: min(48%, 280px);
+    padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px));
   }
 
   .guided-caption-inner {
     width: 100%;
-    padding: 12px 2px 6px;
+    padding: 2px 2px 0;
   }
 
   .guided-caption-title {
     font-size: 1.12rem;
+  }
+
+  .guided-caption-narration {
+    font-size: 0.88rem;
+    -webkit-line-clamp: 3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .guided-caption-narration {

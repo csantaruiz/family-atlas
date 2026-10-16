@@ -17,6 +17,7 @@ import { TimelinePulseProvider } from '../context/TimelinePulseContext'
 import { PhoneTimelineUiProvider, type PhoneDiscoverySheet } from '../context/PhoneTimelineUiContext'
 import { useMaxWidth } from '../hooks/useMaxWidth'
 import { phoneTimelineClassName, phoneTimelinePhase } from '../timeline/phoneChrome'
+import { useGuidedDiscovery } from '../guided-discovery'
 
 const FeaturedStory = lazy(() =>
   import('./FeaturedStory').then((m) => ({ default: m.FeaturedStory })),
@@ -45,6 +46,9 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
   } = useTimeline()
 
   const { completeIntro, isIntroActive } = useJourneyIntro()
+  const { status: guidedStatus } = useGuidedDiscovery()
+  /** Hide Filters / Centuries–Years while guided narration owns the lower chrome. */
+  const hideExplorationToolbar = guidedStatus === 'active' || guidedStatus === 'closing'
 
   const { ref, width, height } = useStageDimensions()
   const prefersReducedMotion = useReducedMotion()
@@ -247,7 +251,7 @@ export function TimelineViewport({ active }: TimelineViewportProps) {
               ) : null}
             </AnimatePresence>
           </div>
-          {phone ? <PhoneTimelineDock /> : <TimelineControls />}
+          {hideExplorationToolbar ? null : phone ? <PhoneTimelineDock /> : <TimelineControls />}
         </section>
       </TimelinePulseProvider>
     </PhoneTimelineUiProvider>

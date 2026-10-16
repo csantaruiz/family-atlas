@@ -202,6 +202,12 @@ export class AmbientAudioEngine {
       this.playbackGeneration += 1
     }
     if (track.id === this.desired.id) {
+      // Same track — never restart; still resume if we should be audible but aren't.
+      if (this.enabled && this.holdLevel() > 0) {
+        const deck = this.decks[this.active]
+        if (this.sounding && deck?.el.paused && deck.track?.id === track.id) this.play(deck)
+        else if (!this.sounding) this.reconcile(FADE_IN_FROM_SILENCE_S)
+      }
       this.emit()
       return
     }
@@ -223,25 +229,51 @@ export class AmbientAudioEngine {
     }
     this.emit()
 
+    if (!this.enabled) return
+
     const current = this.decks[this.active]?.track
-    if (this.sounding && current && current.id !== track.id) {
+    if (this.sounding && (!current || current.id !== track.id)) {
       void this.crossfadeTo(track, false, this.pendingCrossfadeSec, this.playbackGeneration, requestedAt)
-    } else if (this.sounding && !current) {
-      void this.crossfadeTo(track, false, this.pendingCrossfadeSec, this.playbackGeneration, requestedAt)
+      return
+    }
+
+    // Enabled but not yet sounding (or active deck empty) — start without requiring a prior track.
+    if (!this.sounding || !current) {
+      if (!this.ensureGraph()) return
+      const deck = this.decks[this.active]
+      this.load(deck, track)
+      deck.gain.gain.cancelScheduledValues(this.ctx!.currentTime)
+      deck.gain.gain.value = track.gain
+      this.play(deck)
+      this.reconcile(FADE_IN_FROM_SILENCE_S)
+      this.transition = {
+        ...this.transition,
+        audibleAt: performance.now(),
+        selectionToAudibleMs: Math.round(performance.now() - requestedAt),
+        readiness: 'playing',
+      }
+      this.emit()
     }
   }
 
-  /** Prefetch a likely next track on the idle deck so the next crossfade is warm. */
+  /**
+   * Prefetch a likely next track on the idle deck so the next crossfade is warm.
+   * Never clobbers a deck that is the in-flight crossfade destination — that race was
+   * causing audible silence when prepare(documentary) overwrote a contextual load.
+   */
   prepare(track: ActiveTrack): void {
     if (!this.ensureGraph()) return
     if (track.id === this.desired.id) return
     const idle = this.decks[this.active === 0 ? 1 : 0]
     if (!idle || idle.stopTimer != null) return
+    // Protect in-flight destination: loading/playing the desired track on the idle deck.
+    if (this.transition.readiness === 'loading') return
+    if (idle.track?.id === this.desired.id || idle.loadedSrc === this.desired.src) return
+    if (!idle.el.paused) return
     if (idle.loadedSrc === track.src && idle.el.readyState >= HAVE_FUTURE_DATA) {
       this.warmSrcs.add(track.src)
       return
     }
-    if (!idle.el.paused && idle.track) return
     idle.track = null
     idle.loadedSrc = track.src
     idle.el.preload = 'auto'
@@ -427,6 +459,7 @@ export class AmbientAudioEngine {
         deck.el.removeEventListener('canplay', onMaybeReady)
         deck.el.removeEventListener('canplaythrough', onMaybeReady)
         deck.el.removeEventListener('loadeddata', onMaybeReady)
+        deck.el.removeEventListener('error', onError)
         window.clearTimeout(timer)
         window.clearInterval(poll)
         resolve(result)
@@ -436,16 +469,22 @@ export class AmbientAudioEngine {
           finish('cancelled')
           return
         }
+        if (deck.el.error) {
+          finish('timeout')
+          return
+        }
         if (this.deckIsAudibleReady(deck)) finish('ready')
       }
       const onMaybeReady = () => {
         if (deck.el.paused) this.play(deck)
         check()
       }
+      const onError = () => finish('timeout')
       deck.el.addEventListener('playing', onMaybeReady)
       deck.el.addEventListener('canplay', onMaybeReady)
       deck.el.addEventListener('canplaythrough', onMaybeReady)
       deck.el.addEventListener('loadeddata', onMaybeReady)
+      deck.el.addEventListener('error', onError)
       const poll = window.setInterval(check, 40)
       const timer = window.setTimeout(() => finish('timeout'), READY_TIMEOUT_MS)
       // Start decoding at gain 0; outgoing deck remains audible until we crossfade.
@@ -527,6 +566,28 @@ export class AmbientAudioEngine {
     }
     if (ready === 'cancelled') {
       this.noteCancel('ready wait cancelled')
+      return
+    }
+
+    // Destination must still hold the requested asset — prepare() used to clobber this deck.
+    const destinationIntact =
+      to.loadedSrc === track.src && to.track?.id === track.id && !to.el.error
+    if (!destinationIntact) {
+      const main = getMainTheme()
+      if (track.id !== main.id && this.desired.id === track.id) {
+        this.transition = {
+          ...this.transition,
+          lastCancelReason: to.el.error
+            ? `playback error loading ${track.id}; falling back to documentary`
+            : `destination clobbered while loading ${track.id}; falling back to documentary`,
+          readiness: 'loading',
+        }
+        this.emit()
+        this.desired = main
+        void this.crossfadeTo(main, false, seconds, generation, requestedAt)
+        return
+      }
+      this.noteCancel(`destination lost for ${track.id}`)
       return
     }
 

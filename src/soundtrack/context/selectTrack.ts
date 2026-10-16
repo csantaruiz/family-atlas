@@ -14,10 +14,18 @@ export type RejectedTrack = {
   reason: string
 }
 
+export type SoundtrackMatchKind =
+  | 'exact_historical'
+  | 'broader_historical'
+  | 'documentary_fallback'
+  | 'overview'
+
 export type TrackChoice = {
   track: ActiveTrack
   ideal: AmbientTrack
   usingFallback: boolean
+  /** How the choice relates to historical catalog coverage (Lab diagnostics). */
+  matchKind: SoundtrackMatchKind
   /** Why this recording was chosen (for Soundtrack Lab). */
   selectionReason: string
   eligibleCount: number
@@ -163,6 +171,7 @@ export function selectTrack(
       track: main,
       ideal: main,
       usingFallback: false,
+      matchKind: 'overview',
       selectionReason: context.overview
         ? 'Broad Atlas overview — cinematic main theme'
         : 'No dated historical subject — cinematic main theme',
@@ -174,6 +183,8 @@ export function selectTrack(
 
   const scored: Scored[] = []
   for (const track of library) {
+    // Documentary/main theme is never a primary historical candidate — only a guaranteed fallback.
+    if (track.id === main.id) continue
     const result = scoreTrack(track, context)
     if (result) scored.push(result)
   }
@@ -185,10 +196,9 @@ export function selectTrack(
       track: main,
       ideal: scored[0]?.track ?? main,
       usingFallback: true,
+      matchKind: 'documentary_fallback',
       selectionReason:
-        scored[0] != null
-          ? `No playable historically eligible recording (ideal would be ${scored[0].track.title}); using cinematic main theme`
-          : `No historically eligible recording for ${context.subjectYear} / ${context.region ?? 'unknown region'}; using cinematic main theme`,
+        'No historically appropriate track is currently available for this context. Playing the Atlas documentary soundtrack.',
       eligibleCount: 0,
       eligibleIds: [],
       rejected,
@@ -202,17 +212,26 @@ export function selectTrack(
       track: main,
       ideal: active,
       usingFallback: true,
-      selectionReason: 'Selected catalog entry is a placeholder; using cinematic main theme',
+      matchKind: 'documentary_fallback',
+      selectionReason:
+        'No historically appropriate track is currently available for this context. Playing the Atlas documentary soundtrack.',
       eligibleCount: playable.length,
       eligibleIds: playable.map((entry) => entry.track.id),
       rejected,
     }
   }
 
+  const exact =
+    Boolean(context.region) &&
+    active.history.supportableRegions !== 'any' &&
+    active.history.supportableRegions.includes(context.region!) &&
+    active.environment === context.environment
+
   return {
     track: active,
     ideal: active,
     usingFallback: false,
+    matchKind: exact ? 'exact_historical' : 'broader_historical',
     selectionReason: `${chosen.reasons.join('; ') || 'best historical match'} (score ${chosen.score})`,
     eligibleCount: playable.length,
     eligibleIds: playable.map((entry) => entry.track.id),

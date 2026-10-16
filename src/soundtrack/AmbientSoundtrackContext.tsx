@@ -22,7 +22,7 @@ import {
 } from './ambientManifest'
 import { readAmbientPreferences, writeAmbientPreferences } from './ambientPreferences'
 import type { SoundtrackContext } from './context/resolveSoundtrackContext'
-import { selectTrack, type RejectedTrack } from './context/selectTrack'
+import { selectTrack, type RejectedTrack, type SoundtrackMatchKind } from './context/selectTrack'
 import { TransitionScheduler } from './context/transitionScheduler'
 
 /** Music level while narration or spoken content plays. */
@@ -55,6 +55,8 @@ type AmbientSoundtrackValue = AmbientSnapshot & {
   schedulerStatus: 'idle' | 'waiting' | 'committed'
   pendingTrackId: string | null
   usingFallback: boolean
+  /** Exact / broader / documentary / overview classification for Lab diagnostics. */
+  matchKind: SoundtrackMatchKind | null
   /** True when Soundtrack Lab is open (header-controlled). */
   labOpen: boolean
   setLabOpen: (open: boolean) => void
@@ -145,6 +147,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const [autoContext, setAutoContext] = useState<SoundtrackContext | null>(null)
   const [previewTrackId, setPreviewTrackIdState] = useState<string | null>(null)
   const [usingFallback, setUsingFallback] = useState(false)
+  const [matchKind, setMatchKind] = useState<SoundtrackMatchKind | null>(null)
   const [lastChoiceReason, setLastChoiceReason] = useState<string | null>(null)
   const [lastEligibleCount, setLastEligibleCount] = useState(0)
   const [lastEligibleIds, setLastEligibleIds] = useState<readonly string[]>([])
@@ -238,6 +241,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const applyChoiceDiagnostics = useCallback(
     (choice: ReturnType<typeof selectTrack>) => {
       setUsingFallback(choice.usingFallback)
+      setMatchKind(choice.matchKind)
       setLastChoiceReason(choice.selectionReason)
       setLastEligibleCount(choice.eligibleCount)
       setLastEligibleIds(choice.eligibleIds)
@@ -256,6 +260,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
         if (!engine.isEnabled()) engine.enable()
         scheduler.force(track.id, CONTEXT_CROSSFADE_S)
         setUsingFallback(false)
+        setMatchKind(null)
         setLastChoiceReason('Manual Soundtrack Lab preview')
         setLastEligibleCount(1)
         setLastEligibleIds([track.id])
@@ -388,6 +393,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       schedulerStatus: scheduler.status,
       pendingTrackId: scheduler.pendingTrackId,
       usingFallback,
+      matchKind,
       labOpen,
       setLabOpen,
       lastContextChangeAt,
@@ -405,6 +411,7 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       lastEligibleCount,
       lastEligibleIds,
       lastRejected,
+      matchKind,
       prefs.enabled,
       previewTrackId,
       reportContext,

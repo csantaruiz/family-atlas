@@ -8,8 +8,11 @@ export function connectionSentence(
   usingFallback: boolean,
 ): string {
   if (!track) return 'Music will accompany your exploration once a track is selected.'
-  if (!context || context.overview || usingFallback || track.history.authenticity === 'cinematic_atmosphere') {
-    if (track.id === 'atlas-main-theme' || usingFallback) {
+  if (usingFallback && track.id === 'atlas-main-theme') {
+    return 'No historically appropriate track is currently available for this context. Playing the Atlas documentary soundtrack.'
+  }
+  if (!context || context.overview || track.history.authenticity === 'cinematic_atmosphere') {
+    if (track.id === 'atlas-main-theme') {
       return 'A calm documentary score for the broader Atlas overview when no period-specific music is available.'
     }
   }

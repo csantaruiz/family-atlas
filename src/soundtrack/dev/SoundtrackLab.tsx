@@ -75,6 +75,7 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef, inline = false }:
     setPreviewTrack,
     autoContext,
     usingFallback,
+    matchKind,
     transition,
     lastChoiceReason,
     schedulerStatus,
@@ -82,6 +83,7 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef, inline = false }:
     resolvedTrackId,
     lastEligibleIds,
     lastRejected,
+    wantsSound,
   } = useAmbientSoundtrack()
 
   useLayoutEffect(() => {
@@ -233,6 +235,26 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef, inline = false }:
             <summary>Developer diagnostics</summary>
             <dl>
               <div>
+                <dt>Match</dt>
+                <dd>
+                  {previewTrackId
+                    ? 'Manual audition'
+                    : !wantsSound
+                      ? 'Muted (user preference)'
+                      : matchKind === 'exact_historical'
+                        ? 'Exact historical match'
+                        : matchKind === 'broader_historical'
+                          ? 'Broader regional/period match'
+                          : matchKind === 'documentary_fallback'
+                            ? 'Documentary fallback'
+                            : matchKind === 'overview'
+                              ? 'Overview documentary'
+                              : transition.lastCancelReason?.includes('playback error')
+                                ? 'Playback error'
+                                : '—'}
+                </dd>
+              </div>
+              <div>
                 <dt>Resolved</dt>
                 <dd>{resolvedTrackId ?? '—'}</dd>
               </div>
@@ -270,6 +292,12 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef, inline = false }:
                 <dt>Eligible</dt>
                 <dd>{lastEligibleIds.join(', ') || '—'}</dd>
               </div>
+              {transition.lastCancelReason ? (
+                <div>
+                  <dt>Engine</dt>
+                  <dd>{transition.lastCancelReason}</dd>
+                </div>
+              ) : null}
             </dl>
             {lastRejected.length > 0 ? (
               <ul>

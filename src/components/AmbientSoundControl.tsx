@@ -49,10 +49,9 @@ function ChevronIcon({ open }: { open: boolean }) {
   )
 }
 
-/** Row for the phone Explore menu, where the header has no room for the toggle. */
+/** Row for the phone Explore menu — mute only; Lab opens from the header chevron. */
 export function AmbientSoundMenuItem() {
-  const { supported, wantsSound, toggleSound, labOpen, setLabOpen } = useAmbientSoundtrack()
-  const labEnabled = useMemo(() => isSoundtrackLabEnabled(), [])
+  const { supported, wantsSound, toggleSound } = useAmbientSoundtrack()
   if (!supported) return null
   return (
     <div className="explore-sound-block">
@@ -62,29 +61,14 @@ export function AmbientSoundMenuItem() {
         <span>Background music</span>
         <span className="explore-sound-state">{wantsSound ? 'On' : 'Off'}</span>
       </button>
-      {labEnabled ? (
-        <button
-          type="button"
-          className={`explore-sound-item explore-sound-lab${labOpen ? ' is-open' : ''}`}
-          aria-expanded={labOpen}
-          onClick={() => setLabOpen(!labOpen)}
-        >
-          <span>Soundtrack Lab</span>
-          <span className="explore-sound-state">{labOpen ? 'Close' : 'Open'}</span>
-        </button>
-      ) : null}
-      {labEnabled && labOpen ? (
-        <div className="explore-soundtrack-lab">
-          <SoundtrackLabPanel open={labOpen} onClose={() => setLabOpen(false)} />
-        </div>
-      ) : null}
     </div>
   )
 }
 
 /**
- * Header audio control: speaker toggles mute; adjacent chevron opens Soundtrack Lab.
+ * Unified header audio control: speaker toggles mute; adjacent chevron opens Soundtrack Lab.
  * Separate click targets so opening Lab never mutes and mute never opens Lab.
+ * Lab is portaled and positioned from this cluster's bounding box (never bottom-of-screen).
  */
 export function AmbientSoundControl() {
   const { supported, wantsSound, audible, toggleSound, labOpen, setLabOpen } = useAmbientSoundtrack()
@@ -126,9 +110,11 @@ export function AmbientSoundControl() {
         ) : null}
       </div>
       {labEnabled ? (
-        <div id="atlas-soundtrack-lab" className="ambient-sound-lab-anchor">
-          <SoundtrackLabPanel open={labOpen} onClose={() => setLabOpen(false)} anchorRef={groupRef} />
-        </div>
+        <SoundtrackLabPanel
+          open={labOpen}
+          onClose={() => setLabOpen(false)}
+          anchorRef={groupRef}
+        />
       ) : null}
     </div>
   )

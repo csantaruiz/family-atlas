@@ -55,6 +55,7 @@ const browserClock: Clock = {
 export type SchedulerStatus = 'idle' | 'waiting' | 'committed'
 
 const DEFAULT_CROSSFADE_SEC = 0.6
+const CONTEXT_CROSSFADE_DEFAULT = 0.6
 
 /**
  * Turns a stream of context proposals into intentional track changes.
@@ -143,6 +144,8 @@ export class TransitionScheduler {
   /** Force an immediate commit (manual preview / restore-from-preview). */
   force(trackId: string, crossfadeSec = DEFAULT_CROSSFADE_SEC): void {
     this.cancelPending()
+    // Same track: do not bump generation — that would cancel an in-flight crossfade to this track.
+    if (trackId === this.current) return
     this.commit(trackId, crossfadeSec)
   }
 
@@ -157,15 +160,16 @@ export class TransitionScheduler {
   }
 
   private defaultCrossfade(explicit: boolean, overview: boolean, immediate?: boolean): number {
-    if (overview && !explicit) return 1
-    if (explicit || immediate) return 0.6
-    return 0.6
+    if (overview && !explicit) return CONTEXT_CROSSFADE_DEFAULT
+    if (explicit || immediate) return CONTEXT_CROSSFADE_DEFAULT
+    return CONTEXT_CROSSFADE_DEFAULT
   }
 
-  private commit(trackId: string, crossfadeSec: number, generation = ++this.generation): void {
+  private commit(trackId: string, crossfadeSec: number, generation?: number): void {
     if (trackId === this.current) return
+    const gen = generation ?? ++this.generation
     this.current = trackId
-    this.onCommit({ trackId, crossfadeSec, generation })
+    this.onCommit({ trackId, crossfadeSec, generation: gen })
   }
 
   private cancelPending(): void {

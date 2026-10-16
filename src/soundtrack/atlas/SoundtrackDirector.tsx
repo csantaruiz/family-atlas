@@ -125,12 +125,15 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
 
   // Report even while muted so enable() starts on the context-appropriate track.
   useEffect(() => {
-    const focusChanged = soundtrackContext.focusId !== focusIdRef.current
+    const prevFocus = focusIdRef.current
+    const focusChanged = soundtrackContext.focusId !== prevFocus
     focusIdRef.current = soundtrackContext.focusId
-    reportContext(soundtrackContext, unsettled, {
-      // Opening, switching, or closing a description panel must retarget immediately.
-      immediate: focusChanged,
-      crossfadeSec: soundtrackContext.overview && !soundtrackContext.explicit ? 1 : 0.6,
+    // Panel open / switch / close always bypasses timeline settle debounce.
+    const panelLifecycle = focusChanged
+    reportContext(soundtrackContext, unsettled && !panelLifecycle, {
+      immediate: panelLifecycle || soundtrackContext.explicit,
+      // Panel close → documentary uses the same snappy 0.6s fade as open.
+      crossfadeSec: 0.6,
     })
   }, [reportContext, soundtrackContext, unsettled])
 

@@ -8563,21 +8563,24 @@
   opacity: 0.7;
 }
 
-.ambient-sound-lab-anchor {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 90;
-}
-
 .explore-sound-block {
   display: none;
 }
 
-/* Phone header has no room beside the full title — the toggle lives in the Explore menu. */
+/* Keep the unified header audio cluster visible; Explore menu still offers mute as a fallback. */
 @media (max-width: 760px) {
   .ambient-sound {
-    display: none;
+    display: flex;
+  }
+
+  .ambient-sound-toggle {
+    width: 40px;
+    height: 40px;
+  }
+
+  .ambient-sound-lab-toggle {
+    width: 26px;
+    height: 40px;
   }
 
   .explore-sound-block {
@@ -8812,31 +8815,16 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
-.explore-soundtrack-lab {
-  margin-top: 10px;
+.soundtrack-lab-panel.is-anchored {
+  /* Position comes from the portal + getBoundingClientRect — never bottom-of-screen CSS. */
+  margin: 0;
 }
 
-.explore-soundtrack-lab .soundtrack-lab-panel {
+.soundtrack-lab-panel.is-inline {
   width: 100%;
   max-height: min(55vh, 480px);
   position: static;
   box-shadow: none;
-}
-
-@media (max-width: 760px) {
-  .ambient-sound-lab-anchor {
-    position: fixed;
-    top: auto;
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
-    z-index: 95;
-  }
-
-  .ambient-sound-lab-anchor .soundtrack-lab-panel {
-    width: 100%;
-    max-height: min(70vh, 560px);
-  }
 }
 
 .header-manage-menu {

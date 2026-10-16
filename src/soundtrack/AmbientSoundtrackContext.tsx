@@ -53,6 +53,10 @@ type AmbientSoundtrackValue = AmbientSnapshot & {
   /** True when Soundtrack Lab is open (header-controlled). */
   labOpen: boolean
   setLabOpen: (open: boolean) => void
+  /** performance.now() of the most recent automatic context report. */
+  lastContextChangeAt: number | null
+  /** Resolved automatic track id (ignores manual audition for diagnostics). */
+  resolvedTrackId: string | null
 }
 
 export type ReportContextOptions = {
@@ -143,9 +147,12 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const [lastRejected, setLastRejected] = useState<readonly RejectedTrack[]>([])
   const [schedulerTick, setSchedulerTick] = useState(0)
   const [labOpen, setLabOpen] = useState(false)
+  const [lastContextChangeAt, setLastContextChangeAt] = useState<number | null>(null)
+  const [resolvedTrackId, setResolvedTrackId] = useState<string | null>(null)
   const recentIdsRef = useRef<string[]>([])
   const previewTrackIdRef = useRef<string | null>(null)
   const lastFocusIdRef = useRef<string | null>(null)
+  const lastCommittedTrackRef = useRef<string | null>(null)
 
   const [scheduler] = useState(
     () =>
@@ -264,23 +271,27 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
   const reportContext = useCallback(
     (context: SoundtrackContext, unsettled: boolean, opts: ReportContextOptions = {}) => {
       setAutoContext(context)
+      setLastContextChangeAt(performance.now())
 
       const focusChanged = context.focusId !== lastFocusIdRef.current
       lastFocusIdRef.current = context.focusId
       // Panel open, switch, or close must retarget immediately — never leave stale music.
       const immediate = Boolean(opts.immediate || focusChanged)
+      // Closing the last panel (explicit → base overview) always forces documentary restore.
+      const releasingExplicit = !context.explicit && focusChanged
 
       if (previewTrackIdRef.current != null) {
         // Manual audition wins until the visitor returns to automatic.
-        // Still refresh diagnostics so Lab shows the underlying automatic context.
         const choice = selectTrack(context, scheduler.currentTrackId, undefined, recentIdsRef.current)
         applyChoiceDiagnostics(choice)
+        setResolvedTrackId(choice.track.id)
         setSchedulerTick((n) => n + 1)
         return
       }
 
       const choice = selectTrack(context, scheduler.currentTrackId, undefined, recentIdsRef.current)
       applyChoiceDiagnostics(choice)
+      setResolvedTrackId(choice.track.id)
       if (debugEnabled() && !unsettled) {
         const reason = `${context.subjectYear ?? '-'}:${context.region ?? '-'}:${context.environment}:${context.reason}`
         if (reason !== lastReasonRef.current) {
@@ -292,26 +303,67 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
             selection: choice.selectionReason,
             placeholder: choice.usingFallback,
             immediate,
+            releasingExplicit,
           })
         }
       }
-      const crossfadeSec = opts.crossfadeSec ?? crossfadeForContext(context, immediate)
-      scheduler.propose({
-        trackId: choice.track.id,
-        unsettled: unsettled && !immediate,
-        overview: context.overview,
-        explicit: context.explicit,
-        immediate,
-        crossfadeSec,
-      })
+
+      const crossfadeSec =
+        opts.crossfadeSec ??
+        (releasingExplicit || (context.overview && !context.explicit) ? CONTEXT_CROSSFADE_S : crossfadeForContext(context, immediate))
+
+      // Explicit panel lifecycle bypasses browsing debounce entirely.
+      if (immediate || releasingExplicit || context.explicit) {
+        if (choice.track.id !== lastCommittedTrackRef.current) {
+          lastCommittedTrackRef.current = choice.track.id
+          scheduler.force(choice.track.id, crossfadeSec)
+        } else {
+          // Same track — still invalidate any pending browsing proposal.
+          scheduler.force(choice.track.id, crossfadeSec)
+        }
+      } else {
+        scheduler.propose({
+          trackId: choice.track.id,
+          unsettled,
+          overview: context.overview,
+          explicit: false,
+          immediate: false,
+          crossfadeSec,
+        })
+        lastCommittedTrackRef.current = scheduler.currentTrackId
+      }
       setSchedulerTick((n) => n + 1)
-      if (!unsettled || immediate) engine.prepare(choice.track)
+      // Always warm the resolved track and keep documentary ready for panel close.
+      engine.prepare(choice.track)
+      if (choice.track.id !== 'atlas-main-theme') {
+        const main = PLAYABLE_BY_ID.get('atlas-main-theme')
+        if (main) engine.prepare(main)
+      }
     },
     [applyChoiceDiagnostics, engine, scheduler],
   )
 
   const hold = useCallback((reason: string, level: number) => engine.hold(reason, level), [engine])
   const duckForNarration = useNarrationDucking(hold)
+
+  // Runtime probe for Preview verification / Soundtrack Lab diagnostics.
+  useEffect(() => {
+    const api = {
+      getState: () => ({
+        trackId: engine.getSnapshot().trackId,
+        audibleTrackId: engine.getSnapshot().audibleTrackId,
+        transition: engine.getSnapshot().transition,
+        autoContext: autoContextRef.current,
+        resolvedTrackId,
+        previewTrackId: previewTrackIdRef.current,
+        wantsSound: prefs.enabled,
+      }),
+    }
+    ;(window as unknown as { __atlasSoundtrack?: typeof api }).__atlasSoundtrack = api
+    return () => {
+      delete (window as unknown as { __atlasSoundtrack?: typeof api }).__atlasSoundtrack
+    }
+  }, [engine, prefs.enabled, resolvedTrackId])
 
   const value = useMemo<AmbientSoundtrackValue>(
     () => ({
@@ -334,6 +386,8 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       usingFallback,
       labOpen,
       setLabOpen,
+      lastContextChangeAt,
+      resolvedTrackId,
     }),
     // schedulerTick forces status/pending fields to refresh after propose/commit.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tick is intentional
@@ -343,12 +397,14 @@ export function AmbientSoundtrackProvider({ children }: { children: ReactNode })
       hold,
       labOpen,
       lastChoiceReason,
+      lastContextChangeAt,
       lastEligibleCount,
       lastEligibleIds,
       lastRejected,
       prefs.enabled,
       previewTrackId,
       reportContext,
+      resolvedTrackId,
       schedulerTick,
       setPreviewTrack,
       setVolume,

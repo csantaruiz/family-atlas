@@ -7,15 +7,17 @@ import { getMainTheme, type ActiveTrack } from './ambientManifest'
 
 /** Default loop / long atmospheric crossfade (seconds). Context switches use shorter fades. */
 export const AMBIENT_CROSSFADE_S = 4
-/** Target Phase 2.2 crossfade for intentional context changes. */
+/** Target crossfade for intentional context changes. */
 export const CONTEXT_CROSSFADE_S = 0.6
-const FADE_IN_FROM_SILENCE_S = 1.2
+const FADE_IN_FROM_SILENCE_S = 0.8
 const FADE_TO_SILENCE_S = 0.35
 const DUCK_FADE_S = 0.45
-/** Coming back up after a duck (e.g. narration ends) is slower than going down. */
 const RESTORE_FADE_S = 1.2
 const VOLUME_SMOOTHING_S = 0.12
 const MUTE_FADE_S = 0.08
+/** Max wait for a cold asset before starting the fade anyway (avoids UI freeze). */
+const READY_TIMEOUT_MS = 8000
+const HAVE_FUTURE_DATA = 3
 
 type Deck = {
   el: HTMLAudioElement
@@ -24,6 +26,25 @@ type Deck = {
   loadedSrc: string | null
   primed: boolean
   stopTimer: number | null
+}
+
+export type TrackReadiness = 'idle' | 'loading' | 'ready' | 'playing'
+
+export type TransitionDiagnostics = {
+  /** Wall-clock performance.now() when setTrack was requested. */
+  requestedAt: number | null
+  /** When the destination deck became audible (gain ramp started). */
+  audibleAt: number | null
+  /** requestedAt → audibleAt in ms; null while pending. */
+  selectionToAudibleMs: number | null
+  crossfadeSec: number | null
+  trackId: string | null
+  /** True when the destination src was not already buffered on a deck. */
+  coldLoad: boolean
+  readiness: TrackReadiness
+  lastCancelReason: string | null
+  /** Rolling sample of recent selection→audible latencies (ms). */
+  recentLatenciesMs: readonly number[]
 }
 
 export type AmbientSnapshot = {
@@ -35,6 +56,9 @@ export type AmbientSnapshot = {
   volume: number
   /** The track chosen for the current context (plays once sound is audible). */
   trackId: string
+  /** Currently audible deck track (may lag desired during a pending load). */
+  audibleTrackId: string | null
+  transition: TransitionDiagnostics
 }
 
 let silentWavUrl: string | null = null
@@ -68,11 +92,28 @@ function getSilentWavUrl(): string {
   return silentWavUrl
 }
 
+function emptyTransition(): TransitionDiagnostics {
+  return {
+    requestedAt: null,
+    audibleAt: null,
+    selectionToAudibleMs: null,
+    crossfadeSec: null,
+    trackId: null,
+    coldLoad: false,
+    readiness: 'idle',
+    lastCancelReason: null,
+    recentLatenciesMs: [],
+  }
+}
+
 /**
  * App-wide ambient music. Two media elements stream tracks; all levels run through
  * Web Audio gain nodes so fades and ducking also work on iOS, where element volume is read-only.
  *
  * Graph: deck gains → master (visitor volume) → output (on/off + holds) → destination.
+ *
+ * Context crossfades wait until the destination element can play before starting the gain ramp,
+ * so cold network loads are not mistaken for long crossfades.
  */
 export class AmbientAudioEngine {
   private ctx: AudioContext | null = null
@@ -91,6 +132,9 @@ export class AmbientAudioEngine {
   private snapshot: AmbientSnapshot
   /** Monotonic generation so stale async loads never override newer selections. */
   private playbackGeneration = 0
+  private transition: TransitionDiagnostics = emptyTransition()
+  private recentLatencies: number[] = []
+  private warmSrcs = new Set<string>()
 
   constructor(volume: number) {
     this.volume = volume
@@ -141,35 +185,69 @@ export class AmbientAudioEngine {
 
   /**
    * Crossfade to a track; a no-op when it is already the chosen one (never restarts a track).
-   * @param crossfadeSec Target fade duration for intentional context changes (≈0.6–1s).
-   * @param generation Optional scheduler generation; stale generations are ignored.
+   * Starts the audible gain ramp only after the destination asset is ready (or times out).
    */
   setTrack(track: ActiveTrack, crossfadeSec = CONTEXT_CROSSFADE_S, generation?: number): void {
     if (generation != null) {
-      if (generation < this.playbackGeneration) return
+      if (generation < this.playbackGeneration) {
+        this.noteCancel('stale generation ignored')
+        return
+      }
       this.playbackGeneration = generation
     } else {
       this.playbackGeneration += 1
     }
-    if (track.id === this.desired.id) return
+    if (track.id === this.desired.id) {
+      this.emit()
+      return
+    }
+
+    const requestedAt = performance.now()
+    const coldLoad = !this.isSrcWarm(track.src)
     this.desired = track
     this.pendingCrossfadeSec = Math.max(0.05, crossfadeSec)
-    const current = this.decks[this.active]?.track
-    if (this.sounding && current && current.id !== track.id) {
-      this.crossfadeTo(track, false, this.pendingCrossfadeSec)
+    this.transition = {
+      ...this.transition,
+      requestedAt,
+      audibleAt: null,
+      selectionToAudibleMs: null,
+      crossfadeSec: this.pendingCrossfadeSec,
+      trackId: track.id,
+      coldLoad,
+      readiness: coldLoad ? 'loading' : 'ready',
+      lastCancelReason: null,
     }
     this.emit()
+
+    const current = this.decks[this.active]?.track
+    if (this.sounding && current && current.id !== track.id) {
+      void this.crossfadeTo(track, false, this.pendingCrossfadeSec, this.playbackGeneration, requestedAt)
+    } else if (this.sounding && !current) {
+      void this.crossfadeTo(track, false, this.pendingCrossfadeSec, this.playbackGeneration, requestedAt)
+    }
   }
 
-  /** Fetch only the metadata of a likely next track on the idle deck, so its crossfade starts promptly. */
+  /** Prefetch a likely next track on the idle deck so the next crossfade is warm. */
   prepare(track: ActiveTrack): void {
-    if (!this.sounding || track.id === this.desired.id) return
+    if (!this.ensureGraph()) return
+    if (track.id === this.desired.id) return
     const idle = this.decks[this.active === 0 ? 1 : 0]
-    if (!idle || idle.stopTimer != null || !idle.el.paused || idle.loadedSrc === track.src) return
+    if (!idle || idle.stopTimer != null) return
+    if (idle.loadedSrc === track.src && idle.el.readyState >= HAVE_FUTURE_DATA) {
+      this.warmSrcs.add(track.src)
+      return
+    }
+    if (!idle.el.paused && idle.track) return
     idle.track = null
     idle.loadedSrc = track.src
-    idle.el.preload = 'metadata'
+    idle.el.preload = 'auto'
     idle.el.src = track.src
+    idle.el.load()
+    const onReady = () => {
+      this.warmSrcs.add(track.src)
+      idle.el.removeEventListener('canplaythrough', onReady)
+    }
+    idle.el.addEventListener('canplaythrough', onReady, { once: true })
   }
 
   /**
@@ -186,6 +264,16 @@ export class AmbientAudioEngine {
       this.holds.delete(reason)
       this.reconcile(RESTORE_FADE_S)
     }
+  }
+
+  private isSrcWarm(src: string): boolean {
+    if (this.warmSrcs.has(src)) return true
+    return this.decks.some((deck) => deck.loadedSrc === src && deck.el.readyState >= HAVE_FUTURE_DATA)
+  }
+
+  private noteCancel(reason: string): void {
+    this.transition = { ...this.transition, lastCancelReason: reason, readiness: 'idle' }
+    this.emit()
   }
 
   private holdLevel(): number {
@@ -211,7 +299,7 @@ export class AmbientAudioEngine {
 
   private createDeck(ctx: AudioContext): Deck {
     const el = new Audio()
-    el.preload = 'none'
+    el.preload = 'auto'
     el.loop = false
     const gain = ctx.createGain()
     gain.gain.value = 0
@@ -219,7 +307,9 @@ export class AmbientAudioEngine {
     const deck: Deck = { el, gain, track: null, loadedSrc: null, primed: false, stopTimer: null }
     el.addEventListener('timeupdate', () => this.onTimeUpdate(deck))
     el.addEventListener('ended', () => {
-      if (deck === this.decks[this.active] && this.sounding) this.crossfadeTo(this.desired, true)
+      if (deck === this.decks[this.active] && this.sounding) {
+        void this.crossfadeTo(this.desired, true, undefined, this.playbackGeneration, performance.now())
+      }
     })
     return deck
   }
@@ -283,6 +373,7 @@ export class AmbientAudioEngine {
       deck.loadedSrc = track.src
       deck.el.preload = 'auto'
       deck.el.src = track.src
+      deck.el.load()
       if (startAt > 0) {
         deck.el.addEventListener('loadedmetadata', () => this.seek(deck, startAt), { once: true })
       }
@@ -306,13 +397,52 @@ export class AmbientAudioEngine {
     })
   }
 
+  private waitUntilPlayable(deck: Deck, generation: number): Promise<'ready' | 'timeout' | 'cancelled'> {
+    if (deck.el.readyState >= HAVE_FUTURE_DATA) return Promise.resolve('ready')
+    return new Promise((resolve) => {
+      let settled = false
+      const finish = (result: 'ready' | 'timeout' | 'cancelled') => {
+        if (settled) return
+        settled = true
+        deck.el.removeEventListener('canplay', onReady)
+        deck.el.removeEventListener('canplaythrough', onReady)
+        deck.el.removeEventListener('playing', onReady)
+        window.clearTimeout(timer)
+        resolve(result)
+      }
+      const onReady = () => {
+        if (generation !== this.playbackGeneration) {
+          finish('cancelled')
+          return
+        }
+        finish('ready')
+      }
+      deck.el.addEventListener('canplay', onReady)
+      deck.el.addEventListener('canplaythrough', onReady)
+      deck.el.addEventListener('playing', onReady)
+      const timer = window.setTimeout(() => finish('timeout'), READY_TIMEOUT_MS)
+      // Kick decoding/network without making it audible (gain is 0).
+      this.play(deck)
+    })
+  }
+
   /** Only two decks exist, so at most the outgoing and incoming track ever overlap. */
-  private crossfadeTo(track: ActiveTrack, isLoop = false, crossfadeSec?: number): void {
+  private async crossfadeTo(
+    track: ActiveTrack,
+    isLoop = false,
+    crossfadeSec?: number,
+    generation = this.playbackGeneration,
+    requestedAt = performance.now(),
+  ): Promise<void> {
     if (!this.ctx) return
+    if (generation !== this.playbackGeneration) {
+      this.noteCancel('superseded before crossfade start')
+      return
+    }
+
     const seconds = isLoop
       ? (track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S)
       : (crossfadeSec ?? this.pendingCrossfadeSec ?? CONTEXT_CROSSFADE_S)
-    const generation = this.playbackGeneration
     const from = this.decks[this.active]
     const toIndex = this.active === 0 ? 1 : 0
     const to = this.decks[toIndex]
@@ -321,14 +451,52 @@ export class AmbientAudioEngine {
     this.load(to, track, isLoop)
     to.gain.gain.cancelScheduledValues(this.ctx.currentTime)
     to.gain.gain.value = 0
+
+    this.transition = {
+      ...this.transition,
+      readiness: 'loading',
+      trackId: track.id,
+      crossfadeSec: seconds,
+      requestedAt,
+    }
+    this.emit()
+
+    const ready = await this.waitUntilPlayable(to, generation)
+    if (generation !== this.playbackGeneration || this.desired.id !== track.id) {
+      this.noteCancel('superseded while waiting for audio ready')
+      return
+    }
+    if (ready === 'cancelled') {
+      this.noteCancel('ready wait cancelled')
+      return
+    }
+
+    const audibleAt = performance.now()
+    const latency = Math.round(audibleAt - requestedAt)
+    this.warmSrcs.add(track.src)
+    this.recentLatencies = [...this.recentLatencies, latency].slice(-40)
+    this.transition = {
+      requestedAt,
+      audibleAt,
+      selectionToAudibleMs: latency,
+      crossfadeSec: seconds,
+      trackId: track.id,
+      coldLoad: ready === 'timeout' || this.transition.coldLoad,
+      readiness: 'playing',
+      lastCancelReason: ready === 'timeout' ? 'ready timeout — fade started anyway' : null,
+      recentLatenciesMs: this.recentLatencies,
+    }
+
+    if (!this.ctx) return
     this.play(to)
     this.ramp(to.gain.gain, track.gain, seconds)
     this.ramp(from.gain.gain, 0, seconds)
     from.stopTimer = window.setTimeout(() => {
       from.stopTimer = null
-      // Ignore stop if a newer selection already retargeted the decks.
       if (generation !== this.playbackGeneration) return
       from.el.pause()
+      // Keep the documentary theme warm on the idle deck after context switches.
+      if (track.id !== getMainTheme().id) this.prepare(getMainTheme())
     }, seconds * 1000 + 100)
     this.active = toIndex
     this.emit()
@@ -339,7 +507,9 @@ export class AmbientAudioEngine {
     const end = deck.track.playback.loopEndSec ?? deck.el.duration
     if (!Number.isFinite(end)) return
     const overlap = deck.track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S
-    if (end - deck.el.currentTime <= overlap) this.crossfadeTo(this.desired, deck.track.id === this.desired.id)
+    if (end - deck.el.currentTime <= overlap) {
+      void this.crossfadeTo(this.desired, deck.track.id === this.desired.id, undefined, this.playbackGeneration)
+    }
   }
 
   private ramp(param: AudioParam, target: number, seconds: number): void {
@@ -367,12 +537,15 @@ export class AmbientAudioEngine {
   }
 
   private buildSnapshot(): AmbientSnapshot {
+    const audibleDeck = this.decks[this.active]
     return {
       supported: isWebAudioSupported(),
       enabled: this.enabled,
       audible: this.sounding,
       volume: this.volume,
       trackId: this.desired.id,
+      audibleTrackId: audibleDeck?.track?.id ?? null,
+      transition: this.transition,
     }
   }
 
@@ -384,7 +557,12 @@ export class AmbientAudioEngine {
       prev.enabled === next.enabled &&
       prev.audible === next.audible &&
       prev.volume === next.volume &&
-      prev.trackId === next.trackId
+      prev.trackId === next.trackId &&
+      prev.audibleTrackId === next.audibleTrackId &&
+      prev.transition.selectionToAudibleMs === next.transition.selectionToAudibleMs &&
+      prev.transition.readiness === next.transition.readiness &&
+      prev.transition.trackId === next.transition.trackId &&
+      prev.transition.lastCancelReason === next.transition.lastCancelReason
     ) {
       return
     }

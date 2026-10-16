@@ -5,6 +5,7 @@ import {
   type SoundtrackSignals,
 } from '../context/resolveSoundtrackContext'
 import { selectTrack } from '../context/selectTrack'
+import { MAIN_THEME_ID } from '../ambientManifest'
 
 const BASE: SoundtrackSignals = {
   surface: 'timeline',
@@ -122,8 +123,7 @@ describe('resolveSoundtrackContext', () => {
     expect(alfred.subjectYear).toBe(1943)
     expect(alfred.mood).not.toBe('conflict')
     expect(alfred.environment).not.toBe('wwii_1940s')
-    // No industrial-era Canadian/US ragtime after 1930 — honest cinematic fallback.
-    expect(selectTrack(alfred).track.id).toBe('atlas-main-theme')
+    expect(selectTrack(alfred).track.id).toBe(MAIN_THEME_ID)
   })
 
   it('uses wartime music for explicit military service, not birth year alone', () => {
@@ -144,23 +144,46 @@ describe('resolveSoundtrackContext', () => {
     expect(selectTrack(service).track.id).toBe('wwii-goin-home')
   })
 
-  it('restores overview when focus is cleared (panel closed)', () => {
+  it('restores History Documentary when focus is cleared even if the timeline is zoomed', () => {
     const open = resolveSoundtrackContext(
       signals({
+        window: { start: 1910, end: 1940, coverage: 0.06 },
+        windowPlaces: ['New Jersey, USA'],
         focus: focus({
           kind: 'ancestor',
-          id: 'person:alfred',
-          year: 1943,
-          places: ['Texas'],
+          id: 'person:theresa',
+          year: 1925,
+          yearEnd: 1998,
+          places: ['New Jersey, USA'],
         }),
       }),
     )
     expect(open.explicit).toBe(true)
+    expect(selectTrack(open).track.id).toBe('industrial-maple-leaf-rag')
 
-    const closed = resolveSoundtrackContext(signals({ focus: null }))
+    const closed = resolveSoundtrackContext(
+      signals({
+        window: { start: 1910, end: 1940, coverage: 0.06 },
+        windowPlaces: ['New Jersey, USA'],
+        focus: null,
+      }),
+    )
     expect(closed.overview).toBe(true)
     expect(closed.explicit).toBe(false)
     expect(closed.focusId).toBeNull()
-    expect(selectTrack(closed).track.id).toBe('atlas-main-theme')
+    expect(closed.precedence).toBe('overview')
+    expect(selectTrack(closed).track.id).toBe(MAIN_THEME_ID)
+  })
+
+  it('keeps base soundtrack as History Documentary for any zoomed timeline without a panel', () => {
+    const zoomed = resolveSoundtrackContext(
+      signals({
+        window: { start: 1700, end: 1720, coverage: 0.04 },
+        windowPlaces: ['England'],
+        focus: null,
+      }),
+    )
+    expect(zoomed.overview).toBe(true)
+    expect(selectTrack(zoomed).track.id).toBe(MAIN_THEME_ID)
   })
 })

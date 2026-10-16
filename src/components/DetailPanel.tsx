@@ -44,6 +44,16 @@ export function DetailPanel() {
     void ensurePersonPortraitLoaded(portraitPersonKey)
   }, [portraitPersonKey])
 
+  // Escape dismisses the description panel so soundtrack context is released consistently.
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDetail()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closeDetail, isOpen])
+
   let initialsText = ''
   let name = ''
   let gen = ''

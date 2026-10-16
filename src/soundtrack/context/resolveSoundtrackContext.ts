@@ -75,9 +75,6 @@ export type SoundtrackContext = {
 
 /** Timeline windows covering at least this share of the family span count as the overview. */
 export const OVERVIEW_COVERAGE = 0.55
-/** Windows narrower than this (years) inside a world war read as wartime. */
-const WARTIME_WINDOW_YEARS = 30
-const MIGRATION_SHARE_THRESHOLD = 0.3
 /** Recent generations: within this many years of today. */
 const LEGACY_YEARS = 50
 const ORIGINS_ABSOLUTE_YEAR = 1700
@@ -327,59 +324,38 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
   }
 }
 
-/** Pure mapping from what the visitor is exploring to a musical atmosphere. */
+/**
+ * Pure mapping from what the visitor is exploring to a musical atmosphere.
+ *
+ * Phase 2.3: with no explicit panel/journey focus, the base Atlas soundtrack is always
+ * History Documentary. Passive timeline zoom must not keep (or reselect) period music
+ * after a description panel closes.
+ */
 export function resolveSoundtrackContext(signals: SoundtrackSignals): SoundtrackContext {
-  // Explicit panel / selection always wins over the timeline viewport.
+  // Explicit panel / selection always wins over the base Atlas soundtrack.
   if (signals.focus) return resolveFocus(signals.focus, signals)
 
+  // Base layer — documentary theme for every surface when nothing is explicitly open.
   switch (signals.surface) {
-    case 'about':
-    case 'tree':
-    case 'people':
-      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false, 'overview', {
-        yearSource: null,
-        focusId: null,
-      })
     case 'journeys':
       return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false, 'overview', {
         yearSource: null,
         focusId: null,
       })
-    case 'timeline': {
-      const window = signals.window
-      if (!window || window.coverage >= OVERVIEW_COVERAGE) {
-        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false, 'overview', {
-          yearSource: null,
-          focusId: null,
-        })
-      }
-      const year = (window.start + window.end) / 2
-      const span = window.end - window.start
-      const places = signals.windowPlaces
-      const region = dominantGeography(places)?.region ?? null
-      const period = periodForYear(year)
-      const wartime = span <= WARTIME_WINDOW_YEARS && isWorldWarYear(year)
-      const env = environmentForPlaceAndPeriod(region, period, { wartimeContext: wartime })
-
-      let mood: SoundtrackCategoryId = 'everyday'
-      if (wartime) mood = 'conflict'
-      else if (isOriginsYear(year, signals)) mood = 'origins'
-      else if (isLegacyYear(year, signals)) mood = 'legacy'
-      else if (signals.migrationShare != null && signals.migrationShare >= MIGRATION_SHARE_THRESHOLD) {
-        mood = 'migration'
-      }
-
+    case 'about':
+    case 'tree':
+    case 'people':
+    case 'timeline':
       return pack(
-        env.environment,
-        mood,
-        year,
-        places,
-        env.environment === MAIN_ENVIRONMENT ? `${env.reason} (${mood} era)` : env.reason,
+        MAIN_ENVIRONMENT,
+        'main',
+        null,
+        [],
+        'base Atlas soundtrack (History Documentary)',
+        true,
         false,
-        false,
-        'viewport',
-        { yearSource: 'stable timeline viewport midpoint', focusId: null },
+        'overview',
+        { yearSource: null, focusId: null },
       )
-    }
   }
 }

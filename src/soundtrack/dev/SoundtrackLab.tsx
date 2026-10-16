@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useAmbientSoundtrack } from '../AmbientSoundtrackContext'
-import { AMBIENT_TRACKS, isActiveTrack } from '../ambientManifest'
+import { AMBIENT_TRACKS, MAIN_THEME_ID, isActiveTrack } from '../ambientManifest'
 import { authenticityLabel } from '../context/historicalMeta'
 import { isSoundtrackLabEnabled } from './soundtrackLabEnabled'
 
@@ -17,20 +18,55 @@ function yearLabel(from: number | null, to: number | null, attestation: number |
   return `${range}${attested}`
 }
 
+function percentile(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1))
+  return sorted[idx]
+}
+
 type SoundtrackLabPanelProps = {
   open: boolean
   onClose: () => void
-  /** Anchor for positioning; when omitted the panel uses fixed placement. */
+  /** Anchor element for desktop popover placement (header audio cluster). */
   anchorRef?: RefObject<HTMLElement | null>
+  /** When true, render inline (e.g. inside the Explore menu) instead of a portal. */
+  inline?: boolean
+}
+
+type PopoverPos = { top: number; left: number; width: number; maxHeight: number }
+
+function measurePopover(anchor: HTMLElement | null): PopoverPos {
+  const width = Math.min(380, window.innerWidth - 24)
+  const gap = 10
+  const padding = 12
+  if (!anchor) {
+    return {
+      top: padding,
+      left: Math.max(padding, window.innerWidth - width - padding),
+      width,
+      maxHeight: Math.min(window.innerHeight - padding * 2, 620),
+    }
+  }
+  const rect = anchor.getBoundingClientRect()
+  const spaceBelow = window.innerHeight - rect.bottom - gap - padding
+  const spaceAbove = rect.top - gap - padding
+  const preferBelow = spaceBelow >= 280 || spaceBelow >= spaceAbove
+  const maxHeight = Math.min(620, preferBelow ? Math.max(240, spaceBelow) : Math.max(240, spaceAbove))
+  let left = rect.right - width
+  left = Math.min(Math.max(padding, left), window.innerWidth - width - padding)
+  const top = preferBelow ? rect.bottom + gap : Math.max(padding, rect.top - gap - maxHeight)
+  return { top, left, width, maxHeight }
 }
 
 /** Compact Soundtrack Lab flyout — opened from the header audio controls. */
-export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPanelProps) {
+export function SoundtrackLabPanel({ open, onClose, anchorRef, inline = false }: SoundtrackLabPanelProps) {
   const enabled = useMemo(() => isSoundtrackLabEnabled(), [])
   const panelRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<PopoverPos | null>(null)
   const {
     wantsSound,
     trackId,
+    audibleTrackId,
     audible,
     previewTrackId,
     setPreviewTrack,
@@ -42,7 +78,22 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
     schedulerStatus,
     pendingTrackId,
     usingFallback,
+    transition,
+    lastContextChangeAt,
+    resolvedTrackId,
   } = useAmbientSoundtrack()
+
+  useLayoutEffect(() => {
+    if (!open || inline) return
+    const update = () => setPos(measurePopover(anchorRef?.current ?? null))
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [anchorRef, inline, open])
 
   useEffect(() => {
     if (!open) return
@@ -66,16 +117,39 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
   if (!enabled || !open) return null
 
   const playing = AMBIENT_TRACKS.find((track) => track.id === trackId)
+  const audibleTrack = AMBIENT_TRACKS.find((track) => track.id === audibleTrackId)
   const playable = AMBIENT_TRACKS.filter(isActiveTrack)
   const gaps = AMBIENT_TRACKS.filter((track) => track.status === 'placeholder')
   const mode = previewTrackId ? 'manual' : 'automatic'
+  const contextAgeMs =
+    lastContextChangeAt != null ? Math.round(performance.now() - lastContextChangeAt) : null
+  const latencies = [...transition.recentLatenciesMs].sort((a, b) => a - b)
+  const medianLatency = latencies.length
+    ? latencies[Math.floor(latencies.length / 2)]
+    : null
+  const p95Latency = percentile(latencies, 95)
 
-  return (
+  const panelStyle: CSSProperties | undefined = inline
+    ? undefined
+    : pos
+      ? {
+          position: 'fixed',
+          top: pos.top,
+          left: pos.left,
+          width: pos.width,
+          maxHeight: pos.maxHeight,
+          zIndex: 1200,
+        }
+      : { position: 'fixed', visibility: 'hidden' }
+
+  const panel = (
     <div
       ref={panelRef}
-      className="soundtrack-lab-panel"
+      id="atlas-soundtrack-lab"
+      className={`soundtrack-lab-panel${inline ? ' is-inline' : ' is-anchored'}`}
       role="dialog"
       aria-label="Soundtrack Lab"
+      style={panelStyle}
     >
       <div className="soundtrack-lab-panel-head">
         <div>
@@ -140,8 +214,18 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
           {autoContext ? (
             <dl className="soundtrack-lab-diag">
               <div>
+                <dt>Layer</dt>
+                <dd>
+                  {autoContext.explicit
+                    ? 'description-panel override'
+                    : autoContext.overview
+                      ? 'base Atlas (History Documentary)'
+                      : autoContext.precedence}
+                </dd>
+              </div>
+              <div>
                 <dt>Subject</dt>
-                <dd>{autoContext.focusId ?? (autoContext.overview ? 'Atlas overview' : 'timeline')}</dd>
+                <dd>{autoContext.focusId ?? 'none (panel closed)'}</dd>
               </div>
               <div>
                 <dt>Year</dt>
@@ -174,8 +258,64 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
         </section>
 
         <details className="soundtrack-lab-details">
-          <summary>Diagnostics</summary>
+          <summary>Engine diagnostics</summary>
           <dl className="soundtrack-lab-diag">
+            <div>
+              <dt>Resolved</dt>
+              <dd>{resolvedTrackId ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>Desired</dt>
+              <dd>{trackId}</dd>
+            </div>
+            <div>
+              <dt>Audible</dt>
+              <dd>{audibleTrack?.title ?? audibleTrackId ?? '—'}</dd>
+            </div>
+            <div>
+              <dt>Base</dt>
+              <dd>{MAIN_THEME_ID}</dd>
+            </div>
+            <div>
+              <dt>Override</dt>
+              <dd>{previewTrackId ? `manual:${previewTrackId}` : 'automatic'}</dd>
+            </div>
+            <div>
+              <dt>Pending</dt>
+              <dd>{pendingTrackId ?? 'none'}</dd>
+            </div>
+            <div>
+              <dt>Context age</dt>
+              <dd>{contextAgeMs != null ? `${contextAgeMs} ms` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Readiness</dt>
+              <dd>
+                {transition.readiness}
+                {transition.coldLoad ? ' · cold load' : ' · warm'}
+              </dd>
+            </div>
+            <div>
+              <dt>Last latency</dt>
+              <dd>
+                {transition.selectionToAudibleMs != null
+                  ? `${transition.selectionToAudibleMs} ms → audible`
+                  : '—'}
+                {transition.crossfadeSec != null ? ` · fade ${transition.crossfadeSec}s` : ''}
+              </dd>
+            </div>
+            <div>
+              <dt>Samples</dt>
+              <dd>
+                n={latencies.length}
+                {medianLatency != null ? ` · median ${medianLatency} ms` : ''}
+                {p95Latency != null ? ` · p95 ${p95Latency} ms` : ''}
+              </dd>
+            </div>
+            <div>
+              <dt>Cancel</dt>
+              <dd>{transition.lastCancelReason ?? '—'}</dd>
+            </div>
             <div>
               <dt>Eligible</dt>
               <dd>
@@ -192,9 +332,7 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="soundtrack-lab-meta">No rejections recorded.</p>
-          )}
+          ) : null}
           {gaps.length > 0 ? (
             <>
               <p className="soundtrack-lab-meta" style={{ marginTop: 10 }}>
@@ -251,6 +389,10 @@ export function SoundtrackLabPanel({ open, onClose, anchorRef }: SoundtrackLabPa
       </div>
     </div>
   )
+
+  if (inline) return panel
+  if (typeof document === 'undefined') return null
+  return createPortal(panel, document.body)
 }
 
 /** @deprecated Floating entry removed — Lab opens from the header audio control. */

@@ -1,3 +1,4 @@
+import { resolveAncestorSubjectYear } from './ancestorYear'
 import type { SoundtrackCategoryId } from './categories'
 import { MAIN_ENVIRONMENT, type SoundtrackEnvironmentId } from './environments'
 import { dominantGeography, geographyForPlace, type WorldRegion } from './geography'
@@ -32,6 +33,11 @@ export type SoundtrackFocus = {
 export type SoundtrackSignals = {
   surface: SoundtrackSurface
   presentYear: number
+  /**
+   * Stable timeline center year (when on the timeline). Used for ancestor year
+   * resolution when the ancestor was alive then — never from camera zoom alone.
+   */
+  timelineYear: number | null
   /** Earliest and latest years in the loaded family; "early generations" are relative to these. */
   familyRange: { start: number; end: number }
   /** Visible timeline years and how much of the family span they cover (0–1). */
@@ -50,8 +56,10 @@ export type SoundtrackSignals = {
 export type SoundtrackContext = {
   environment: SoundtrackEnvironmentId
   mood: SoundtrackCategoryId
-  /** Midpoint year of the focused subject (not merely camera zoom). */
+  /** Defensible year of the focused subject (not merely camera zoom). */
   subjectYear: number | null
+  /** How subjectYear was chosen (for Soundtrack Lab transparency). */
+  yearSource: string | null
   period: HistoricalPeriod | null
   region: WorldRegion | null
   /** True for broad overviews, which may return to the main theme sooner. */
@@ -61,6 +69,8 @@ export type SoundtrackContext = {
   /** Precedence tier that produced this context. */
   precedence: 'historical_event' | 'ancestor_or_story' | 'focused_geo_temporal' | 'viewport' | 'overview'
   reason: string
+  /** Focus identity when an explicit panel is open; null when restored to underlying Atlas. */
+  focusId: string | null
 }
 
 /** Timeline windows covering at least this share of the family span count as the overview. */
@@ -99,13 +109,14 @@ function moodForEra(year: number | null, signals: SoundtrackSignals): Soundtrack
 export function environmentForPlaceAndPeriod(
   region: WorldRegion | null,
   period: HistoricalPeriod | null,
-  opts: { wartimeHint?: boolean; militaryService?: boolean } = {},
+  opts: { wartimeContext?: boolean; militaryService?: boolean } = {},
 ): { environment: SoundtrackEnvironmentId; reason: string } {
-  if (opts.militaryService && (period === 'world_wars' || opts.wartimeHint)) {
-    return { environment: 'wwii_1940s', reason: 'documented military service in wartime years' }
+  // Wartime soundtrack only for explicit war/service contexts — not merely "born in 1943".
+  if (opts.militaryService) {
+    return { environment: 'wwii_1940s', reason: 'documented military service' }
   }
-  if (period === 'world_wars' || opts.wartimeHint) {
-    return { environment: 'wwii_1940s', reason: 'world-war years' }
+  if (opts.wartimeContext) {
+    return { environment: 'wwii_1940s', reason: 'explicit wartime / upheaval context' }
   }
   if (region === 'latin_america') {
     return { environment: 'mexico_southwest', reason: 'Latin American geography' }
@@ -116,7 +127,10 @@ export function environmentForPlaceAndPeriod(
   if (region === 'southern_europe') {
     return { environment: 'iberia', reason: 'Iberian / southern European geography' }
   }
-  if (region === 'north_america' && (period === 'c19' || period === 'early_20th')) {
+  if (
+    region === 'north_america' &&
+    (period === 'c19' || period === 'early_20th' || period === 'world_wars')
+  ) {
     return { environment: 'industrial_america', reason: 'industrial-era North America' }
   }
   return { environment: MAIN_ENVIRONMENT, reason: 'no matching regional catalog entry' }
@@ -131,45 +145,49 @@ function pack(
   overview: boolean,
   explicit: boolean,
   precedence: SoundtrackContext['precedence'],
+  extras: { yearSource?: string | null; focusId?: string | null } = {},
 ): SoundtrackContext {
   return {
     environment,
     mood,
     subjectYear: year,
+    yearSource: extras.yearSource ?? (year != null ? 'subject date' : null),
     period: year != null ? periodForYear(year) : null,
     region: dominantGeography(places)?.region ?? null,
     overview,
     explicit,
     precedence,
     reason,
+    focusId: extras.focusId ?? null,
   }
 }
 
 function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): SoundtrackContext {
-  const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
-  const period = year != null ? periodForYear(year) : null
   const region = dominantGeography(focus.places)?.region ?? null
-  const wartimeHint = Boolean(
-    (year != null && isWorldWarYear(year)) || describesUpheaval(focus.text),
-  )
+  const upheaval = describesUpheaval(focus.text)
+  const focusExtras = { focusId: focus.id }
 
   switch (focus.kind) {
     case 'historical_event': {
-      const env = environmentForPlaceAndPeriod(region, period, {
-        wartimeHint: wartimeHint || describesUpheaval(focus.text),
-      })
+      const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
+      const period = year != null ? periodForYear(year) : null
+      const wartimeContext = upheaval || (year != null && isWorldWarYear(year))
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeContext })
       return pack(
         env.environment,
-        wartimeHint || describesUpheaval(focus.text) ? 'conflict' : moodForEra(year, signals),
+        wartimeContext ? 'conflict' : moodForEra(year, signals),
         year,
         focus.places,
         env.reason,
         false,
         true,
         'historical_event',
+        { ...focusExtras, yearSource: year != null ? 'historical event date' : null },
       )
     }
     case 'migration': {
+      const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
+      const period = year != null ? periodForYear(year) : null
       const env = environmentForPlaceAndPeriod(region, period)
       return pack(
         env.environment,
@@ -180,20 +198,32 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
         false,
         true,
         'focused_geo_temporal',
+        { ...focusExtras, yearSource: year != null ? 'migration / journey date' : null },
       )
     }
     case 'region': {
+      const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
+      const period = year != null ? periodForYear(year) : null
       const env = environmentForPlaceAndPeriod(region, period)
       const mood =
         year != null && isOriginsYear(year, signals) ? 'origins' : ('migration' as SoundtrackCategoryId)
-      return pack(env.environment, mood, year, focus.places, env.reason, false, true, 'focused_geo_temporal')
+      return pack(
+        env.environment,
+        mood,
+        year,
+        focus.places,
+        env.reason,
+        false,
+        true,
+        'focused_geo_temporal',
+        { ...focusExtras, yearSource: year != null ? 'region date range' : null },
+      )
     }
     case 'family_event': {
+      const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
+      const period = year != null ? periodForYear(year) : null
       if (focus.eventKind === 'service') {
-        const env = environmentForPlaceAndPeriod(region, period, {
-          militaryService: true,
-          wartimeHint: wartimeHint || period === 'world_wars',
-        })
+        const env = environmentForPlaceAndPeriod(region, period, { militaryService: true })
         return pack(
           env.environment,
           'conflict',
@@ -203,6 +233,7 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
           false,
           true,
           'ancestor_or_story',
+          { ...focusExtras, yearSource: year != null ? 'service event date' : null },
         )
       }
       if (focus.eventKind === 'move') {
@@ -216,6 +247,7 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
           false,
           true,
           'ancestor_or_story',
+          { ...focusExtras, yearSource: year != null ? 'move event date' : null },
         )
       }
       if (focus.eventKind === 'epilogue') {
@@ -228,32 +260,39 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
           false,
           true,
           'ancestor_or_story',
+          { ...focusExtras, yearSource: year != null ? 'epilogue date' : null },
         )
       }
-      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
+      const wartimeContext = upheaval
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeContext })
       return pack(
         env.environment,
-        moodForEra(year, signals),
+        wartimeContext ? 'conflict' : moodForEra(year, signals),
         year,
         focus.places,
         env.reason,
         false,
         true,
         'ancestor_or_story',
+        { ...focusExtras, yearSource: year != null ? 'family event date' : null },
       )
     }
     case 'ancestor': {
-      const birth = focus.year
+      // Never lifespan midpoint — prefer timeline year while living, else birth.
+      const resolved = resolveAncestorSubjectYear(focus.year, focus.yearEnd ?? null, signals.timelineYear)
+      const year = resolved.year
+      const period = year != null ? periodForYear(year) : null
       const [first, last] = [focus.places[0], focus.places[focus.places.length - 1]]
       const from = geographyForPlace(first)?.region
       const to = geographyForPlace(last)?.region
       const emigrated = Boolean(from && to && from !== to)
-      const env = environmentForPlaceAndPeriod(from ?? region, period, { wartimeHint })
+      // Civilian ancestor profiles are not wartime contexts merely because birth falls in 1939–45.
+      const env = environmentForPlaceAndPeriod(from ?? region, period, { wartimeContext: false })
       const mood: SoundtrackCategoryId = emigrated
         ? 'migration'
-        : birth != null && isOriginsYear(birth, signals)
+        : year != null && isOriginsYear(year, signals)
           ? 'origins'
-          : birth != null && isLegacyYear(birth, signals)
+          : year != null && isLegacyYear(year, signals)
             ? 'legacy'
             : 'everyday'
       return pack(
@@ -261,23 +300,28 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
         mood,
         year,
         focus.places,
-        env.reason,
+        `${env.reason}; ${resolved.reason}`,
         false,
         true,
         'ancestor_or_story',
+        { ...focusExtras, yearSource: resolved.reason },
       )
     }
     case 'insight': {
-      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint })
+      const year = focus.year != null ? midYear(focus.year, focus.yearEnd) : null
+      const period = year != null ? periodForYear(year) : null
+      const wartimeContext = upheaval
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeContext })
       return pack(
         env.environment,
-        moodForEra(year, signals),
+        wartimeContext ? 'conflict' : moodForEra(year, signals),
         year,
         focus.places,
         env.reason,
         false,
         true,
         'ancestor_or_story',
+        { ...focusExtras, yearSource: year != null ? 'insight date range' : null },
       )
     }
   }
@@ -285,19 +329,29 @@ function resolveFocus(focus: SoundtrackFocus, signals: SoundtrackSignals): Sound
 
 /** Pure mapping from what the visitor is exploring to a musical atmosphere. */
 export function resolveSoundtrackContext(signals: SoundtrackSignals): SoundtrackContext {
+  // Explicit panel / selection always wins over the timeline viewport.
   if (signals.focus) return resolveFocus(signals.focus, signals)
 
   switch (signals.surface) {
     case 'about':
     case 'tree':
     case 'people':
-      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false, 'overview')
+      return pack(MAIN_ENVIRONMENT, 'main', null, [], 'family overview', true, false, 'overview', {
+        yearSource: null,
+        focusId: null,
+      })
     case 'journeys':
-      return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false, 'overview')
+      return pack(MAIN_ENVIRONMENT, 'migration', null, [], 'journeys overview', true, false, 'overview', {
+        yearSource: null,
+        focusId: null,
+      })
     case 'timeline': {
       const window = signals.window
       if (!window || window.coverage >= OVERVIEW_COVERAGE) {
-        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false, 'overview')
+        return pack(MAIN_ENVIRONMENT, 'main', null, [], 'timeline overview', true, false, 'overview', {
+          yearSource: null,
+          focusId: null,
+        })
       }
       const year = (window.start + window.end) / 2
       const span = window.end - window.start
@@ -305,7 +359,7 @@ export function resolveSoundtrackContext(signals: SoundtrackSignals): Soundtrack
       const region = dominantGeography(places)?.region ?? null
       const period = periodForYear(year)
       const wartime = span <= WARTIME_WINDOW_YEARS && isWorldWarYear(year)
-      const env = environmentForPlaceAndPeriod(region, period, { wartimeHint: wartime })
+      const env = environmentForPlaceAndPeriod(region, period, { wartimeContext: wartime })
 
       let mood: SoundtrackCategoryId = 'everyday'
       if (wartime) mood = 'conflict'
@@ -324,6 +378,7 @@ export function resolveSoundtrackContext(signals: SoundtrackSignals): Soundtrack
         false,
         false,
         'viewport',
+        { yearSource: 'stable timeline viewport midpoint', focusId: null },
       )
     }
   }

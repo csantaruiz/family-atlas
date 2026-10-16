@@ -9,6 +9,7 @@ import {
 const BASE: SoundtrackSignals = {
   surface: 'timeline',
   presentYear: 2026,
+  timelineYear: null,
   familyRange: { start: 1473, end: 2026 },
   window: { start: 1470, end: 2030, coverage: 1 },
   migrationShare: null,
@@ -21,12 +22,14 @@ function choose(partial: Partial<SoundtrackContext>) {
     environment: 'main',
     mood: 'everyday',
     subjectYear: null,
+    yearSource: null,
     period: null,
     region: null,
     overview: false,
     explicit: true,
     precedence: 'historical_event',
     reason: 'test',
+    focusId: 'test',
     ...partial,
   }
   return selectTrack(context)
@@ -115,7 +118,7 @@ describe('historical authenticity selection', () => {
     ).toBe('mexico-la-guacamaya')
   })
 
-  it('uses WWII remembrance for wartime service and overview for multi-century span', () => {
+  it('uses WWII remembrance only for conflict mood, not civilian birth years', () => {
     expect(
       choose({
         subjectYear: 1943,
@@ -125,6 +128,16 @@ describe('historical authenticity selection', () => {
         mood: 'conflict',
       }).track.id,
     ).toBe('wwii-goin-home')
+
+    expect(
+      choose({
+        subjectYear: 1943,
+        period: 'world_wars',
+        region: 'north_america',
+        environment: 'industrial_america',
+        mood: 'everyday',
+      }).track.id,
+    ).toBe('atlas-main-theme')
 
     const overview = resolveSoundtrackContext({ ...BASE, focus: null })
     expect(overview.overview).toBe(true)
@@ -147,5 +160,37 @@ describe('historical authenticity selection', () => {
     expect(resolved.subjectYear).toBe(1707)
     expect(resolved.precedence).toBe('historical_event')
     expect(selectTrack(resolved).track.id).toBe('britain-greensleeves')
+  })
+
+  it('selects Maple Leaf Rag for Theresa Jackson birth-year context (1925 NJ)', () => {
+    const theresa = resolveSoundtrackContext({
+      ...BASE,
+      timelineYear: null,
+      focus: {
+        kind: 'ancestor',
+        id: 'person:theresa',
+        year: 1925,
+        yearEnd: 1998,
+        places: ['New Jersey, USA', 'Gloucester, Camden, New Jersey, USA'],
+      },
+    })
+    expect(theresa.subjectYear).toBe(1925)
+    expect(selectTrack(theresa).track.id).toBe('industrial-maple-leaf-rag')
+  })
+
+  it('does not leave Goin Home on Alfred Ruiz civilian ancestor profiles', () => {
+    const alfred = resolveSoundtrackContext({
+      ...BASE,
+      timelineYear: null,
+      focus: {
+        kind: 'ancestor',
+        id: 'person:alfred',
+        year: 1943,
+        yearEnd: null,
+        places: ['Bexar, Texas', 'San Antonio, TX, USA'],
+      },
+    })
+    expect(selectTrack(alfred).track.id).not.toBe('wwii-goin-home')
+    expect(selectTrack(alfred).track.id).toBe('atlas-main-theme')
   })
 })

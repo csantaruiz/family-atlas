@@ -35,7 +35,7 @@ describe('TransitionScheduler', () => {
   it('commits the first proposal immediately and ignores unsettled changes', () => {
     const commits: string[] = []
     const clock = createClock()
-    const scheduler = new TransitionScheduler((id) => commits.push(id), undefined, clock)
+    const scheduler = new TransitionScheduler((payload) => commits.push(payload.trackId), undefined, clock)
 
     scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
     expect(commits).toEqual(['main'])
@@ -45,37 +45,103 @@ describe('TransitionScheduler', () => {
     expect(commits).toEqual(['main'])
   })
 
-  it('switches faster for explicit selections than for browsing', () => {
+  it('commits explicit panel selections immediately', () => {
+    const commits: Array<{ id: string; fade: number }> = []
+    const clock = createClock()
+    const scheduler = new TransitionScheduler(
+      (payload) => commits.push({ id: payload.trackId, fade: payload.crossfadeSec }),
+      undefined,
+      clock,
+    )
+
+    scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
+    scheduler.propose({
+      trackId: 'mexico',
+      unsettled: false,
+      overview: false,
+      explicit: true,
+      immediate: true,
+      crossfadeSec: 0.6,
+    })
+    expect(commits.map((c) => c.id)).toEqual(['main', 'mexico'])
+    expect(commits[1].fade).toBe(0.6)
+  })
+
+  it('restores underlying track immediately when an explicit panel closes', () => {
+    const commits: string[] = []
+    const clock = createClock()
+    const scheduler = new TransitionScheduler((payload) => commits.push(payload.trackId), undefined, clock)
+
+    scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
+    scheduler.propose({
+      trackId: 'alfred',
+      unsettled: false,
+      overview: false,
+      explicit: true,
+      immediate: true,
+    })
+    scheduler.propose({
+      trackId: 'main',
+      unsettled: false,
+      overview: true,
+      explicit: false,
+      immediate: true,
+      crossfadeSec: 0.6,
+    })
+    expect(commits).toEqual(['main', 'alfred', 'main'])
+  })
+
+  it('settles briefly for browsing timeline changes', () => {
     const commits: string[] = []
     const clock = createClock()
     const scheduler = new TransitionScheduler(
-      (id) => commits.push(id),
+      (payload) => commits.push(payload.trackId),
       {
-        settleMs: 4000,
-        explicitSettleMs: 1000,
-        minDwellMs: 5000,
-        explicitDwellMs: 2000,
-        overviewDwellMs: 2000,
-        revisitWindowMs: 10_000,
-        revisitSettleMs: 3000,
+        settleMs: 500,
+        explicitSettleMs: 0,
+        releaseSettleMs: 0,
+        overviewSettleMs: 0,
       },
       clock,
     )
 
     scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
-    scheduler.propose({ trackId: 'mexico', unsettled: false, overview: false, explicit: true })
-    clock.advance(999)
+    scheduler.propose({ trackId: 'britain', unsettled: false, overview: false, explicit: false })
+    clock.advance(499)
     expect(commits).toEqual(['main'])
-    clock.advance(1001)
-    expect(commits).toEqual(['main', 'mexico'])
+    clock.advance(1)
+    expect(commits).toEqual(['main', 'britain'])
   })
 
-  it('force-commits for manual preview', () => {
+  it('force-commits for manual preview and invalidates pending browsing', () => {
     const commits: string[] = []
     const clock = createClock()
-    const scheduler = new TransitionScheduler((id) => commits.push(id), undefined, clock)
+    const scheduler = new TransitionScheduler((payload) => commits.push(payload.trackId), undefined, clock)
     scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
-    scheduler.force('britain')
-    expect(commits).toEqual(['main', 'britain'])
+    scheduler.propose({ trackId: 'britain', unsettled: false, overview: false, explicit: false })
+    scheduler.force('preview')
+    clock.advance(1000)
+    expect(commits).toEqual(['main', 'preview'])
+  })
+
+  it('cancels stale pending commits when a newer proposal arrives', () => {
+    const commits: string[] = []
+    const clock = createClock()
+    const scheduler = new TransitionScheduler(
+      (payload) => commits.push(payload.trackId),
+      {
+        settleMs: 500,
+        explicitSettleMs: 0,
+        releaseSettleMs: 0,
+        overviewSettleMs: 0,
+      },
+      clock,
+    )
+
+    scheduler.propose({ trackId: 'main', unsettled: false, overview: true, explicit: false })
+    scheduler.propose({ trackId: 'a', unsettled: false, overview: false, explicit: false })
+    scheduler.propose({ trackId: 'b', unsettled: false, overview: false, explicit: false })
+    clock.advance(500)
+    expect(commits).toEqual(['main', 'b'])
   })
 })

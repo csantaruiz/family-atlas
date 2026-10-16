@@ -8,12 +8,14 @@ function context(partial: Partial<SoundtrackContext>): SoundtrackContext {
     environment: 'main',
     mood: 'main',
     subjectYear: null,
+    yearSource: null,
     period: null,
     region: null,
     overview: false,
     explicit: false,
     precedence: 'overview',
     reason: 'test',
+    focusId: null,
     ...partial,
   }
 }

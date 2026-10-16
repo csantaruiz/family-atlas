@@ -5,13 +5,17 @@ import {
 } from '../audio/sharedAudioContext'
 import { getMainTheme, type ActiveTrack } from './ambientManifest'
 
+/** Default loop / long atmospheric crossfade (seconds). Context switches use shorter fades. */
 export const AMBIENT_CROSSFADE_S = 4
-const FADE_IN_FROM_SILENCE_S = 4
-const FADE_TO_SILENCE_S = 1.2
-const DUCK_FADE_S = 1.2
+/** Target Phase 2.2 crossfade for intentional context changes. */
+export const CONTEXT_CROSSFADE_S = 0.6
+const FADE_IN_FROM_SILENCE_S = 1.2
+const FADE_TO_SILENCE_S = 0.35
+const DUCK_FADE_S = 0.45
 /** Coming back up after a duck (e.g. narration ends) is slower than going down. */
-const RESTORE_FADE_S = 2.5
+const RESTORE_FADE_S = 1.2
 const VOLUME_SMOOTHING_S = 0.12
+const MUTE_FADE_S = 0.08
 
 type Deck = {
   el: HTMLAudioElement
@@ -80,10 +84,13 @@ export class AmbientAudioEngine {
   private sounding = false
   private volume: number
   private desired: ActiveTrack = getMainTheme()
+  private pendingCrossfadeSec = CONTEXT_CROSSFADE_S
   private holds = new Map<string, number>()
   private pauseTimer: number | null = null
   private listeners = new Set<() => void>()
   private snapshot: AmbientSnapshot
+  /** Monotonic generation so stale async loads never override newer selections. */
+  private playbackGeneration = 0
 
   constructor(volume: number) {
     this.volume = volume
@@ -109,13 +116,13 @@ export class AmbientAudioEngine {
     resumeSharedAudioContext()
     this.enabled = true
     this.primeDecks()
-    this.reconcile(DUCK_FADE_S)
+    this.reconcile(MUTE_FADE_S)
   }
 
   disable(): void {
     if (!this.enabled) return
     this.enabled = false
-    this.reconcile(FADE_TO_SILENCE_S)
+    this.reconcile(MUTE_FADE_S)
   }
 
   /** Re-unlock after iOS interruptions (calls, Siri) — call from any gesture. */
@@ -132,12 +139,25 @@ export class AmbientAudioEngine {
     this.emit()
   }
 
-  /** Crossfade to a track; a no-op when it is already the chosen one (never restarts a track). */
-  setTrack(track: ActiveTrack): void {
+  /**
+   * Crossfade to a track; a no-op when it is already the chosen one (never restarts a track).
+   * @param crossfadeSec Target fade duration for intentional context changes (≈0.6–1s).
+   * @param generation Optional scheduler generation; stale generations are ignored.
+   */
+  setTrack(track: ActiveTrack, crossfadeSec = CONTEXT_CROSSFADE_S, generation?: number): void {
+    if (generation != null) {
+      if (generation < this.playbackGeneration) return
+      this.playbackGeneration = generation
+    } else {
+      this.playbackGeneration += 1
+    }
     if (track.id === this.desired.id) return
     this.desired = track
+    this.pendingCrossfadeSec = Math.max(0.05, crossfadeSec)
     const current = this.decks[this.active]?.track
-    if (this.sounding && current && current.id !== track.id) this.crossfadeTo(track)
+    if (this.sounding && current && current.id !== track.id) {
+      this.crossfadeTo(track, false, this.pendingCrossfadeSec)
+    }
     this.emit()
   }
 
@@ -287,9 +307,12 @@ export class AmbientAudioEngine {
   }
 
   /** Only two decks exist, so at most the outgoing and incoming track ever overlap. */
-  private crossfadeTo(track: ActiveTrack, isLoop = false): void {
+  private crossfadeTo(track: ActiveTrack, isLoop = false, crossfadeSec?: number): void {
     if (!this.ctx) return
-    const seconds = isLoop ? (track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S) : AMBIENT_CROSSFADE_S
+    const seconds = isLoop
+      ? (track.playback.loopCrossfadeSec ?? AMBIENT_CROSSFADE_S)
+      : (crossfadeSec ?? this.pendingCrossfadeSec ?? CONTEXT_CROSSFADE_S)
+    const generation = this.playbackGeneration
     const from = this.decks[this.active]
     const toIndex = this.active === 0 ? 1 : 0
     const to = this.decks[toIndex]
@@ -303,6 +326,8 @@ export class AmbientAudioEngine {
     this.ramp(from.gain.gain, 0, seconds)
     from.stopTimer = window.setTimeout(() => {
       from.stopTimer = null
+      // Ignore stop if a newer selection already retargeted the decks.
+      if (generation !== this.playbackGeneration) return
       from.el.pause()
     }, seconds * 1000 + 100)
     this.active = toIndex

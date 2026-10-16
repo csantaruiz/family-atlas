@@ -1,4 +1,7 @@
+import { useMemo, useRef } from 'react'
 import { useAmbientSoundtrack } from '../soundtrack/AmbientSoundtrackContext'
+import { SoundtrackLabPanel } from '../soundtrack/dev/SoundtrackLab'
+import { isSoundtrackLabEnabled } from '../soundtrack/dev/soundtrackLabEnabled'
 
 function SpeakerIcon({ on }: { on: boolean }) {
   return (
@@ -27,9 +30,29 @@ function SpeakerIcon({ on }: { on: boolean }) {
   )
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`ambient-sound-chevron${open ? ' is-open' : ''}`}
+      viewBox="0 0 12 12"
+      width="10"
+      height="10"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 4.5 L6 8 L9.5 4.5" />
+    </svg>
+  )
+}
+
 /** Row for the phone Explore menu, where the header has no room for the toggle. */
 export function AmbientSoundMenuItem() {
-  const { supported, wantsSound, toggleSound } = useAmbientSoundtrack()
+  const { supported, wantsSound, toggleSound, labOpen, setLabOpen } = useAmbientSoundtrack()
+  const labEnabled = useMemo(() => isSoundtrackLabEnabled(), [])
   if (!supported) return null
   return (
     <div className="explore-sound-block">
@@ -39,28 +62,74 @@ export function AmbientSoundMenuItem() {
         <span>Background music</span>
         <span className="explore-sound-state">{wantsSound ? 'On' : 'Off'}</span>
       </button>
+      {labEnabled ? (
+        <button
+          type="button"
+          className={`explore-sound-item explore-sound-lab${labOpen ? ' is-open' : ''}`}
+          aria-expanded={labOpen}
+          onClick={() => setLabOpen(!labOpen)}
+        >
+          <span>Soundtrack Lab</span>
+          <span className="explore-sound-state">{labOpen ? 'Close' : 'Open'}</span>
+        </button>
+      ) : null}
+      {labEnabled && labOpen ? (
+        <div className="explore-soundtrack-lab">
+          <SoundtrackLabPanel open={labOpen} onClose={() => setLabOpen(false)} />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-/** Unobtrusive on/off control; volume is fixed at a quiet atmospheric level. */
+/**
+ * Header audio control: speaker toggles mute; adjacent chevron opens Soundtrack Lab.
+ * Separate click targets so opening Lab never mutes and mute never opens Lab.
+ */
 export function AmbientSoundControl() {
-  const { supported, wantsSound, audible, toggleSound } = useAmbientSoundtrack()
+  const { supported, wantsSound, audible, toggleSound, labOpen, setLabOpen } = useAmbientSoundtrack()
+  const labEnabled = useMemo(() => isSoundtrackLabEnabled(), [])
+  const groupRef = useRef<HTMLDivElement>(null)
+
   if (!supported) return null
 
   const label = wantsSound ? 'Turn off background music' : 'Turn on background music'
   return (
-    <div className={`ambient-sound${wantsSound ? ' is-on' : ''}${audible ? ' is-audible' : ''}`}>
-      <button
-        type="button"
-        className="ambient-sound-toggle"
-        aria-pressed={wantsSound}
-        aria-label={label}
-        title={label}
-        onClick={toggleSound}
-      >
-        <SpeakerIcon on={wantsSound} />
-      </button>
+    <div
+      ref={groupRef}
+      className={`ambient-sound${wantsSound ? ' is-on' : ''}${audible ? ' is-audible' : ''}${labOpen ? ' is-lab-open' : ''}`}
+    >
+      <div className="ambient-sound-group" role="group" aria-label="Background music">
+        <button
+          type="button"
+          className="ambient-sound-toggle"
+          aria-pressed={wantsSound}
+          aria-label={label}
+          title={label}
+          onClick={toggleSound}
+        >
+          <SpeakerIcon on={wantsSound} />
+        </button>
+        {labEnabled ? (
+          <button
+            type="button"
+            className="ambient-sound-lab-toggle"
+            aria-expanded={labOpen}
+            aria-haspopup="dialog"
+            aria-controls="atlas-soundtrack-lab"
+            aria-label={labOpen ? 'Close Soundtrack Lab' : 'Open Soundtrack Lab'}
+            title="Soundtrack Lab"
+            onClick={() => setLabOpen(!labOpen)}
+          >
+            <ChevronIcon open={labOpen} />
+          </button>
+        ) : null}
+      </div>
+      {labEnabled ? (
+        <div id="atlas-soundtrack-lab" className="ambient-sound-lab-anchor">
+          <SoundtrackLabPanel open={labOpen} onClose={() => setLabOpen(false)} anchorRef={groupRef} />
+        </div>
+      ) : null}
     </div>
   )
 }

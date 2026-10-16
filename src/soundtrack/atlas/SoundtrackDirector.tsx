@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAppNavigation } from '../../context/AppNavigationContext'
 import { useFollowPerson } from '../../context/FollowPersonContext'
 import { useMapExploration } from '../../context/MapExplorationContext'
@@ -44,6 +44,9 @@ function quantize(value: number, step: number): number {
 /**
  * Reads Atlas navigation, timeline and selection state and reports a soundtrack context.
  * Renders its children untouched; wrap the Atlas views so the Journeys map can report too.
+ *
+ * Explicit detail panels / journey beats override the underlying timeline soundtrack while open.
+ * Closing the last panel restores the underlying Atlas context (typically History Documentary).
  */
 export function SoundtrackDirector({ children }: { children: ReactNode }) {
   const [mapState, setMapState] = useState<MapSoundtrackState | null>(null)
@@ -69,6 +72,8 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
   const windowStart = quantize(center - span / 2, WINDOW_STEP_YEARS)
   const windowEnd = quantize(center + span / 2, WINDOW_STEP_YEARS)
   const coverage = quantize(fullSpan > 0 ? span / fullSpan : 1, COVERAGE_STEP)
+  /** Stable timeline center for ancestor year resolution (not zoom span). */
+  const timelineYear = surface === 'timeline' ? quantize(center, 1) : null
 
   const focus = useMemo<SoundtrackFocus | null>(() => {
     if (following && journey && beat) return journeyBeatFocus(journey.personId, beat)
@@ -96,6 +101,7 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
     const signals: SoundtrackSignals = {
       surface,
       presentYear,
+      timelineYear,
       familyRange: { start: minYear, end: presentYear },
       window: surface === 'timeline' ? { start: windowStart, end: windowEnd, coverage } : null,
       migrationShare: windowSummary?.migrationShare ?? null,
@@ -103,11 +109,29 @@ export function SoundtrackDirector({ children }: { children: ReactNode }) {
       focus,
     }
     return resolveSoundtrackContext(signals)
-  }, [coverage, focus, minYear, presentYear, surface, windowEnd, windowStart, windowSummary])
+  }, [
+    coverage,
+    focus,
+    minYear,
+    presentYear,
+    surface,
+    timelineYear,
+    windowEnd,
+    windowStart,
+    windowSummary,
+  ])
+
+  const focusIdRef = useRef<string | null>(null)
 
   // Report even while muted so enable() starts on the context-appropriate track.
   useEffect(() => {
-    reportContext(soundtrackContext, unsettled)
+    const focusChanged = soundtrackContext.focusId !== focusIdRef.current
+    focusIdRef.current = soundtrackContext.focusId
+    reportContext(soundtrackContext, unsettled, {
+      // Opening, switching, or closing a description panel must retarget immediately.
+      immediate: focusChanged,
+      crossfadeSec: soundtrackContext.overview && !soundtrackContext.explicit ? 1 : 0.6,
+    })
   }, [reportContext, soundtrackContext, unsettled])
 
   return <MapReporterContext.Provider value={setMapState}>{children}</MapReporterContext.Provider>

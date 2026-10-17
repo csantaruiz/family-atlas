@@ -1,4 +1,17 @@
 import { GUIDED_CLOSING_LINE, useGuidedDiscovery } from './GuidedDiscoveryContext'
+import type { GuidedChapter } from './types'
+
+const SERIES_LABEL = 'THE FAMILY STORY'
+
+function chapterAttribution(chapter: GuidedChapter): string | null {
+  if (chapter.focusHistory) {
+    const year = chapter.focusHistory.year
+    const place = chapter.focusHistory.country?.trim()
+    if (place) return `${year} · ${place}`
+    return String(year)
+  }
+  return chapter.focusLabel
+}
 
 export function GuidedDiscoveryOverlay() {
   const {
@@ -29,12 +42,14 @@ export function GuidedDiscoveryOverlay() {
   if (status !== 'active' || !chapter) return null
 
   const isLast = chapterIndex >= chapterCount - 1
-  const progressLabel = `${String(chapterIndex + 1).padStart(2, '0')} / ${String(chapterCount).padStart(2, '0')}`
+  const progressLabel = `${String(chapterIndex + 1).padStart(2, '0')} / ${String(chapterCount).padStart(2, '0')} · ${SERIES_LABEL}`
+  const attribution = chapterAttribution(chapter)
 
   return (
     <div
       className={[
         'guided-caption',
+        `guided-caption--${chapter.view}`,
         captionReady ? 'is-ready' : 'is-settling',
         pausedForDetail ? 'is-paused' : '',
         isLast ? 'is-finale' : '',
@@ -50,11 +65,12 @@ export function GuidedDiscoveryOverlay() {
           <span className="guided-caption-progress" aria-live="polite">
             {progressLabel}
           </span>
-          {chapter.focusLabel ? (
-            <span className="guided-caption-focus">{chapter.focusLabel}</span>
-          ) : null}
         </div>
         <h2 className="guided-caption-title">{chapter.title}</h2>
+        <div className="guided-caption-rule" aria-hidden="true" />
+        {attribution ? (
+          <p className="guided-caption-attribution">{attribution}</p>
+        ) : null}
         <p className="guided-caption-narration">{chapter.narration}</p>
         {chapter.evidenceNote ? (
           <p className="guided-caption-evidence">{chapter.evidenceNote}</p>
@@ -69,33 +85,16 @@ export function GuidedDiscoveryOverlay() {
           >
             Previous
           </button>
-          {isLast ? (
-            <>
-              <button type="button" className="guided-caption-btn" onClick={skip}>
-                Exit
-              </button>
-              <button
-                type="button"
-                className="guided-caption-btn guided-caption-btn--primary"
-                onClick={next}
-              >
-                Explore the Atlas →
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="guided-caption-btn" onClick={skip}>
-                Exit
-              </button>
-              <button
-                type="button"
-                className="guided-caption-btn guided-caption-btn--primary"
-                onClick={next}
-              >
-                Next
-              </button>
-            </>
-          )}
+          <button type="button" className="guided-caption-btn" onClick={skip}>
+            Exit
+          </button>
+          <button
+            type="button"
+            className="guided-caption-btn guided-caption-btn--primary"
+            onClick={next}
+          >
+            {isLast ? 'Explore the Atlas →' : 'Next'}
+          </button>
         </div>
       </div>
     </div>

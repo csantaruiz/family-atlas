@@ -12516,16 +12516,30 @@ body {
 }
 
 
-/* ── Guided discovery — layout chrome (collision systems untouched) ── */
+/* ── Guided discovery — cinematic narration (collision systems untouched) ── */
 
 .app--guided {
-  /* Room for title + clamped narration + 44px nav row + safe padding. */
-  --guided-narration-band: 228px;
+  /*
+   * Reserved lower band clears markers from the editorial block.
+   * Stage height shrinks → timelineAxisY(height) keeps collision math in sync.
+   */
+  --guided-narration-band: min(36vh, 318px);
+  --guided-caption-max-w: 520px;
+  --guided-ivory: rgba(246, 238, 222, 0.94);
+  --guided-ivory-soft: rgba(232, 220, 196, 0.88);
+  --guided-gold: rgba(214, 181, 108, 0.78);
+}
+
+@media (max-height: 760px) {
+  .app--guided {
+    --guided-narration-band: min(38vh, 292px);
+  }
 }
 
 @media (max-width: 760px) {
   .app--guided {
-    --guided-narration-band: 240px;
+    --guided-narration-band: min(40vh, 280px);
+    --guided-caption-max-w: calc(100vw - 28px);
   }
 }
 
@@ -12639,39 +12653,51 @@ body {
   position: absolute;
   left: 0;
   right: 0;
+  /* Lift editorial block into the reserved band — not glued to the viewport edge. */
   bottom: 0;
   z-index: 46;
   display: flex;
-  align-items: flex-end;
+  /*
+   * Anchor near the top of the reserved band so the chapter opening sits
+   * closer to the Timeline period, with controls clear of the viewport edge.
+   */
+  align-items: flex-start;
   justify-content: center;
-  /* Size to content — never clip Previous / Exit / Next below the viewport. */
-  height: auto;
-  max-height: min(
-    calc(var(--guided-narration-band, 228px) + env(safe-area-inset-bottom, 0px)),
-    42vh
-  );
-  padding: 10px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+  height: var(--guided-narration-band, 300px);
+  max-height: min(44vh, 330px);
+  padding: 18px 28px calc(28px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   pointer-events: none;
   overflow: visible;
 }
 
-/* Localized floor scrim — keeps type readable without a floating modal card. */
+/*
+ * Soft atmospheric pool — dissolves into the Atlas ground.
+ * No card edge, glass, or rectangular silhouette.
+ */
 .guided-caption-scrim {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
   bottom: 0;
-  height: 100%;
-  min-height: 100%;
+  width: min(920px, 118%);
+  height: 118%;
+  transform: translateX(-50%);
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(6, 5, 4, 0.22) 28%,
-    rgba(6, 5, 4, 0.55) 72%,
-    rgba(6, 5, 4, 0.72) 100%
-  );
+  background:
+    radial-gradient(
+      ellipse 72% 78% at 50% 88%,
+      rgba(6, 5, 4, 0.58) 0%,
+      rgba(6, 5, 4, 0.32) 42%,
+      rgba(6, 5, 4, 0.1) 68%,
+      transparent 82%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(6, 5, 4, 0.12) 38%,
+      rgba(6, 5, 4, 0.38) 78%,
+      rgba(6, 5, 4, 0.52) 100%
+    );
 }
 
 .guided-caption-inner {
@@ -12680,21 +12706,22 @@ body {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  width: min(520px, 100%);
+  justify-content: flex-start;
+  width: min(var(--guided-caption-max-w, 520px), 100%);
   max-height: 100%;
   overflow: visible;
-  padding: 4px 8px 0;
+  padding: 0 4px;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   text-align: left;
-  transition: opacity 480ms ease, transform 480ms ease;
+  transition: opacity 520ms ease, transform 520ms ease;
 }
 
 .guided-caption.is-settling .guided-caption-inner {
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(12px);
 }
 
 .guided-caption.is-ready .guided-caption-inner {
@@ -12705,54 +12732,69 @@ body {
 .guided-caption-meta {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .guided-caption-progress {
-  font: 0.7rem/1 Georgia, 'Times New Roman', serif;
-  letter-spacing: 0.18em;
+  font: 0.68rem/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(214, 181, 108, 0.7);
-}
-
-.guided-caption-focus {
-  font: 0.78rem/1.2 Georgia, 'Times New Roman', serif;
-  color: rgba(220, 208, 184, 0.55);
-  letter-spacing: 0.02em;
-  max-width: 55%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
+  color: var(--guided-gold, rgba(214, 181, 108, 0.78));
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
 }
 
 .guided-caption-title {
-  margin: 0 0 4px;
-  font: 400 1.18rem/1.15 Georgia, 'Times New Roman', serif;
-  color: rgba(246, 238, 222, 0.96);
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+  margin: 0;
+  flex-shrink: 0;
+  font: 400 clamp(1.65rem, 2.3vw, 2.2rem) / 1.08 Georgia, 'Times New Roman', serif;
+  color: var(--guided-ivory, rgba(246, 238, 222, 0.94));
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+  letter-spacing: 0.01em;
+}
+
+/* Restrained gold hairline — documentary chapter accent, not decoration. */
+.guided-caption-rule {
+  width: 42px;
+  height: 1px;
+  flex-shrink: 0;
+  margin: 10px 0 8px;
+  background: linear-gradient(
+    90deg,
+    rgba(214, 181, 108, 0.72),
+    rgba(214, 181, 108, 0.18)
+  );
+}
+
+.guided-caption-attribution {
+  margin: 0 0 8px;
+  flex-shrink: 0;
+  font: 0.78rem/1.25 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.04em;
+  color: rgba(196, 176, 138, 0.62);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 
 .guided-caption-narration {
-  margin: 0 0 6px;
-  max-width: 46ch;
-  font: 400 0.9rem/1.4 Georgia, 'Times New Roman', serif;
-  color: rgba(228, 214, 188, 0.9);
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
-  /* Prefer truncating copy over clipping the navigation row. */
+  margin: 0;
+  max-width: 34em;
+  min-height: 0;
+  font: 400 clamp(0.94rem, 1.02vw, 1.02rem) / 1.55 Georgia, 'Times New Roman', serif;
+  color: var(--guided-ivory-soft, rgba(232, 220, 196, 0.88));
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
+  /* Prefer shortening body copy over clipping Previous / Exit / Next. */
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 4;
   overflow: hidden;
 }
 
 .guided-caption-evidence {
-  margin: 0 0 6px;
-  max-width: 46ch;
-  font: 0.74rem/1.35 Georgia, 'Times New Roman', serif;
-  color: rgba(196, 176, 138, 0.68);
+  margin: 8px 0 0;
+  max-width: 34em;
+  flex-shrink: 0;
+  font: 0.76rem/1.4 Georgia, 'Times New Roman', serif;
+  color: rgba(196, 176, 138, 0.64);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -12763,79 +12805,118 @@ body {
   display: flex;
   flex-wrap: wrap;
   flex-shrink: 0;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin-top: 6px;
-  padding-bottom: 2px;
+  margin-top: 18px;
 }
 
 .guided-caption.is-finale .guided-caption-btn--primary {
-  min-width: 168px;
-  letter-spacing: 0.04em;
+  min-width: 188px;
+  letter-spacing: 0.05em;
 }
 
 .guided-caption-btn {
   min-height: 44px;
-  min-width: 84px;
-  padding: 0 16px;
+  min-width: 88px;
+  padding: 0 18px;
   border-radius: 999px;
-  border: 1px solid rgba(196, 176, 138, 0.22);
+  border: 1px solid rgba(196, 176, 138, 0.2);
   background: transparent;
-  color: rgba(220, 208, 184, 0.86);
-  font: 0.88rem/1 Georgia, 'Times New Roman', serif;
-  letter-spacing: 0.03em;
+  color: rgba(220, 208, 184, 0.82);
+  font: 0.86rem/1 Georgia, 'Times New Roman', serif;
+  letter-spacing: 0.035em;
   cursor: pointer;
+  transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
 }
 
 .guided-caption-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.32;
   cursor: default;
 }
 
 .guided-caption-btn:hover:not(:disabled),
 .guided-caption-btn:focus-visible:not(:disabled) {
-  border-color: rgba(196, 176, 138, 0.42);
+  border-color: rgba(196, 176, 138, 0.4);
   color: rgba(243, 235, 218, 0.96);
   outline: none;
 }
 
 .guided-caption-btn--primary {
-  border-color: rgba(214, 181, 108, 0.5);
-  background: rgba(186, 168, 132, 0.14);
-  color: rgba(243, 235, 218, 0.98);
+  border-color: rgba(214, 181, 108, 0.55);
+  background: rgba(186, 168, 132, 0.16);
+  color: rgba(246, 238, 222, 0.98);
+  font-weight: 500;
 }
 
 .guided-caption-btn--primary:hover,
 .guided-caption-btn--primary:focus-visible {
-  background: rgba(196, 176, 138, 0.26);
+  background: rgba(196, 176, 138, 0.28);
+  border-color: rgba(214, 181, 108, 0.7);
   outline: none;
+}
+
+/* Journeys: same system; slightly tighter so map geography stays visible. */
+.guided-caption--map {
+  max-height: min(40vh, 300px);
+}
+
+.guided-caption--map .guided-caption-scrim {
+  opacity: 0.92;
+}
+
+@media (max-height: 760px) {
+  .guided-caption {
+    padding: 14px 22px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .guided-caption-title {
+    font-size: clamp(1.48rem, 2.2vw, 1.9rem);
+  }
+
+  .guided-caption-narration {
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .guided-caption-controls {
+    margin-top: 16px;
+  }
 }
 
 @media (max-width: 760px) {
   .guided-caption {
-    padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+    height: auto;
+    min-height: min(38vh, 260px);
+    max-height: none;
   }
 
   .guided-caption-inner {
     width: 100%;
-    padding: 2px 2px 0;
+    padding: 4px 2px 0;
   }
 
   .guided-caption-title {
-    font-size: 1.12rem;
+    font-size: 1.48rem;
   }
 
   .guided-caption-narration {
-    font-size: 0.88rem;
+    font-size: 0.92rem;
     max-width: none;
   }
 
   .guided-caption-controls {
     width: 100%;
+    margin-top: 18px;
+    gap: 8px;
   }
 
   .guided-caption-btn {
     flex: 1 1 auto;
+  }
+
+  .guided-caption-btn--primary {
+    flex: 1.35 1 auto;
   }
 }
 
@@ -12847,6 +12928,10 @@ body {
   .guided-caption.is-settling .guided-caption-inner {
     opacity: 1;
     transform: none;
+  }
+
+  .guided-caption-btn {
+    transition: none;
   }
 }
 

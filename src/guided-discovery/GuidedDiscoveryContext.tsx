@@ -331,6 +331,20 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     exitToExploration()
   }, [exitToExploration])
 
+  // Reliable escape route while guided chapters are active.
+  useEffect(() => {
+    if (status !== 'active') return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      // Don't steal Escape from open detail / dialogs.
+      if (detail !== null) return
+      event.preventDefault()
+      exitToExploration()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [detail, exitToExploration, status])
+
   const interruptClosing = useCallback(() => {
     if (status !== 'closing') return
     exitToExploration()

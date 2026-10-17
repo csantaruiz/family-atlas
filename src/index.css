@@ -12519,13 +12519,13 @@ body {
 /* ── Guided discovery — layout chrome (collision systems untouched) ── */
 
 .app--guided {
-  /* Reserved lower band for narration + Previous / Exit / Next. */
-  --guided-narration-band: 156px;
+  /* Room for title + clamped narration + 44px nav row + safe padding. */
+  --guided-narration-band: 228px;
 }
 
 @media (max-width: 760px) {
   .app--guided {
-    --guided-narration-band: 168px;
+    --guided-narration-band: 240px;
   }
 }
 
@@ -12644,12 +12644,16 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  /* Stay inside the reserved narration band — never climb into the Timeline stage. */
-  height: calc(var(--guided-narration-band, 156px) + env(safe-area-inset-bottom, 0px));
-  max-height: calc(var(--guided-narration-band, 156px) + env(safe-area-inset-bottom, 0px));
-  padding: 8px 24px calc(12px + env(safe-area-inset-bottom, 0px));
+  /* Size to content — never clip Previous / Exit / Next below the viewport. */
+  height: auto;
+  max-height: min(
+    calc(var(--guided-narration-band, 228px) + env(safe-area-inset-bottom, 0px)),
+    42vh
+  );
+  padding: 10px 24px calc(16px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   pointer-events: none;
+  overflow: visible;
 }
 
 /* Localized floor scrim — keeps type readable without a floating modal card. */
@@ -12658,7 +12662,8 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  top: 0;
+  height: 100%;
+  min-height: 100%;
   pointer-events: none;
   background: linear-gradient(
     180deg,
@@ -12673,9 +12678,11 @@ body {
   position: relative;
   z-index: 1;
   pointer-events: auto;
+  display: flex;
+  flex-direction: column;
   width: min(520px, 100%);
   max-height: 100%;
-  overflow: hidden;
+  overflow: visible;
   padding: 4px 8px 0;
   border-radius: 0;
   background: transparent;
@@ -12734,6 +12741,11 @@ body {
   font: 400 0.9rem/1.4 Georgia, 'Times New Roman', serif;
   color: rgba(228, 214, 188, 0.9);
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+  /* Prefer truncating copy over clipping the navigation row. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .guided-caption-evidence {
@@ -12741,14 +12753,20 @@ body {
   max-width: 46ch;
   font: 0.74rem/1.35 Georgia, 'Times New Roman', serif;
   color: rgba(196, 176, 138, 0.68);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .guided-caption-controls {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   gap: 8px;
   align-items: center;
-  margin-top: 4px;
+  margin-top: 6px;
+  padding-bottom: 2px;
 }
 
 .guided-caption.is-finale .guided-caption-btn--primary {
@@ -12809,14 +12827,6 @@ body {
 
   .guided-caption-narration {
     font-size: 0.88rem;
-    -webkit-line-clamp: 3;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .guided-caption-narration {
-    font-size: 0.9rem;
     max-width: none;
   }
 

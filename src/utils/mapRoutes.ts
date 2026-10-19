@@ -329,17 +329,18 @@ export function generateMigrationRouteSynopsis(route: RegionalRoute | SubregionR
         : `Between ${route.yearMin} and ${route.yearMax}, `
       : ''
 
-  const confidenceLead =
-    route.confidence === 'documented'
-      ? 'Documented moves suggest '
-      : 'Inferred routes suggest '
+  const confidenceVerb =
+    route.confidence === 'documented' ? 'documented moves trace ' : 'inferred routes suggest '
+  const confidenceLead = yearLead
+    ? confidenceVerb
+    : confidenceVerb.charAt(0).toUpperCase() + confidenceVerb.slice(1)
 
   if ('fromRegionId' in route) {
     const corridorKey = `${route.fromRegionId}->${route.toRegionId}`
     const corridorSynopsis = ROUTE_SYNOPSIS[corridorKey]
-    if (corridorSynopsis) {
-      return `${yearLead}${confidenceLead}${corridorSynopsis}`
-    }
+    // Curated corridor copy is already a complete sentence; years and evidence
+    // are shown separately, so don't prefix them into it.
+    if (corridorSynopsis) return corridorSynopsis
   }
 
   const fromPlace = routeDominantPlace(route.segments.map((segment) => segment.from))

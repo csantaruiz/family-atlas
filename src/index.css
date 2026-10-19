@@ -6773,6 +6773,138 @@
   opacity: 1;
 }
 
+/*
+ * Desktop inspector as an exhibit label: content-height, vertically centred in
+ * the space below the filters (auto margins between top/bottom), never taller
+ * than that space. Header stays put; only the body scrolls.
+ */
+#map.atlas-page:not(.map-phone) .place-detail-panel.map-detail-panel {
+  width: min(300px, 24vw);
+  height: fit-content;
+  max-height: calc(100% - var(--map-inspector-top) - var(--map-inspector-bottom));
+  margin-block: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .map-inspector-header {
+  position: relative;
+  flex: none;
+  padding: 16px 56px 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .map-inspector-title {
+  margin: 0;
+  padding-right: 0;
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .map-inspector-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 20px 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(186, 168, 132, 0.18) transparent;
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .place-detail-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(214, 204, 186, 0.62);
+  opacity: 1;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .place-detail-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .place-detail-close:hover {
+  color: rgba(246, 238, 222, 0.96);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#map.atlas-page:not(.map-phone) .map-detail-panel .place-detail-close:focus-visible {
+  outline: 2px solid rgba(214, 181, 108, 0.6);
+  outline-offset: -4px;
+  color: rgba(246, 238, 222, 0.96);
+}
+
+/* Guided chapters hide the filters, so the panel can use the full height. */
+.app--guided #map.atlas-page:not(.map-phone) {
+  --map-inspector-top: 24px;
+}
+
+/* Evidence: one quiet line; the disclaimer is a click away, not in the way. */
+#map .map-journey-evidence {
+  display: block;
+  margin: 0 0 18px;
+  padding: 10px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 0;
+}
+
+#map .map-journey-evidence summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  cursor: pointer;
+  list-style: none;
+  font: 400 12px / 1.4 Georgia, 'Times New Roman', serif;
+}
+
+#map .map-journey-evidence summary::-webkit-details-marker {
+  display: none;
+}
+
+#map .map-journey-evidence-label {
+  font: 400 0.62rem / 1.2 Inter, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(214, 181, 108, 0.62);
+}
+
+#map .map-journey-evidence-count {
+  color: rgba(228, 222, 210, 0.82);
+}
+
+#map .map-journey-evidence-more {
+  margin-left: auto;
+  color: rgba(170, 167, 159, 0.62);
+  text-decoration: underline;
+  text-decoration-color: rgba(170, 167, 159, 0.28);
+  text-underline-offset: 3px;
+}
+
+#map .map-journey-evidence summary:hover .map-journey-evidence-more,
+#map .map-journey-evidence summary:focus-visible .map-journey-evidence-more {
+  color: rgba(228, 222, 210, 0.9);
+}
+
+#map .map-journey-evidence summary:focus-visible {
+  outline: 2px solid rgba(214, 181, 108, 0.5);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+#map .map-journey-evidence[open] .map-journey-trust {
+  margin: 8px 0 0;
+}
+
 #map .map-inspector-kicker {
   margin-bottom: 6px;
   color: rgba(186, 168, 132, 0.5);
@@ -12637,6 +12769,29 @@ body {
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
 }
 
+/*
+ * Guided label emphasis: secondary records keep their marker (density stays
+ * visible) but drop their label so featured names never collide.
+ */
+.app--guided .family-event .event-copy {
+  transition: opacity 320ms ease, visibility 320ms ease;
+}
+
+.app--guided .family-event.is-guided-quiet .event-copy {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.app--guided .family-event.is-guided-quiet .event-anchor,
+.app--guided .family-event.is-guided-quiet .event-stem {
+  opacity: 0.4;
+  transition: opacity 320ms ease;
+}
+
+.app--guided .family-event.is-guided-quiet .family-event-action-tip {
+  display: none;
+}
+
 .app--guided-closing .guided-caption {
   display: none;
 }
@@ -12746,12 +12901,20 @@ body {
   box-shadow: none;
   backdrop-filter: none;
   text-align: left;
-  transition: opacity 520ms ease, transform 520ms ease;
+  transition: opacity 420ms ease-out, transform 420ms ease-out;
 }
 
 .guided-caption.is-settling .guided-caption-inner {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(8px);
+  transition-duration: 0ms;
+}
+
+/* Outgoing chapter: must finish within CAPTION_EXIT_MS (240ms) in the context. */
+.guided-caption.is-exiting .guided-caption-inner {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 200ms ease-in, transform 200ms ease-in;
 }
 
 .guided-caption.is-ready .guided-caption-inner {
@@ -12797,11 +12960,11 @@ body {
 }
 
 .guided-caption-attribution {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   flex-shrink: 0;
-  font: 0.78rem/1.25 Georgia, 'Times New Roman', serif;
+  font: 0.82rem/1.3 Georgia, 'Times New Roman', serif;
   letter-spacing: 0.04em;
-  color: rgba(196, 176, 138, 0.62);
+  color: rgba(214, 192, 148, 0.82);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 
@@ -12824,7 +12987,7 @@ body {
   max-width: 34em;
   flex-shrink: 0;
   font: 0.76rem/1.4 Georgia, 'Times New Roman', serif;
-  color: rgba(196, 176, 138, 0.64);
+  color: rgba(204, 186, 150, 0.74);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;

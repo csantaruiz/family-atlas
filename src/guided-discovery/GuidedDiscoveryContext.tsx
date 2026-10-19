@@ -33,6 +33,12 @@ type GuidedDiscoveryValue = {
   chapterCount: number
   pausedForDetail: boolean
   captionReady: boolean
+  /**
+   * Caption lifecycle for the committed chapter:
+   * exiting → outgoing copy fades while still showing; entering → new chapter
+   * committed, scene settling, caption hidden; shown → caption visible.
+   */
+  captionPhase: GuidedCaptionPhase
   /** Closing epilogue line visible after the full-history zoom settles. */
   closingLineVisible: boolean
   mapIntent: GuidedMapIntent | null
@@ -45,6 +51,11 @@ type GuidedDiscoveryValue = {
   /** Interrupt the closing zoom and enter free exploration immediately. */
   interruptClosing: () => void
 }
+
+export type GuidedCaptionPhase = 'entering' | 'shown' | 'exiting'
+
+/** Must be ≥ the CSS exit transition on .guided-caption.is-exiting. */
+const CAPTION_EXIT_MS = 240
 
 const GuidedDiscoveryContext = createContext<GuidedDiscoveryValue | null>(null)
 
@@ -67,7 +78,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     setMapHighlightYears,
     setThinkingFocusRange,
   } = useTimeline()
-  const { navigateToView, setTreeFocus } = useAppNavigation()
+  const { activeView, navigateToView, setTreeFocus } = useAppNavigation()
   const { completeIntro } = useJourneyIntro()
   const { active: followActive, exit: exitFollow } = useFollowPerson()
   const { enableSoundFromGesture } = useAmbientSoundtrack()
@@ -77,6 +88,12 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
   const [mapIntent, setMapIntent] = useState<GuidedMapIntent | null>(null)
   const [captionReady, setCaptionReady] = useState(true)
   const [closingLineVisible, setClosingLineVisible] = useState(false)
+  const [exiting, setExiting] = useState(false)
+  const exitingRef = useRef(false)
+  /** Latest requested chapter while the outgoing caption is exiting. */
+  const pendingIndexRef = useRef<number | null>(null)
+  const transitionTimerRef = useRef<number | null>(null)
+  const transitionGenRef = useRef(0)
   const appliedChapterRef = useRef<string | null>(null)
   const applyGenRef = useRef(0)
   const closingGenRef = useRef(0)
@@ -102,8 +119,25 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     setThinkingFocusRange(null)
   }, [setHighlightedStoryPersonId, setMapHighlightYears, setThinkingFocusRange])
 
+  const setExitingState = useCallback((value: boolean) => {
+    exitingRef.current = value
+    setExiting(value)
+  }, [])
+
+  /** Drop any in-flight chapter change; stale timers can never commit. */
+  const cancelTransition = useCallback(() => {
+    transitionGenRef.current += 1
+    if (transitionTimerRef.current != null) {
+      window.clearTimeout(transitionTimerRef.current)
+      transitionTimerRef.current = null
+    }
+    pendingIndexRef.current = null
+    setExitingState(false)
+  }, [setExitingState])
+
   /** Immediate exit to free exploration (Skip / interrupt). No closing epilogue. */
   const exitToExploration = useCallback(() => {
+    cancelTransition()
     applyGenRef.current += 1
     closingGenRef.current += 1
     clearClosingTimers()
@@ -117,9 +151,10 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     clearHighlights()
     closeDetail()
     navigateToView('journey')
-  }, [clearClosingTimers, clearHighlights, closeDetail, navigateToView])
+  }, [cancelTransition, clearClosingTimers, clearHighlights, closeDetail, navigateToView])
 
   const finishWithClosing = useCallback(() => {
+    cancelTransition()
     const gen = ++closingGenRef.current
     applyGenRef.current += 1
     clearClosingTimers()
@@ -168,6 +203,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     closingTimersRef.current = [showLine, hideLine, complete]
   }, [
     animateView,
+    cancelTransition,
     clearClosingTimers,
     clearHighlights,
     closeDetail,
@@ -249,12 +285,14 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     enableSoundFromGesture()
     completeIntro()
     if (followActive) exitFollow()
+    cancelTransition()
     setChapterIndex(0)
     setStatus('active')
     setCaptionReady(false)
     setClosingLineVisible(false)
     appliedChapterRef.current = null
   }, [
+    cancelTransition,
     chapters.length,
     completeIntro,
     enableSoundFromGesture,
@@ -311,21 +349,91 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => () => clearClosingTimers(), [clearClosingTimers])
 
+  useEffect(
+    () => () => {
+      if (transitionTimerRef.current != null) window.clearTimeout(transitionTimerRef.current)
+    },
+    [],
+  )
+
+  // Leaving the guided state (exit, finish, completion) abandons any pending change.
+  useEffect(() => {
+    if (status !== 'active') cancelTransition()
+  }, [cancelTransition, status])
+
+  // Visitor navigated elsewhere mid-exit: do not yank them back with a late commit.
+  const committedView = chapters[chapterIndex]?.view ?? null
+  useEffect(() => {
+    if (!exitingRef.current || committedView == null) return
+    if (activeView !== committedView) cancelTransition()
+  }, [activeView, cancelTransition, committedView])
+
+  const commitChapter = useCallback(
+    (index: number) => {
+      transitionTimerRef.current = null
+      pendingIndexRef.current = null
+      setExitingState(false)
+      appliedChapterRef.current = null
+      setChapterIndex(index)
+    },
+    [setExitingState],
+  )
+
+  /**
+   * One synchronized scene change: the outgoing caption stays committed while it
+   * fades; only then do the chapter index, scene, and incoming caption change.
+   * Rapid requests coalesce into the latest target.
+   */
+  const requestChapter = useCallback(
+    (target: number) => {
+      if (target === chapterIndex) {
+        // Reversed back to the visible chapter before the exit finished.
+        if (exitingRef.current) cancelTransition()
+        return
+      }
+      if (!exitingRef.current && !captionReady) {
+        // Incoming caption not visible yet — nothing to fade out.
+        transitionGenRef.current += 1
+        commitChapter(target)
+        return
+      }
+      pendingIndexRef.current = target
+      if (exitingRef.current) return
+      const exitMs = motionDuration(CAPTION_EXIT_MS)
+      if (exitMs === 0) {
+        commitChapter(target)
+        return
+      }
+      setExitingState(true)
+      const gen = ++transitionGenRef.current
+      transitionTimerRef.current = window.setTimeout(() => {
+        if (gen !== transitionGenRef.current) return
+        const pending = pendingIndexRef.current
+        if (pending == null) return
+        commitChapter(pending)
+      }, exitMs)
+    },
+    [cancelTransition, captionReady, chapterIndex, commitChapter, setExitingState],
+  )
+
   const next = useCallback(() => {
     if (status !== 'active') return
-    if (chapterIndex >= chapters.length - 1) {
+    const base = pendingIndexRef.current ?? chapterIndex
+    if (base >= chapters.length - 1) {
+      // Never jump to the finale while a chapter change is still in flight.
+      if (pendingIndexRef.current != null) return
       finishWithClosing()
       return
     }
-    appliedChapterRef.current = null
-    setChapterIndex((i) => i + 1)
-  }, [chapterIndex, chapters.length, finishWithClosing, status])
+    requestChapter(base + 1)
+  }, [chapterIndex, chapters.length, finishWithClosing, requestChapter, status])
 
   const back = useCallback(() => {
-    if (status !== 'active' || chapterIndex <= 0) return
-    appliedChapterRef.current = null
-    setChapterIndex((i) => Math.max(0, i - 1))
-  }, [chapterIndex, status])
+    if (status !== 'active') return
+    const base = pendingIndexRef.current ?? chapterIndex
+    if (base <= 0) return
+    requestChapter(base - 1)
+  }, [chapterIndex, requestChapter, status])
 
   const skip = useCallback(() => {
     exitToExploration()
@@ -352,6 +460,8 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
 
   const clearMapIntent = useCallback(() => setMapIntent(null), [])
 
+  const captionPhase: GuidedCaptionPhase = exiting ? 'exiting' : captionReady ? 'shown' : 'entering'
+
   const value = useMemo<GuidedDiscoveryValue>(
     () => ({
       status,
@@ -361,6 +471,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
       chapterCount: chapters.length,
       pausedForDetail,
       captionReady,
+      captionPhase,
       closingLineVisible,
       mapIntent,
       start,
@@ -372,6 +483,7 @@ export function GuidedDiscoveryProvider({ children }: { children: ReactNode }) {
     }),
     [
       back,
+      captionPhase,
       captionReady,
       chapter,
       chapterIndex,
@@ -404,6 +516,7 @@ export function useGuidedDiscovery(): GuidedDiscoveryValue {
       chapterCount: 0,
       pausedForDetail: false,
       captionReady: true,
+      captionPhase: 'shown',
       closingLineVisible: false,
       mapIntent: null,
       start: () => {},

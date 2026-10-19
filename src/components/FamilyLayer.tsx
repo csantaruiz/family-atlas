@@ -17,6 +17,7 @@ import { useFollowPerson } from '../context/FollowPersonContext'
 import { usePhoneTimelineUi } from '../context/PhoneTimelineUiContext'
 import { useAppNavigation } from '../context/AppNavigationContext'
 import { useGuidedDiscovery } from '../guided-discovery'
+import { guidedLabelBudget, selectGuidedLabels } from '../guided-discovery/guidedLabelEmphasis'
 import { FamilyMemberActionTip } from './FamilyMemberActionTip'
 import {
   buildBirthClusters,
@@ -143,6 +144,7 @@ function FamilyEventButton({
   nudge = 0,
   compact = false,
   markerOnly = false,
+  guidedFeatured,
   stemLength,
   motionEnabled = false,
 }: {
@@ -158,6 +160,8 @@ function FamilyEventButton({
   nudge?: number
   compact?: boolean
   markerOnly?: boolean
+  /** Guided chapter label emphasis: undefined when not in a guided Timeline chapter. */
+  guidedFeatured?: boolean
   stemLength: number
   motionEnabled?: boolean
 }) {
@@ -239,8 +243,9 @@ function FamilyEventButton({
     followActive && followFocus ? 'is-follow-focus' : '',
     followActive && followRelated && !followFocus ? 'is-follow-related' : '',
     followActive && !followRelated ? 'is-follow-muted' : '',
+    guidedFeatured === false ? 'is-guided-quiet' : '',
     guidedFocusing && guidedFocus ? 'is-guided-focus' : '',
-    guidedFocusing && !guidedFocus ? 'is-guided-muted' : '',
+    guidedFocusing && !guidedFocus && guidedFeatured === undefined ? 'is-guided-muted' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -315,7 +320,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
   } = useTimeline()
   const { viewOnTree } = useAppNavigation()
   const { active: followActive, journey, startFollow, journeyForPerson } = useFollowPerson()
-  const { status: guidedStatus } = useGuidedDiscovery()
+  const { status: guidedStatus, chapter: guidedChapter } = useGuidedDiscovery()
   const guidedActive = guidedStatus === 'active' || guidedStatus === 'closing'
   const phoneUi = usePhoneTimelineUi()
   const phoneExploring = Boolean(phoneUi?.phone && phoneUi.exploring)
@@ -1184,6 +1189,37 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
       familyLabelCeilingY(axisY),
     )
 
+    // Guided chapters keep every marker but only a few readable labels.
+    const guidedLabels =
+      guidedStatus === 'active' && guidedChapter?.view === 'journey'
+        ? selectGuidedLabels(
+            separated.map((placed) => {
+              const tabletPlacement = isNarrowStage(width) || (width > 760 && width <= 1180)
+              const labelNudge = tabletPlacement
+                ? phoneLabelPlacement(placed.x, placed.width, width).nudge
+                : placed.nudge ?? 0
+              const left = placed.x - placed.width / 2 + labelNudge
+              return {
+                id: placed.id,
+                personId: placed.event.person.id,
+                spouseId: placed.event.spouse?.id,
+                kind: placed.event.kind,
+                year: placed.event.year,
+                importance: placed.event.importance,
+                left,
+                right: left + placed.width,
+                top: placed.y - 21 - placed.height,
+                bottom: placed.y + 6,
+              }
+            }),
+            {
+              focusPersonIds: guidedChapter.highlightPersonIds,
+              emphasis: guidedChapter.emphasis,
+              maxLabels: guidedLabelBudget(width),
+            },
+          )
+        : null
+
     return separated.map(({ id: eventKey, event, x, y: renderY, alignment, nudge, compact }) => {
       const stemLength = familyEventStemLength(renderY, axisY)
       const button = (
@@ -1196,6 +1232,7 @@ export function FamilyLayer({ start, end, width, height }: FamilyLayerProps) {
           alignment={alignment}
           nudge={nudge}
           compact={compact}
+          guidedFeatured={guidedLabels ? guidedLabels.has(eventKey) : undefined}
           stemLength={stemLength}
           motionEnabled={zoomSemantic === 'detail'}
           onOpen={handleEventOpen}

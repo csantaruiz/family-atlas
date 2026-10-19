@@ -1,4 +1,4 @@
-import type { HistoryEvent } from '../types'
+import type { FamilyEvent, HistoryEvent } from '../types'
 import type { FamilyRegionId } from '../utils/mapRegions'
 import type { AppView } from '../types/navigation'
 
@@ -32,8 +32,15 @@ export type GuidedChapter = {
   evidenceNote: string | null
   /** One-line focus cue for the caption (person, event, or place). */
   focusLabel: string | null
+  /** Short historical or geographic subtitle shown under the title. */
+  subtitle?: string | null
   /** Optional history event to emphasize without opening a drawer. */
   focusHistory?: HistoryEvent | null
+  /** Timeline records the chapter is about, beyond the highlighted people. */
+  emphasis?: {
+    years?: { start: number; end: number }
+    kinds?: FamilyEvent['kind'][]
+  } | null
 }
 
 export type GuidedDiscoveryStatus = 'idle' | 'active' | 'closing' | 'completed'

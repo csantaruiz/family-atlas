@@ -86,6 +86,28 @@ function regionDisplayName(id: FamilyRegionId): string {
   return names[id]
 }
 
+function regionShortName(id: FamilyRegionId): string {
+  const names: Record<FamilyRegionId, string> = {
+    britain_ireland: 'Britain & Ireland',
+    eastern_us: 'Eastern United States',
+    california: 'California',
+    mexico: 'Mexico',
+    southwest_us: 'American Southwest',
+  }
+  return names[id]
+}
+
+const CENTURY_WORDS: Record<number, string> = {
+  2: 'Two',
+  3: 'Three',
+  4: 'Four',
+  5: 'Five',
+  6: 'Six',
+  7: 'Seven',
+  8: 'Eight',
+  9: 'Nine',
+}
+
 const PREFERRED_ROUTE_KEYS = new Set([
   'mexico->california',
   'mexico->southwest_us',
@@ -123,13 +145,16 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
     const yMax = Math.max(...years)
     const narration = clampNarration(
       place
-        ? `The archive begins in ${formatYear(earliest)}. ${originLead.name} stands near its earliest edge, recorded in ${shortPlace(place)}. From this slender start, the tree stretches across ${Math.round(spanYears)} years — not one origin, but a long trail of evidence.`
-        : `The archive begins in ${formatYear(earliest)}. ${originLead.name} stands near its earliest edge. From this slender start, the tree stretches across ${Math.round(spanYears)} years — not one origin, but a long trail of evidence.`,
+        ? `The story opens in ${formatYear(earliest)}, at the farthest edge of the record. Among its earliest documented lives is ${originLead.name}, recorded in ${shortPlace(place)}. From here, the family reaches forward across ${Math.round(spanYears)} years.`
+        : `The story opens in ${formatYear(earliest)}, at the farthest edge of the record. Among its earliest documented lives is ${originLead.name}. From here, the family reaches forward across ${Math.round(spanYears)} years.`,
     )
     chapters.push({
       id: 'origins',
       kind: 'origins',
       title: 'Origins',
+      subtitle: place
+        ? `${formatYear(originLead.birthYear as number)} · ${shortPlace(place)}`
+        : `${formatYear(earliest)} · The earliest records`,
       narration,
       view: 'journey',
       camera: {
@@ -168,12 +193,13 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
     const placePhrase =
       names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
     const narration = clampNarration(
-      `These lives did not share one homeland. Documented places gather across ${placePhrase}. The map holds them together without naming a single beginning.`,
+      `These lives did not begin in one homeland. The records gather in ${placePhrase} — separate worlds that would one day belong to the same family.`,
     )
     chapters.push({
       id: 'branches',
       kind: 'branches',
       title: 'Different Worlds',
+      subtitle: top.map((e) => regionShortName(e.regionId)).join(' · '),
       narration,
       view: 'map',
       highlightPersonIds: top.flatMap((e) => e.people.slice(0, 1).map((p) => p.id)),
@@ -217,18 +243,69 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
     .filter((row): row is NonNullable<typeof row> => row != null)
     .sort((a, b) => b.score - a.score)
 
+  // Preferred: the 1914–1945 era, when the curated history list supports the
+  // claim and the family records show lives in those years.
+  const eraHistory = worldHistory.filter((e) => e.year >= UPHEAVAL_ERA.start && e.year <= UPHEAVAL_ERA.end)
+  const eraWorldWars = eraHistory.filter((e) => /world war|\bwwi+\b/i.test(e.title)).length
+  const eraDepression = eraHistory.some((e) => /depression/i.test(e.title))
+  const eraFamily = familyEvents.filter(
+    (fe) => fe.year >= UPHEAVAL_ERA.start && fe.year <= UPHEAVAL_ERA.end,
+  )
+  const eraBirths = eraFamily.some((fe) => fe.kind === 'birth')
+  const eraMarriages = eraFamily.some((fe) => fe.kind === 'marriage')
   const worldPick = scoredHistory[0]
-  if (worldPick) {
+
+  if (eraWorldWars >= 2 && eraDepression && eraFamily.length >= 3) {
+    const recordLine =
+      eraBirths && eraMarriages
+        ? 'new generations were being born, marriages joined family lines, and lives continued'
+        : eraBirths
+          ? 'new generations were being born, and lives continued'
+          : eraMarriages
+            ? 'marriages joined family lines, and lives continued'
+            : 'family lives continued'
+    const emphasisKinds: FamilyEvent['kind'][] = [
+      ...(eraBirths ? (['birth'] as const) : []),
+      ...(eraMarriages ? (['marriage'] as const) : []),
+    ]
+    chapters.push({
+      id: 'world_in_change',
+      kind: 'world_in_change',
+      title: 'A World in Change',
+      subtitle: `${UPHEAVAL_ERA.start}–${UPHEAVAL_ERA.end} · An era of upheaval`,
+      narration: clampNarration(
+        `Two world wars, a global depression, and extraordinary social change transformed the world around these families. In the records, ${recordLine} through an age of profound uncertainty.`,
+      ),
+      view: 'journey',
+      camera: {
+        center: (UPHEAVAL_ERA.start + UPHEAVAL_ERA.end) / 2,
+        span: 44,
+      },
+      // Era chapter names no ancestor — context only, never participation.
+      highlightPersonIds: [],
+      openPersonId: null,
+      openHistory: null,
+      mapIntent: null,
+      evidenceNote: null,
+      focusLabel: null,
+      focusHistory: null,
+      emphasis: {
+        years: UPHEAVAL_ERA,
+        kinds: emphasisKinds.length > 0 ? emphasisKinds : undefined,
+      },
+    })
+  } else if (worldPick) {
     const subject = worldPick.meaningful[0]?.person ?? null
     const narration = clampNarration(
       subject
-        ? `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. ${subject.name} was an adult in the archive during these years — a shared era, not proof of participation.`
-        : `${formatYear(worldPick.event.year)}. ${worldPick.event.title} reshapes ${worldPick.event.country}. Documented family lives share this era in the archive — a coincidence of calendars, not a claim that any ancestor took part.`,
+        ? `${worldPick.event.title}, ${formatYear(worldPick.event.year)}. The world around the family was changing. ${subject.name} was living through these years — a shared era, not proof of participation.`
+        : `${worldPick.event.title}, ${formatYear(worldPick.event.year)}. The world around the family was changing. Family lives in the records share this era — a coincidence of calendars, not a claim that any ancestor took part.`,
     )
     chapters.push({
       id: 'world_in_change',
       kind: 'world_in_change',
       title: 'A World in Change',
+      subtitle: `${formatYear(worldPick.event.year)} · ${worldPick.event.country}`,
       narration,
       view: 'journey',
       camera: {
@@ -265,17 +342,19 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
         .filter((p): p is Person => Boolean(p))[0] ?? null
     const confidence =
       bestRoute.confidence === 'documented'
-        ? 'Supported by move events linking known places.'
-        : 'Inferred from place changes — a regional connection, not a verified travel corridor.'
+        ? 'Documented moves · lines join endpoints, not exact routes.'
+        : 'Inferred from recorded places · a regional link, not a verified route.'
+    const travelers = bestRoute.people.length
     const narration = clampNarration(
       bestRoute.confidence === 'documented' && lead
-        ? `Records place movement between ${bestRoute.fromName} and ${bestRoute.toName}${yearLabel ? ` around ${yearLabel}` : ''}. ${lead.name} appears among the lives on this corridor. The map shows endpoints the evidence supports — not an imagined path between them.`
-        : `Place changes in the tree link ${bestRoute.fromName} and ${bestRoute.toName}${yearLabel ? ` across ${yearLabel}` : ''}. ${confidence} The map marks connection, not a reconstructed voyage.`,
+        ? `${yearLabel ? `Across ${yearLabel}, ` : ''}family records trace movement from ${bestRoute.fromName} to ${bestRoute.toName}. ${lead.name} is among ${travelers > 1 ? `${travelers} lives` : 'the lives'} on this corridor. The records document the moves, though not the reasons behind them.`
+        : `Places of life in the records link ${bestRoute.fromName} and ${bestRoute.toName}${yearLabel ? ` across ${yearLabel}` : ''}. The line marks a connection between regions — the journey itself is not recorded.`,
     )
     chapters.push({
       id: 'journeys',
       kind: 'journeys',
       title: 'Journeys Across Generations',
+      subtitle: `${bestRoute.fromName} → ${bestRoute.toName}${yearLabel ? ` · ${yearLabel}` : ''}`,
       narration,
       view: 'map',
       highlightPersonIds: lead ? [lead.id] : bestRoute.people.slice(0, 2).map((p) => p.id),
@@ -288,12 +367,13 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   } else if (regions.length >= 2) {
     const top = [...regions].sort((a, b) => b.peopleCount - a.peopleCount).slice(0, 3)
     const narration = clampNarration(
-      `When corridors are thin, geography still speaks. Documented lives gather in ${top.map((r) => r.name).join(', ')}. Distribution the places support — without inventing routes between them.`,
+      `Not every journey left a record. Documented lives gather in ${top.map((r) => r.name).join(', ')}, and the map shows where they were — without inventing the routes between them.`,
     )
     chapters.push({
       id: 'journeys-distribution',
       kind: 'journeys',
       title: 'Journeys Across Generations',
+      subtitle: 'Where the records place them',
       narration,
       view: 'map',
       highlightPersonIds: [],
@@ -310,13 +390,19 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
   const root = database.people.find((p) => p.id === database.root) ?? recent[0]
   if (root?.birthYear != null) {
     const y = root.birthYear
+    const centuries = Math.floor(spanYears / 100)
+    const reach =
+      centuries >= 2
+        ? `${CENTURY_WORDS[centuries] ?? `${centuries}`} centuries`
+        : 'Generations'
     const narration = clampNarration(
-      `Near the present, the archive gathers around ${root.name}. What came before — separate worlds, shared eras, and careful geography — arrives here.`,
+      `${reach} of records arrive here, in the present. ${root.name}, born in ${formatYear(y)}, inherits every branch that came before — separate homelands, shared eras${bestRoute ? ', and the journeys between them' : ''}.`,
     )
     chapters.push({
       id: 'present',
       kind: 'present',
       title: 'The Family Today',
+      subtitle: `${formatYear(y)} – today`,
       narration,
       view: 'journey',
       camera: {
@@ -336,6 +422,8 @@ export function selectGuidedChapters(input: GuidedChapterInput): GuidedChapter[]
 }
 
 const MEANINGFUL_PERSON_THRESHOLD = 28
+
+const UPHEAVAL_ERA = { start: 1914, end: 1945 } as const
 
 /** Age at event year, or null if not alive / unknown birth. */
 export function ageAtHistoricalEvent(person: Person, eventYear: number): number | null {

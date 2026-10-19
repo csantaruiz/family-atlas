@@ -4,6 +4,7 @@ import type { GuidedChapter } from './types'
 const SERIES_LABEL = 'THE FAMILY STORY'
 
 function chapterAttribution(chapter: GuidedChapter): string | null {
+  if (chapter.subtitle) return chapter.subtitle
   if (chapter.focusHistory) {
     const year = chapter.focusHistory.year
     const place = chapter.focusHistory.country?.trim()
@@ -20,7 +21,7 @@ export function GuidedDiscoveryOverlay() {
     chapterIndex,
     chapterCount,
     pausedForDetail,
-    captionReady,
+    captionPhase,
     closingLineVisible,
     next,
     back,
@@ -50,7 +51,7 @@ export function GuidedDiscoveryOverlay() {
       className={[
         'guided-caption',
         `guided-caption--${chapter.view}`,
-        captionReady ? 'is-ready' : 'is-settling',
+        captionPhase === 'shown' ? 'is-ready' : captionPhase === 'exiting' ? 'is-exiting' : 'is-settling',
         pausedForDetail ? 'is-paused' : '',
         isLast ? 'is-finale' : '',
       ]

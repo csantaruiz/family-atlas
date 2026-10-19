@@ -15,6 +15,7 @@ import {
   WORLD_MAP_WATER_FILL,
   WORLD_MAP_WATER_SHALLOW,
   WORLD_MAP_WATER_TINT,
+  projectGeo,
 } from '../../utils/mapProjection'
 
 type LandFeature = {
@@ -54,11 +55,14 @@ function AtlasPlate({
   offsetX = 0,
   keyPrefix = 'main',
   softEdge = true,
+  water = true,
 }: {
   chrome: PlateChrome
   offsetX?: number
   keyPrefix?: string
   softEdge?: boolean
+  /** Tiled mode paints one continuous sea under every copy instead. */
+  water?: boolean
 }) {
   const {
     oceanDepthId,
@@ -76,9 +80,13 @@ function AtlasPlate({
 
   return (
     <g transform={offsetX === 0 ? undefined : `translate(${offsetX}, 0)`}>
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={WORLD_MAP_WATER_FILL} />
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanDepthId})`} />
-      <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanHorizonId})`} />
+      {water ? (
+        <>
+          <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={WORLD_MAP_WATER_FILL} />
+          <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanDepthId})`} />
+          <rect x={waterX} y={waterY} width={waterW} height={waterH} fill={`url(#${oceanHorizonId})`} />
+        </>
+      ) : null}
 
       {graticulePath ? (
         <path
@@ -182,10 +190,13 @@ export function WorldMapBackground({
   const bedPad = tileHorizontal ? MAP_VIEW_BOX.width * 2 + WORLD_MAP_OVERSCAN * 2 : WORLD_MAP_OVERSCAN * 3
   const bedX = -bedPad
   const bedW = MAP_VIEW_BOX.width + bedPad * 2
+  const bedY = waterY - WORLD_MAP_OVERSCAN
+  const bedH = waterH + WORLD_MAP_OVERSCAN * 2
 
-  const tileOffsets = tileHorizontal
-    ? [-MAP_VIEW_BOX.width, 0, MAP_VIEW_BOX.width]
-    : [0]
+  // Copies sit one projected world-width apart (−180°…180°), so neighbouring
+  // copies meet at the antimeridian instead of overlapping or leaving gaps.
+  const worldWidth = useMemo(() => projectGeo(180, 0).x - projectGeo(-180, 0).x, [])
+  const tileOffsets = tileHorizontal ? [-worldWidth, 0, worldWidth] : [0]
 
   return (
     <g
@@ -193,13 +204,38 @@ export function WorldMapBackground({
       aria-hidden="true"
     >
       <defs>
-        <radialGradient id={oceanDepthId} cx="44%" cy="40%" r="72%">
+        {/*
+          Tiled: user-space gradients on the single sea bed, so the tone is one
+          continuous field (pad extends the edge stops) with no tile seams.
+        */}
+        <radialGradient
+          id={oceanDepthId}
+          {...(tileHorizontal
+            ? {
+                gradientUnits: 'userSpaceOnUse' as const,
+                cx: waterX + waterW * 0.44,
+                cy: waterY + waterH * 0.4,
+                r: waterW * 0.72,
+              }
+            : { cx: '44%', cy: '40%', r: '72%' })}
+        >
           <stop offset="0%" stopColor={WORLD_MAP_WATER_SHALLOW} />
           <stop offset="42%" stopColor={WORLD_MAP_WATER_TINT} />
           <stop offset="100%" stopColor={WORLD_MAP_WATER_DEEP} />
         </radialGradient>
 
-        <linearGradient id={oceanHorizonId} x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient
+          id={oceanHorizonId}
+          {...(tileHorizontal
+            ? {
+                gradientUnits: 'userSpaceOnUse' as const,
+                x1: waterX,
+                y1: waterY,
+                x2: waterX + waterW,
+                y2: waterY + waterH,
+              }
+            : { x1: '0%', y1: '0%', x2: '100%', y2: '100%' })}
+        >
           <stop offset="0%" stopColor="rgba(72, 98, 104, 0.08)" />
           <stop offset="48%" stopColor="rgba(0, 0, 0, 0)" />
           <stop offset="100%" stopColor="rgba(28, 44, 48, 0.16)" />
@@ -234,47 +270,32 @@ export function WorldMapBackground({
           <feGaussianBlur in="SourceGraphic" stdDeviation="0.08" />
         </filter>
 
-        {tileHorizontal
-          ? tileOffsets.map((offsetX) => (
-              <clipPath
-                key={`clip-${offsetX}`}
-                id={`${idPrefix}atlasPlateClip${offsetX}`}
-                clipPathUnits="userSpaceOnUse"
-              >
-                <rect
-                  x={offsetX - WORLD_MAP_OVERSCAN}
-                  y={-WORLD_MAP_OVERSCAN}
-                  width={MAP_VIEW_BOX.width + WORLD_MAP_OVERSCAN * 2}
-                  height={MAP_VIEW_BOX.height + WORLD_MAP_OVERSCAN * 2}
-                />
-              </clipPath>
-            ))
-          : null}
       </defs>
 
       <rect
         className="world-map-ocean-bed"
         x={bedX}
-        y={waterY - WORLD_MAP_OVERSCAN}
+        y={bedY}
         width={bedW}
-        height={waterH + WORLD_MAP_OVERSCAN * 2}
+        height={bedH}
         fill={WORLD_MAP_WATER_FILL}
       />
+      {tileHorizontal ? (
+        <>
+          <rect x={bedX} y={bedY} width={bedW} height={bedH} fill={`url(#${oceanDepthId})`} />
+          <rect x={bedX} y={bedY} width={bedW} height={bedH} fill={`url(#${oceanHorizonId})`} />
+        </>
+      ) : null}
 
       {tileOffsets.map((offsetX) => (
-        <g
+        <AtlasPlate
           key={`plate-${offsetX}`}
-          clipPath={
-            tileHorizontal ? `url(#${idPrefix}atlasPlateClip${offsetX})` : undefined
-          }
-        >
-          <AtlasPlate
-            chrome={chrome}
-            offsetX={offsetX}
-            keyPrefix={offsetX === 0 ? 'main' : `tile${offsetX}`}
-            softEdge={!tileHorizontal}
-          />
-        </g>
+          chrome={chrome}
+          offsetX={offsetX}
+          keyPrefix={offsetX === 0 ? 'main' : `tile${offsetX}`}
+          softEdge={!tileHorizontal}
+          water={!tileHorizontal}
+        />
       ))}
     </g>
   )

@@ -223,4 +223,55 @@ describe('selectGuidedChapters', () => {
     expect(branches?.narration.toLowerCase()).not.toContain('ruiz')
     expect(branches?.focusLabel).toBeTruthy()
   })
+
+  describe('1914–1945 era chapter', () => {
+    const era = [
+      person({ id: 'p1', name: 'Pedro Luna', birthYear: 1880, birthPlace: 'Chihuahua, Mexico' }),
+      person({ id: 'v1', name: 'Victor Ruiz', birthYear: 1915, birthPlace: 'California, USA' }),
+      person({ id: 'c1', name: 'Carmen Ruiz', birthYear: 1923, birthPlace: 'California, USA' }),
+      person({ id: 'r1', name: 'Rafael Ruiz', birthYear: 1931, birthPlace: 'Texas, USA' }),
+    ]
+    const births: FamilyEvent[] = era.map((p) => ({
+      kind: 'birth',
+      year: p.birthYear as number,
+      title: `Birth of ${p.name}`,
+      detail: p.name,
+      person: p,
+      importance: 2,
+    }))
+
+    it('uses the era narrative when births and marriages are recorded in those years', () => {
+      const marriage: FamilyEvent = {
+        kind: 'marriage',
+        year: 1938,
+        title: 'Ruiz marriage',
+        detail: '',
+        person: era[1],
+        importance: 3,
+      }
+      const chapters = selectGuidedChapters({
+        database: buildDb(era, 'c1'),
+        familyEvents: [...births, marriage],
+      })
+      const world = chapters.find((c) => c.kind === 'world_in_change')
+      expect(world?.subtitle).toBe('1914–1945 · An era of upheaval')
+      expect(world?.narration).toContain('Two world wars, a global depression')
+      expect(world?.narration).toContain('marriages joined family lines')
+      // Context only — the era chapter never names or highlights an ancestor.
+      expect(world?.highlightPersonIds).toEqual([])
+      expect(world?.narration).not.toMatch(/Pedro|Victor|Carmen|Rafael/)
+      expect(world?.emphasis?.kinds).toEqual(['birth', 'marriage'])
+    })
+
+    it('does not claim marriages the records do not contain', () => {
+      const chapters = selectGuidedChapters({
+        database: buildDb(era, 'c1'),
+        familyEvents: births,
+      })
+      const world = chapters.find((c) => c.kind === 'world_in_change')
+      expect(world?.narration).toContain('new generations were being born')
+      expect(world?.narration).not.toContain('marriages')
+      expect(world?.emphasis?.kinds).toEqual(['birth'])
+    })
+  })
 })

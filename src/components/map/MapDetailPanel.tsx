@@ -73,108 +73,122 @@ export function MapDetailPanel({
     const routeSynopsis = generateMigrationRouteSynopsis(route)
 
     return (
-      <aside className={panelClass} {...sheetDrag}>
-        <PhoneCloseButton
-          className="place-detail-close"
-          onClick={handleClose}
-          label="Close migration details"
-        />
-        <div className="eyebrow map-inspector-kicker">Family migration</div>
-        <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
-        {phone ? (
-          <>
-            <p className="map-sheet-peek-meta">
-              {route.fromName} → {route.toName} · {yearLabel}
+      <aside className={panelClass} {...sheetDrag} aria-label="Migration details">
+        <header className="map-inspector-header">
+          <PhoneCloseButton
+            className="place-detail-close"
+            onClick={handleClose}
+            label="Close migration details"
+          />
+          <div className="eyebrow map-inspector-kicker">Family migration</div>
+          <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
+        </header>
+        <div className="map-inspector-body">
+          {phone ? (
+            <>
+              <p className="map-sheet-peek-meta">
+                {route.fromName} → {route.toName} · {yearLabel}
+              </p>
+              <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+                View details
+              </button>
+            </>
+          ) : null}
+          <dl className="map-journey-facts">
+            <div>
+              <dt>Who moved</dt>
+              <dd>
+                {route.people.length === 1
+                  ? route.people[0].name
+                  : `${route.people.length} people on this corridor`}
+              </dd>
+            </div>
+            <div>
+              <dt>From</dt>
+              <dd>{route.fromName}</dd>
+            </div>
+            <div>
+              <dt>To</dt>
+              <dd>{route.toName}</dd>
+            </div>
+            <div>
+              <dt>When</dt>
+              <dd>{yearLabel}</dd>
+            </div>
+          </dl>
+          <p className="map-inspector-synopsis">{routeSynopsis}</p>
+          <details className="map-inspector-meta map-journey-evidence">
+            <summary>
+              <span className="map-journey-evidence-label">
+                {route.confidence === 'documented' ? 'Documented' : 'Inferred'}
+              </span>
+              <span className="map-journey-evidence-count">
+                {route.moveCount} {route.moveCount === 1 ? 'recorded move' : 'recorded moves'}
+              </span>
+              <span className="map-journey-evidence-more">About this evidence</span>
+            </summary>
+            <p className="map-journey-trust">
+              {route.confidence === 'documented'
+                ? 'Supported by documented move events in the family record. Lines show origin and destination, not an exact historical path.'
+                : 'Inferred from places of life in the family record. Lines show origin and destination, not an exact historical path.'}
             </p>
-            <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
-              View details
-            </button>
-          </>
-        ) : null}
-        <dl className="map-journey-facts">
-          <div>
-            <dt>Who moved</dt>
-            <dd>
-              {route.people.length === 1
-                ? route.people[0].name
-                : `${route.people.length} people on this corridor`}
-            </dd>
-          </div>
-          <div>
-            <dt>From</dt>
-            <dd>{route.fromName}</dd>
-          </div>
-          <div>
-            <dt>To</dt>
-            <dd>{route.toName}</dd>
-          </div>
-          <div>
-            <dt>When</dt>
-            <dd>{yearLabel}</dd>
-          </div>
-        </dl>
-        <p className="map-inspector-synopsis">{routeSynopsis}</p>
-        <p className="map-journey-trust">
-          {route.confidence === 'documented'
-            ? 'Supported by documented move events in the family record. Lines show origin and destination, not an exact historical path.'
-            : 'Inferred from places of life in the family record. Lines show origin and destination, not an exact historical path.'}
-        </p>
-        <div className="place-detail-stats map-inspector-meta">
-          <div>
-            <label>Documented moves</label>
-            <span>{route.moveCount}</span>
-          </div>
-          <div>
-            <label>Evidence</label>
-            <span>{route.confidence === 'documented' ? 'Documented' : 'Inferred'}</span>
-          </div>
-        </div>
-        <div className="place-detail-section map-inspector-section">
-          <div className="eyebrow">People on this corridor</div>
-          <ul className="place-detail-list">
-            {route.people.slice(0, 12).map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => openPerson(p.id)}>
-                  {p.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {route.segments.length > 0 && (
-          <div className="place-detail-section map-inspector-section map-inspector-secondary">
-            <div className="eyebrow">Documented moves</div>
-            <ul className="place-detail-list map-route-segment-list">
-              {[...route.segments]
-                .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
-                .slice(0, 16)
-                .map((segment) => (
-                  <li key={segment.id}>
-                    <button type="button" onClick={() => openPerson(segment.personId)}>
-                      <strong>{segment.year ?? '—'}</strong>
-                      <span>
-                        {segment.personName} · {segment.from.split(',')[0]} → {segment.to.split(',')[0]}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              {route.segments.length > 16 && (
-                <li className="muted">+{route.segments.length - 16} more moves on this corridor</li>
-              )}
+          </details>
+          <div className="place-detail-section map-inspector-section">
+            <div className="eyebrow">People on this corridor</div>
+            <ul className="place-detail-list">
+              {route.people.slice(0, 12).map((p) => (
+                <li key={p.id}>
+                  <button type="button" onClick={() => openPerson(p.id)}>
+                    {p.name}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
-        )}
-        <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
-          <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
-            View on timeline
-          </button>
-          {phone ? (
-            <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
-              Close details
+          {route.segments.length > 0 && (
+            <div className="place-detail-section map-inspector-section map-inspector-secondary">
+              <div className="eyebrow">Documented moves</div>
+              <ul className="place-detail-list map-route-segment-list">
+                {[...route.segments]
+                  .sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999))
+                  .slice(0, 16)
+                  .map((segment) => (
+                    <li key={segment.id}>
+                      <button type="button" onClick={() => openPerson(segment.personId)}>
+                        <strong>{segment.year ?? '—'}</strong>
+                        <span>
+                          {segment.personName} · {segment.from.split(',')[0]} →{' '}
+                          {segment.to.split(',')[0]}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                {route.segments.length > 16 && (
+                  <li className="muted">
+                    +{route.segments.length - 16} more moves on this corridor
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+          <div
+            className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}
+          >
+            <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
+              View on timeline
             </button>
-          ) : null}
+            {phone ? (
+              <button
+                type="button"
+                className="pill map-action-secondary"
+                onClick={() => setExpanded(false)}
+              >
+                Close details
+              </button>
+            ) : null}
+          </div>
+          <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
         </div>
-        <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
   }
@@ -198,64 +212,74 @@ export function MapDetailPanel({
     })
 
     return (
-      <aside className={panelClass} {...sheetDrag}>
-        <PhoneCloseButton
-          className="place-detail-close"
-          onClick={handleClose}
-          label="Close regional details"
-        />
-        <div className="eyebrow map-inspector-kicker">Regional chapter</div>
-        <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
-        {phone ? (
-          <>
-            <p className="map-sheet-peek-meta">
-              {yearLabel} · {sub.placeCount} places · {sub.peopleCount} people
-            </p>
-            <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
-              View details
-            </button>
-          </>
-        ) : null}
-        <p className="map-inspector-lede place-region">{sub.name}</p>
-        <p className="map-inspector-synopsis">{subSynopsis}</p>
-        <div className="place-detail-stats map-inspector-meta">
-          <div>
-            <label>Year range</label>
-            <span>{yearLabel}</span>
-          </div>
-          <div>
-            <label>Places</label>
-            <span>{sub.placeCount}</span>
-          </div>
-          <div>
-            <label>People</label>
-            <span>{sub.peopleCount}</span>
-          </div>
-        </div>
-        <div className="place-detail-section map-inspector-section">
-          <div className="eyebrow">Cities and towns</div>
-          <ul className="place-detail-list">
-            {sub.places.slice(0, 14).map((pl) => (
-              <li key={pl.id}>
-                <span>
-                  {pl.name.split(',')[0]}
-                  {pl.people.length ? ` · ${pl.people.length} people` : ''}
-                </span>
-              </li>
-            ))}
-            {sub.places.length > 14 && (
-              <li className="muted">+{sub.places.length - 14} more places</li>
-            )}
-          </ul>
-        </div>
-        <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
+      <aside className={panelClass} {...sheetDrag} aria-label="Regional details">
+        <header className="map-inspector-header">
+          <PhoneCloseButton
+            className="place-detail-close"
+            onClick={handleClose}
+            label="Close regional details"
+          />
+          <div className="eyebrow map-inspector-kicker">Regional chapter</div>
+          <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
+        </header>
+        <div className="map-inspector-body">
           {phone ? (
-            <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
-              Close details
-            </button>
+            <>
+              <p className="map-sheet-peek-meta">
+                {yearLabel} · {sub.placeCount} places · {sub.peopleCount} people
+              </p>
+              <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+                View details
+              </button>
+            </>
           ) : null}
+          <p className="map-inspector-lede place-region">{sub.name}</p>
+          <p className="map-inspector-synopsis">{subSynopsis}</p>
+          <div className="place-detail-stats map-inspector-meta">
+            <div>
+              <label>Year range</label>
+              <span>{yearLabel}</span>
+            </div>
+            <div>
+              <label>Places</label>
+              <span>{sub.placeCount}</span>
+            </div>
+            <div>
+              <label>People</label>
+              <span>{sub.peopleCount}</span>
+            </div>
+          </div>
+          <div className="place-detail-section map-inspector-section">
+            <div className="eyebrow">Cities and towns</div>
+            <ul className="place-detail-list">
+              {sub.places.slice(0, 14).map((pl) => (
+                <li key={pl.id}>
+                  <span>
+                    {pl.name.split(',')[0]}
+                    {pl.people.length ? ` · ${pl.people.length} people` : ''}
+                  </span>
+                </li>
+              ))}
+              {sub.places.length > 14 && (
+                <li className="muted">+{sub.places.length - 14} more places</li>
+              )}
+            </ul>
+          </div>
+          <div
+            className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}
+          >
+            {phone ? (
+              <button
+                type="button"
+                className="pill map-action-secondary"
+                onClick={() => setExpanded(false)}
+              >
+                Close details
+              </button>
+            ) : null}
+          </div>
+          <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
         </div>
-        <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </aside>
     )
   }
@@ -321,145 +345,159 @@ export function MapDetailPanel({
       : null
 
   return (
-    <aside className={panelClass} {...sheetDrag}>
-      <PhoneCloseButton
-        className="place-detail-close"
-        onClick={handleClose}
-        label={selection.type === 'region' ? 'Close regional details' : 'Close place details'}
-      />
-      <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
-      <h3 className="map-inspector-title">
-        {selection.type === 'region'
-          ? selection.region.chapterTitle
-          : selection.type === 'place'
-            ? placeChapterTitle ?? place.name
-            : place.name}
-      </h3>
-      {phone ? (
-        <>
-          <p className="map-sheet-peek-meta">
-            {yearLabel}
-            {selection.type === 'region'
-              ? ` · ${selection.region.placeCount} places · ${place.people.length} people`
-              : ` · ${place.people.length} ${place.people.length === 1 ? 'person' : 'people'}`}
-          </p>
-          <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
-            View details
-          </button>
-        </>
-      ) : null}
-      {selection.type === 'region' && (
-        <p className="map-inspector-lede place-region">{selection.region.name}</p>
-      )}
-      {selection.type === 'region' && regionSynopsis && (
-        <p className="map-inspector-synopsis">{regionSynopsis}</p>
-      )}
-      {selection.type === 'place' && !place.coordinate.resolved && (
-        <p className="place-unresolved">Coordinates not resolved for this place.</p>
-      )}
-      {selection.type === 'place' && place.coordinate.displayRegion && (
-        <p className="place-region">{place.coordinate.displayRegion}</p>
-      )}
-      <div className="place-detail-stats map-inspector-meta">
-        <div>
-          <label>Year range</label>
-          <span>{yearLabel}</span>
-        </div>
-        <div>
-          <label>People</label>
-          <span>{place.people.length}</span>
-        </div>
-        <div>
-          <label>{selection.type === 'region' ? 'Places' : 'Events'}</label>
-          <span>{selection.type === 'region' ? selection.region.placeCount : place.eventCount}</span>
-        </div>
-        {selection.type !== 'region' && (
+    <aside className={panelClass} {...sheetDrag} aria-label={`${panelEyebrow} details`}>
+      <header className="map-inspector-header">
+        <PhoneCloseButton
+          className="place-detail-close"
+          onClick={handleClose}
+          label={selection.type === 'region' ? 'Close regional details' : 'Close place details'}
+        />
+        <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
+        <h3 className="map-inspector-title">
+          {selection.type === 'region'
+            ? selection.region.chapterTitle
+            : selection.type === 'place'
+              ? (placeChapterTitle ?? place.name)
+              : place.name}
+        </h3>
+      </header>
+      <div className="map-inspector-body">
+        {phone ? (
+          <>
+            <p className="map-sheet-peek-meta">
+              {yearLabel}
+              {selection.type === 'region'
+                ? ` · ${selection.region.placeCount} places · ${place.people.length} people`
+                : ` · ${place.people.length} ${place.people.length === 1 ? 'person' : 'people'}`}
+            </p>
+            <button type="button" className="map-sheet-expand" onClick={() => setExpanded(true)}>
+              View details
+            </button>
+          </>
+        ) : null}
+        {selection.type === 'region' && (
+          <p className="map-inspector-lede place-region">{selection.region.name}</p>
+        )}
+        {selection.type === 'region' && regionSynopsis && (
+          <p className="map-inspector-synopsis">{regionSynopsis}</p>
+        )}
+        {selection.type === 'place' && !place.coordinate.resolved && (
+          <p className="place-unresolved">Coordinates not resolved for this place.</p>
+        )}
+        {selection.type === 'place' && place.coordinate.displayRegion && (
+          <p className="place-region">{place.coordinate.displayRegion}</p>
+        )}
+        <div className="place-detail-stats map-inspector-meta">
           <div>
-            <label>Branches</label>
-            <span>{place.branches.join(', ') || '—'}</span>
+            <label>Year range</label>
+            <span>{yearLabel}</span>
+          </div>
+          <div>
+            <label>People</label>
+            <span>{place.people.length}</span>
+          </div>
+          <div>
+            <label>{selection.type === 'region' ? 'Places' : 'Events'}</label>
+            <span>
+              {selection.type === 'region' ? selection.region.placeCount : place.eventCount}
+            </span>
+          </div>
+          {selection.type !== 'region' && (
+            <div>
+              <label>Branches</label>
+              <span>{place.branches.join(', ') || '—'}</span>
+            </div>
+          )}
+        </div>
+
+        {selection.type === 'region' && level !== 'record' && (
+          <div className="place-detail-section map-inspector-section">
+            <div className="eyebrow">Regional chapters</div>
+            <ul className="place-detail-list">
+              {selection.region.places.slice(0, 8).map((pl) => (
+                <li key={pl.id}>
+                  <span>
+                    {pl.name.split(',')[0]}
+                    {pl.people.length ? ` · ${pl.people.length} people` : ''}
+                  </span>
+                </li>
+              ))}
+              {selection.region.places.length > 8 && (
+                <li className="muted">+{selection.region.places.length - 8} more places</li>
+              )}
+            </ul>
           </div>
         )}
-      </div>
 
-      {selection.type === 'region' && level !== 'record' && (
-        <div className="place-detail-section map-inspector-section">
-          <div className="eyebrow">Regional chapters</div>
-          <ul className="place-detail-list">
-            {selection.region.places.slice(0, 8).map((pl) => (
-              <li key={pl.id}>
-                <span>
-                  {pl.name.split(',')[0]}
-                  {pl.people.length ? ` · ${pl.people.length} people` : ''}
-                </span>
-              </li>
-            ))}
-            {selection.region.places.length > 8 && (
-              <li className="muted">+{selection.region.places.length - 8} more places</li>
-            )}
-          </ul>
-        </div>
-      )}
+        {selection.type === 'region' && selection.region.branches.length > 0 && (
+          <div className="place-detail-section map-inspector-section map-inspector-secondary">
+            <div className="eyebrow">Family branches</div>
+            <p className="map-inspector-detail-text">{selection.region.branches.join(', ')}</p>
+          </div>
+        )}
 
-      {selection.type === 'region' && selection.region.branches.length > 0 && (
-        <div className="place-detail-section map-inspector-section map-inspector-secondary">
-          <div className="eyebrow">Family branches</div>
-          <p className="map-inspector-detail-text">{selection.region.branches.join(', ')}</p>
-        </div>
-      )}
+        {(level === 'local' || level === 'place' || level === 'record') && (
+          <div className="place-detail-section map-inspector-section">
+            <div className="eyebrow">Connected people</div>
+            <ul className="place-detail-list">
+              {place.people.slice(0, 12).map((p) => (
+                <li key={p.id}>
+                  <button type="button" onClick={() => openPerson(p.id)}>
+                    {p.name}
+                    {p.birthYear ? ` · ${p.birthYear}` : ''}
+                  </button>
+                </li>
+              ))}
+              {place.people.length > 12 && (
+                <li className="muted">+{place.people.length - 12} more</li>
+              )}
+            </ul>
+          </div>
+        )}
 
-      {(level === 'local' || level === 'place' || level === 'record') && (
-        <div className="place-detail-section map-inspector-section">
-          <div className="eyebrow">Connected people</div>
-          <ul className="place-detail-list">
-            {place.people.slice(0, 12).map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => openPerson(p.id)}>
-                  {p.name}
-                  {p.birthYear ? ` · ${p.birthYear}` : ''}
-                </button>
-              </li>
-            ))}
-            {place.people.length > 12 && <li className="muted">+{place.people.length - 12} more</li>}
-          </ul>
-        </div>
-      )}
+        {level === 'record' && place.events.length > 0 && (
+          <div className="place-detail-section map-inspector-section map-inspector-secondary">
+            <div className="eyebrow">Individual events</div>
+            <ul className="place-detail-list">
+              {place.events.slice(0, 12).map((e, i) => (
+                <li key={`${e.person.id}-${e.kind}-${e.year}-${i}`}>
+                  <button type="button" onClick={() => openFamilyEvent(e)}>
+                    {e.year} ·{' '}
+                    {e.kind === 'birth'
+                      ? 'Birth'
+                      : e.kind === 'death'
+                        ? 'Death'
+                        : e.kind === 'move'
+                          ? 'Migration'
+                          : e.kind === 'marriage'
+                            ? 'Marriage'
+                            : 'Service'}{' '}
+                    · {e.kind === 'marriage' ? e.title : e.person.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-      {level === 'record' && place.events.length > 0 && (
-        <div className="place-detail-section map-inspector-section map-inspector-secondary">
-          <div className="eyebrow">Individual events</div>
-          <ul className="place-detail-list">
-            {place.events.slice(0, 12).map((e, i) => (
-              <li key={`${e.person.id}-${e.kind}-${e.year}-${i}`}>
-                <button type="button" onClick={() => openFamilyEvent(e)}>
-                  {e.year} ·{' '}
-                  {e.kind === 'birth'
-                    ? 'Birth'
-                    : e.kind === 'death'
-                      ? 'Death'
-                      : e.kind === 'move'
-                        ? 'Migration'
-                        : e.kind === 'marriage'
-                          ? 'Marriage'
-                          : 'Service'}{' '}
-                  · {e.kind === 'marriage' ? e.title : e.person.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}>
-        <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
-          View on timeline
-        </button>
-        {phone ? (
-          <button type="button" className="pill map-action-secondary" onClick={() => setExpanded(false)}>
-            Close details
+        <div
+          className={`place-detail-actions map-inspector-actions${phone ? ' map-inspector-actions--phone' : ''}`}
+        >
+          <button type="button" className="pill map-action-primary" onClick={handleViewTimeline}>
+            View on timeline
           </button>
-        ) : null}
+          {phone ? (
+            <button
+              type="button"
+              className="pill map-action-secondary"
+              onClick={() => setExpanded(false)}
+            >
+              Close details
+            </button>
+          ) : null}
+        </div>
+        <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
       </div>
-      <MapUnresolvedDisclosure places={unresolved} variant="inspector" />
     </aside>
   )
 }

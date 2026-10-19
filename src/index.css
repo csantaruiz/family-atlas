@@ -482,6 +482,22 @@
     ),
     radial-gradient(ellipse 95% 42% at 50% 0%, rgba(148, 104, 62, 0.12) 0%, transparent 68%),
     radial-gradient(ellipse 112% 72% at 50% 100%, rgba(128, 92, 56, 0.08) 0%, transparent 60%);
+  /* Ground rises out of the horizon instead of starting at full strength. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 56px);
+  mask-image: linear-gradient(180deg, transparent 0, #000 56px);
+}
+
+/*
+ * Guided chapters shorten the stage (see --guided-narration-band), which lifts
+ * the year axis. Keep the sky/ground horizon on the axis rather than at 62% of
+ * the full view, so the narration sits in the same ground as the Timeline.
+ */
+.app--guided:not(.app--guided-closing) #timeline::before {
+  height: calc((100% - var(--guided-narration-band, 0px)) * 0.62);
+}
+
+.app--guided:not(.app--guided-closing) #timeline::after {
+  top: calc((100% - var(--guided-narration-band, 0px)) * 0.62);
 }
 
 .app--view-journey #timeline .timeline-edge-vignette {
@@ -5504,7 +5520,9 @@
 
 /* Guided geographic step: map remains the dominant visual, chrome recedes further. */
 .app--guided #map.atlas-page:not(.map-phone) .map-atlas-frame {
-  inset: -20px -24px -28px;
+  --map-bleed-top: 20px;
+  --map-bleed-x: 24px;
+  --map-bleed-bottom: 28px;
 }
 
 #map .map-atlas-frame {
@@ -5519,11 +5537,22 @@
 
 #map.atlas-page:not(.map-phone) .map-atlas-frame {
   /* Bleed the geography into the stage — no framed rectangle. */
-  inset: -12px -16px -18px;
+  --map-bleed-top: 12px;
+  --map-bleed-x: 16px;
+  --map-bleed-bottom: 18px;
+  inset: calc(-1 * var(--map-bleed-top)) calc(-1 * var(--map-bleed-x))
+    calc(-1 * var(--map-bleed-bottom));
   border-radius: 0;
   border-color: transparent;
   box-shadow: none;
   background: transparent;
+}
+
+/*
+ * Feather only the geography plate. Markers, labels, and controls are siblings
+ * of .map-atlas-zoom, so they are never faded by this mask.
+ */
+#map.atlas-page:not(.map-phone) .map-atlas-zoom {
   mask-image: radial-gradient(
     ellipse 98% 92% at 50% 48%,
     #000 58%,
@@ -5536,6 +5565,19 @@
     rgba(0, 0, 0, 0.85) 78%,
     transparent 100%
   );
+}
+
+/* Frame bleeds past the viewport; keep in-frame chrome inside the visible area. */
+#map.atlas-page:not(.map-phone) .map-zoom-indicator {
+  top: auto;
+  right: auto;
+  left: calc(var(--map-bleed-x) + 28px);
+  bottom: calc(var(--map-bleed-bottom) + 40px);
+}
+
+.app--guided #map.atlas-page:not(.map-phone) .map-zoom-indicator,
+.app--guided #map.atlas-page:not(.map-phone) .map-hint {
+  display: none;
 }
 
 #map .map-atlas-zoom {
@@ -5558,8 +5600,8 @@
 }
 
 #map.atlas-page:not(.map-phone) .map-hint {
-  left: 28px;
-  bottom: 18px;
+  left: calc(var(--map-bleed-x, 0px) + 28px);
+  bottom: calc(var(--map-bleed-bottom, 0px) + 18px);
   max-width: 28vw;
 }
 
@@ -6542,7 +6584,6 @@
 }
 
 .map-reset-zoom,
-.map-clear-selection,
 .map-back-overview {
   position: absolute;
   z-index: 4;
@@ -6560,8 +6601,8 @@
 /* Desktop/tablet: clear secondary navigation chip */
 #map.atlas-page:not(.map-phone) .map-back-overview {
   z-index: 6;
-  left: var(--map-intro-left, 24px);
-  bottom: calc(var(--map-insight-bottom, 34px) + 118px);
+  left: calc(var(--map-intro-left, 24px) + var(--map-bleed-x, 0px));
+  bottom: calc(var(--map-insight-bottom, 34px) + 118px + var(--map-bleed-bottom, 0px));
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -6602,11 +6643,6 @@
 .map-reset-zoom {
   top: 14px;
   left: 14px;
-}
-
-.map-clear-selection {
-  top: 38px;
-  right: 14px;
 }
 
 .map-hint {
@@ -12672,32 +12708,26 @@ body {
 }
 
 /*
- * Soft atmospheric pool — dissolves into the Atlas ground.
- * No card edge, glass, or rectangular silhouette.
+ * Soft atmospheric pool behind the narration. `closest-side` guarantees the
+ * gradient reaches full transparency before every edge of this box, so it can
+ * never read as a rectangle. The box overhangs the viewport bottom on purpose.
  */
 .guided-caption-scrim {
   position: absolute;
   left: 50%;
-  bottom: 0;
-  width: min(920px, 118%);
-  height: 118%;
-  transform: translateX(-50%);
+  top: 50%;
+  width: min(1240px, 96vw);
+  height: 190%;
+  transform: translate(-50%, -46%);
   pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 72% 78% at 50% 88%,
-      rgba(6, 5, 4, 0.58) 0%,
-      rgba(6, 5, 4, 0.32) 42%,
-      rgba(6, 5, 4, 0.1) 68%,
-      transparent 82%
-    ),
-    linear-gradient(
-      180deg,
-      transparent 0%,
-      rgba(6, 5, 4, 0.12) 38%,
-      rgba(6, 5, 4, 0.38) 78%,
-      rgba(6, 5, 4, 0.52) 100%
-    );
+  background: radial-gradient(
+    closest-side,
+    rgba(6, 5, 4, 0.5) 0%,
+    rgba(6, 5, 4, 0.36) 34%,
+    rgba(6, 5, 4, 0.16) 64%,
+    rgba(6, 5, 4, 0.05) 84%,
+    transparent 100%
+  );
 }
 
 .guided-caption-inner {

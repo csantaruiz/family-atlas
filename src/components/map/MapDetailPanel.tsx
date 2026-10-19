@@ -74,7 +74,11 @@ export function MapDetailPanel({
 
     return (
       <aside className={panelClass} {...sheetDrag}>
-        <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
+        <PhoneCloseButton
+          className="place-detail-close"
+          onClick={handleClose}
+          label="Close migration details"
+        />
         <div className="eyebrow map-inspector-kicker">Family migration</div>
         <h3 className="map-inspector-title">{generateMigrationRouteTitle(route)}</h3>
         {phone ? (
@@ -195,7 +199,11 @@ export function MapDetailPanel({
 
     return (
       <aside className={panelClass} {...sheetDrag}>
-        <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
+        <PhoneCloseButton
+          className="place-detail-close"
+          onClick={handleClose}
+          label="Close regional details"
+        />
         <div className="eyebrow map-inspector-kicker">Regional chapter</div>
         <h3 className="map-inspector-title">{sub.chapterTitle}</h3>
         {phone ? (
@@ -314,7 +322,11 @@ export function MapDetailPanel({
 
   return (
     <aside className={panelClass} {...sheetDrag}>
-      <PhoneCloseButton className="place-detail-close" onClick={handleClose} />
+      <PhoneCloseButton
+        className="place-detail-close"
+        onClick={handleClose}
+        label={selection.type === 'region' ? 'Close regional details' : 'Close place details'}
+      />
       <div className="eyebrow map-inspector-kicker">{panelEyebrow}</div>
       <h3 className="map-inspector-title">
         {selection.type === 'region'

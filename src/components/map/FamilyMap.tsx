@@ -91,7 +91,6 @@ export function FamilyMap({
     zoomIn,
     zoomOut,
     resetExploration,
-    clearSelection,
     updateCameraLive,
     beginManualCamera,
     isTransitioning,
@@ -558,12 +557,6 @@ export function FamilyMap({
           Reset view
         </button>
       ) : null}
-
-      {selection && (
-        <button type="button" className="map-clear-selection pill" onClick={clearSelection}>
-          Clear selection
-        </button>
-      )}
 
       {MAP_CAMERA_DEBUG ? (
         <div className="map-camera-hud" aria-hidden="true">

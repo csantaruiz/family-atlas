@@ -225,7 +225,9 @@ export function WorldMapBackground({
             in="noise"
             result="grain"
           />
-          <feBlend in="SourceGraphic" in2="grain" mode="multiply" />
+          <feBlend in="SourceGraphic" in2="grain" mode="multiply" result="paper" />
+          {/* Grain fills the whole filter region; clip it to land so water stays seamless. */}
+          <feComposite in="paper" in2="SourceGraphic" operator="in" />
         </filter>
 
         <filter id={coastSoftnessId} x="-2%" y="-2%" width="104%" height="104%">
